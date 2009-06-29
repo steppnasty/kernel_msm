@@ -17,6 +17,8 @@ endif
 obj-y += acpuclock.o
 obj-$(CONFIG_MSM_VIC) += irq-vic.o
 
+obj-$(CONFIG_MSM_JTAG_V7) += jtag-v7.o
+
 quiet_cmd_mkrpcsym = MKCAP   $@
       cmd_mkrpcsym = $(PERL) $(srctree)/$(src)/mkrpcsym.pl $< $@
 
