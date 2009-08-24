@@ -54,6 +54,17 @@ ENTRY(msm_pm_collapse)
 	mrc     p15, 0, r9, c13, c0, 3 /* TPIDRURO */
 	mrc     p15, 0, ip, c13, c0, 1 /* context ID */
 	stmia   r0!, {r1-r9, ip}
+#ifdef CONFIG_MSM_CPU_AVS
+	mrc     p15, 7, r1, c15, c1, 7 /* AVSCSR is the Adaptive Voltage Scaling
+	                                * Control and Status Register */
+	mrc     p15, 7, r2, c15, c0, 6 /* AVSDSCR is the Adaptive Voltage
+	                                * Scaling Delay Synthesizer Control
+					* Register */
+	mrc     p15, 7, r3, c15, c1, 0 /* TSCSR is the Temperature Status and
+	                                * Control Register
+					*/
+	stmia   r0!, {r1-r3}
+#endif
 
 #ifdef CONFIG_MSM_JTAG_V7
 	bl      msm_save_jtag_debug
@@ -133,6 +144,12 @@ _cpu_early_init_complete:
 	subeq	r1, r1, #CPU_SAVED_STATE_SIZE
 #endif
 
+#ifdef CONFIG_MSM_CPU_AVS
+	ldmdb   r1!, {r2-r4}
+	mcr     p15, 7, r4, c15, c1, 0 /* TSCSR */
+	mcr     p15, 7, r3, c15, c0, 6 /* AVSDSCR */
+	mcr     p15, 7, r2, c15, c1, 7 /* AVSCSR */
+#endif
 	ldmdb   r1!, {r2-r11}
 	mcr     p15, 0, r4, c3, c0, 0 /* dacr */
 	mcr     p15, 0, r3, c2, c0, 0 /* TTBR0 */
