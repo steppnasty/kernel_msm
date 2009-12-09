@@ -8,11 +8,13 @@ endif
 obj-y += subsystem_map.o
 
 ifndef CONFIG_ARCH_MSM8X60
-obj-y += irq.o devices.o pmic.o pwrtest.o
+obj-y += devices.o pmic.o pwrtest.o
 endif
 
 obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o internal_power_rail.o
 obj-$(CONFIG_MSM_PROC_COMM) += vreg.o
+
+obj-$(CONFIG_MSM_VIC) += irq-vic.o
 
 obj-$(CONFIG_ARCH_QSD8X50) += sirc.o
 obj-$(CONFIG_ARCH_MSM_ARM11) += acpuclock-arm11.o idle.o

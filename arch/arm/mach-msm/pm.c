@@ -521,7 +521,6 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay, int from_idle)
 #endif
 			cpu_init();
 			__asm__("cpsie   a");
-			msm_fiq_exit_sleep();
 			local_fiq_enable();
 			rv = 0;
 		}
@@ -633,7 +632,6 @@ static int msm_pm_power_collapse_standalone(void)
 #endif
 		cpu_init();
 		__asm__("cpsie   a");
-		msm_fiq_exit_sleep();
 		local_fiq_enable();
 	}
 
