@@ -344,7 +344,7 @@ config AUDITSYSCALL
 config AUDIT_TREE
 	def_bool y
 	depends on AUDITSYSCALL
-	select INOTIFY
+	select FSNOTIFY
 
 menu "RCU Subsystem"
 
