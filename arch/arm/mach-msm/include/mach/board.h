@@ -593,6 +593,8 @@ struct vcap_platform_data {
 	struct msm_bus_scale_pdata *bus_client_pdata;
 };
 
+extern struct sys_timer msm_timer;
+
 /* common init routines for use by arch/arm/mach-msm/board-*.c */
 void __init msm_add_devices(void);
 void __init msm_map_common_io(void);

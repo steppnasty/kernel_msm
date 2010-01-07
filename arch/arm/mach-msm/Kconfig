@@ -520,6 +520,12 @@ config MACH_VIGOR
 	help
 	  Support for the Vigor device.
 
+config MACH_MSM8X60_RUMI3
+	depends on ARCH_MSM8X60
+	bool "MSM8x60 RUMI3"
+	help
+	  Support for the Qualcomm MSM8x60 RUMI3 emulator.
+
 config MSM_STACKED_MEMORY
 	bool "Stacked Memory"
 	default n
