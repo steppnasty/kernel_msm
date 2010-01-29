@@ -572,6 +572,7 @@ config ARCH_TEGRA
 	select GENERIC_CLOCKEVENTS
 	select GENERIC_GPIO
 	select HAVE_CLK
+	select CLKDEV_LOOKUP
 	select ARCH_HAS_BARRIERS if CACHE_L2X0
 	help
 	  This enables support for NVIDIA Tegra based systems (Tegra APX,
