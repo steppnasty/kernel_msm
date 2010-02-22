@@ -1173,7 +1173,8 @@ config SMP
 	bool "Symmetric Multi-Processing (EXPERIMENTAL)"
 	depends on EXPERIMENTAL && (REALVIEW_EB_ARM11MP || REALVIEW_EB_A9MP ||\
 		 MACH_REALVIEW_PB11MP || MACH_REALVIEW_PBX || ARCH_OMAP4 ||\
-		 ARCH_U8500 || ARCH_VEXPRESS_CA9X4 || ARCH_S5PV310 || MSM_SMP)
+		 ARCH_U8500 || ARCH_VEXPRESS_CA9X4 || ARCH_S5PV310 || ARCH_TEGRA || \
+		 MSM_SMP)
 	depends on GENERIC_CLOCKEVENTS
 	select USE_GENERIC_SMP_HELPERS
 	select HAVE_ARM_SCU if !MSM_SMP
@@ -1246,9 +1247,10 @@ config LOCAL_TIMERS
 	bool "Use local timer interrupts"
 	depends on SMP && (REALVIEW_EB_ARM11MP || MACH_REALVIEW_PB11MP || \
 		REALVIEW_EB_A9MP || MACH_REALVIEW_PBX || ARCH_OMAP4 || \
-		ARCH_U8500 || MSM_SMP || ARCH_VEXPRESS_CA9X4 || ARCH_S5PV310)
+		ARCH_U8500 || ARCH_TEGRA || MSM_SMP || ARCH_VEXPRESS_CA9X4 || ARCH_S5PV310)
 	default y
-	select HAVE_ARM_TWD if (ARCH_REALVIEW || ARCH_VEXPRESS || ARCH_OMAP4 || ARCH_U8500 || ARCH_S5PV310)
+	select HAVE_ARM_TWD if (ARCH_REALVIEW || ARCH_VEXPRESS || ARCH_OMAP4 || \
+		ARCH_U8500 || ARCH_TEGRA || ARCH_S5PV310)
 	help
 	  Enable support for local timers on SMP platforms, rather then the
 	  legacy IPI broadcast method.  Local timers allows the system
