@@ -45,7 +45,6 @@
 #include <linux/parser.h>
 #include <linux/random.h>
 #include <linux/crc32.h>
-#include <linux/smp_lock.h>
 #include <linux/vfs.h>
 #include <linux/writeback.h>
 #include <linux/kobject.h>
@@ -334,8 +333,6 @@ static void nilfs_put_super(struct super_block *sb)
 	struct nilfs_sb_info *sbi = NILFS_SB(sb);
 	struct the_nilfs *nilfs = sbi->s_nilfs;
 
-	lock_kernel();
-
 	nilfs_detach_segment_constructor(sbi);
 
 	if (!(sb->s_flags & MS_RDONLY)) {
@@ -353,8 +350,6 @@ static void nilfs_put_super(struct super_block *sb)
 	sbi->s_super = NULL;
 	sb->s_fs_info = NULL;
 	nilfs_put_sbinfo(sbi);
-
-	unlock_kernel();
 }
 
 static int nilfs_sync_fs(struct super_block *sb, int wait)
@@ -941,8 +936,6 @@ static int nilfs_remount(struct super_block *sb, int *flags, char *data)
 	struct nilfs_mount_options old_opts;
 	int was_snapshot, err;
 
-	lock_kernel();
-
 	down_write(&nilfs->ns_super_sem);
 	old_sb_flags = sb->s_flags;
 	old_opts.mount_opt = sbi->s_mount_opt;
@@ -1016,7 +1009,6 @@ static int nilfs_remount(struct super_block *sb, int *flags, char *data)
 	}
  out:
 	up_write(&nilfs->ns_super_sem);
-	unlock_kernel();
 	return 0;
 
  restore_opts:
@@ -1024,7 +1016,6 @@ static int nilfs_remount(struct super_block *sb, int *flags, char *data)
 	sbi->s_mount_opt = old_opts.mount_opt;
 	sbi->s_snapshot_cno = old_opts.snapshot_cno;
 	up_write(&nilfs->ns_super_sem);
-	unlock_kernel();
 	return err;
 }
 
@@ -1105,12 +1096,9 @@ nilfs_get_sb(struct file_system_type *fs_type, int flags,
 	if (!(flags & MS_RDONLY))
 		mode |= FMODE_WRITE;
 
-	lock_kernel();
 	sd.bdev = open_bdev_exclusive(dev_name, mode, fs_type);
-	if (IS_ERR(sd.bdev)) {
-		unlock_kernel();
+	if (IS_ERR(sd.bdev))
 		return PTR_ERR(sd.bdev);
-	}
 
 	/*
 	 * To get mount instance using sget() vfs-routine, NILFS needs
@@ -1193,7 +1181,6 @@ nilfs_get_sb(struct file_system_type *fs_type, int flags,
 	if (need_to_close)
 		close_bdev_exclusive(sd.bdev, mode);
 	simple_set_mnt(mnt, s);
-	unlock_kernel();
 	return 0;
 
  failed_unlock:
@@ -1201,8 +1188,6 @@ nilfs_get_sb(struct file_system_type *fs_type, int flags,
 	put_nilfs(nilfs);
  failed:
 	close_bdev_exclusive(sd.bdev, mode);
-
-	unlock_kernel();
 	return err;
 
  cancel_new:
@@ -1215,7 +1200,6 @@ nilfs_get_sb(struct file_system_type *fs_type, int flags,
 	 * We must finish all post-cleaning before this call;
 	 * put_nilfs() needs the block device.
 	 */
-	unlock_kernel();
 	return err;
 }
 
