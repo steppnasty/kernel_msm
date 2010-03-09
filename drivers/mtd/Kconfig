@@ -307,11 +307,11 @@ config SSFDC
 
 config SM_FTL
 	tristate "SmartMedia/xD new translation layer"
-	depends on EXPERIMENTAL && BLOCK
+	depends on EXPERIMENTAL && BLOCK && MTD_NAND
 	select MTD_BLKDEVS
 	help
 	  This enables new and very EXPERMENTAL support for SmartMedia/xD
-	  FTL (Flash tanslation layer)
+	  FTL (Flash translation layer).
 	  Write support isn't yet well tested, therefore this code IS likely to
 	  eat your card, so please don't use it together with valuable data.
 	  Use readonly driver (CONFIG_SSFDC) instead.
