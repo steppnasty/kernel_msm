@@ -65,7 +65,8 @@ config ARCH_MSM8X60
 	select MSM_RPM
 	select MSM_XO
 	select MSM_GPIOMUX
-	select MACH_MSM8X60_SURF if (!MACH_MSM8X60_RUMI3 && !MACH_MSM8X60_SIM)
+	select MACH_MSM8X60_SURF if (!MACH_MSM8X60_RUMI3 && !MACH_MSM8X60_SIM \
+				  && !MACH_MSM8X60_FFA)
 	select MSM_BUS_SCALING
 	select MSM_SECURE_IO
 	select ARM_HAS_SG_CHAIN
@@ -546,6 +547,12 @@ config MACH_MSM8X60_SIM
 	bool "MSM8x60 Simulator"
 	help
 	  Support for the Qualcomm MSM8x60 simulator.
+
+config MACH_MSM8X60_FFA
+	depends on ARCH_MSM8X60
+	bool "MSM8x60 FFA"
+	help
+	  Support for the Qualcomm MSM8x60 FFA eval board.
 
 config MSM_STACKED_MEMORY
 	bool "Stacked Memory"
