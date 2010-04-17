@@ -41,6 +41,7 @@
 #include <linux/seqlock.h>
 #include <linux/lockdep.h>
 #include <linux/completion.h>
+#include <linux/debugobjects.h>
 
 #ifdef CONFIG_RCU_TORTURE_TEST
 extern int rcutorture_runnable; /* for sysctl */
@@ -143,6 +144,16 @@ static inline void rcu_exit_nohz(void)
        (ptr)->next = NULL; (ptr)->func = NULL; \
 } while (0)
 
+/*
+ * init_rcu_head_on_stack()/destroy_rcu_head_on_stack() are needed for dynamic
+ * initialization and destruction of rcu_head on the stack. rcu_head structures
+ * allocated dynamically in the heap or defined statically don't need any
+ * initialization.
+ */
+#ifdef CONFIG_DEBUG_OBJECTS_RCU_HEAD
+extern void init_rcu_head_on_stack(struct rcu_head *head);
+extern void destroy_rcu_head_on_stack(struct rcu_head *head);
+#else /* !CONFIG_DEBUG_OBJECTS_RCU_HEAD */
 static inline void init_rcu_head_on_stack(struct rcu_head *head)
 {
 }
@@ -150,6 +161,7 @@ static inline void init_rcu_head_on_stack(struct rcu_head *head)
 static inline void destroy_rcu_head_on_stack(struct rcu_head *head)
 {
 }
+#endif	/* #else !CONFIG_DEBUG_OBJECTS_RCU_HEAD */
 
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 
