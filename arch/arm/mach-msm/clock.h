@@ -24,10 +24,7 @@
 #include <linux/list.h>
 #include <mach/clk.h>
 #include <linux/timer.h>
-#if defined (CONFIG_ARCH_MSM7X30)
 #include "clock-pcom.h"
-#include "clock-7x30.h"
-#endif
 
 /* Maximum number of clocks supported. */
 #define MAX_NR_CLKS	300
@@ -251,6 +248,14 @@ enum clkvote_client {
 	CLKVOTE_PMQOS,
 	CLKVOTE_MAX,
 };
+
+#if defined(CONFIG_ARCH_MSM7X30)
+void msm_clk_soc_init(void);
+void msm_clk_soc_set_ops(struct clk *clk);
+#else
+static inline void msm_clk_soc_init(void) { }
+static inline void msm_clk_soc_set_ops(struct clk *clk) { }
+#endif
 
 #if defined (CONFIG_ARCH_MSM8X60)
 #ifdef CONFIG_DEBUG_FS

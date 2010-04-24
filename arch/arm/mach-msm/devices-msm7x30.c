@@ -19,6 +19,7 @@
 #include <mach/msm_iomap.h>
 
 #include "devices.h"
+#include "clock-7x30.h"
 
 #include <mach/dal_axi.h>
 

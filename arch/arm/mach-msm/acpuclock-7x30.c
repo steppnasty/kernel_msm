@@ -32,6 +32,7 @@
 
 #include "smd_private.h"
 #include "clock.h"
+#include "clock-7x30.h"
 #include "acpuclock.h"
 #include "socinfo.h"
 #include "spm.h"

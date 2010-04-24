@@ -274,39 +274,22 @@ static int axi_freq_notifier_handler(struct notifier_block *block,
 	return 0;
 }
 
-static unsigned __initdata local_count;
-
-static void __init set_clock_ops(struct clk *clk)
-{
-	if (!clk->ops) {
-		struct clk_ops *ops = clk_7x30_is_local(clk->id);
-		if (ops) {
-			clk->ops = ops;
-			local_count++;
-		} else {
-			clk->ops = &clk_ops_pcom;
-			clk->id = clk->remote_id;
-		}
-	}
-}
-
 void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks)
 {
 	unsigned n;
 
-	clk_7x30_init();
+	/* Do SoC-speficic clock init operations. */
+	msm_clk_soc_init();
+
 	spin_lock_init(&clocks_lock);
 	mutex_lock(&clocks_mutex);
 	msm_clocks = clock_tbl;
 	msm_num_clocks = num_clocks;
 	for (n = 0; n < msm_num_clocks; n++) {
-		set_clock_ops(&msm_clocks[n]);
+		msm_clk_soc_set_ops(&msm_clocks[n]);
 		hlist_add_head(&msm_clocks[n].list, &clocks);
 	}
 	mutex_unlock(&clocks_mutex);
-	if (local_count)
-		pr_info("%u clock%s locally owned\n", local_count,
-			local_count > 1 ? "s are" : " is");
 
 	if (cpu_is_msm7x30() || cpu_is_msm8x55()) {
 		pbus_clk = clk_get(NULL, "pbus_clk");
