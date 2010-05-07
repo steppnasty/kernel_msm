@@ -841,9 +841,8 @@ static struct map_desc trout_io_desc[] __initdata = {
 static void __init trout_fixup(struct machine_desc *desc, struct tag *tags,
 				char **cmdline, struct meminfo *mi)
 {
-	mi->nr_banks=1;
+	mi->nr_banks = 1;
 	mi->bank[0].start = PHYS_OFFSET;
-	mi->bank[0].node = PHYS_TO_NID(PHYS_OFFSET);
 	mi->bank[0].size = (101*1024*1024);
 }
 
