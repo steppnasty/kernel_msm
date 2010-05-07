@@ -390,6 +390,16 @@ static const struct file_operations clk_info_fops = {
 	.release = seq_release,
 };
 
+static int clock_debug_measure_get(void *data, u64 *val)
+{
+	struct clk *clock = data;
+	*val = clock->ops->measure_rate(clock->id);
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(clock_measure_fops, clock_debug_measure_get,
+			NULL, "%lld\n");
+
 static void __init clock_debug_init(void)
 {
 	struct dentry *dent;
