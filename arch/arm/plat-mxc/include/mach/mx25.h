@@ -43,6 +43,7 @@
 #define MX25_NFC_BASE_ADDR		0xbb000000
 #define MX25_DRYICE_BASE_ADDR		0x53ffc000
 #define MX25_LCDC_BASE_ADDR		0x53fbc000
+#define MX25_KPP_BASE_ADDR		0x43fa8000
 
 #define MX25_INT_CSPI3		0
 #define MX25_INT_I2C1		3
@@ -52,6 +53,7 @@
 #define MX25_INT_CSPI2		13
 #define MX25_INT_CSPI1		14
 #define MX25_INT_UART3		18
+#define MX25_INT_KPP		24
 #define MX25_INT_DRYICE		25
 #define MX25_INT_UART2		32
 #define MX25_INT_NANDFC		33
