@@ -606,6 +606,7 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 
 	tty_wait_until_sent(tty, 0);
 
+	tty_lock();
 	mutex_lock(&tty->ldisc_mutex);
 
 	/*
@@ -615,12 +616,12 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 
 	while (test_bit(TTY_LDISC_CHANGING, &tty->flags)) {
 		mutex_unlock(&tty->ldisc_mutex);
+		tty_unlock();
 		wait_event(tty_ldisc_wait,
 			test_bit(TTY_LDISC_CHANGING, &tty->flags) == 0);
+		tty_lock();
 		mutex_lock(&tty->ldisc_mutex);
 	}
-
-	tty_lock();
 
 	set_bit(TTY_LDISC_CHANGING, &tty->flags);
 
@@ -665,8 +666,8 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 
 	retval = tty_ldisc_wait_idle(tty);
 
-	mutex_lock(&tty->ldisc_mutex);
 	tty_lock();
+	mutex_lock(&tty->ldisc_mutex);
 
 	/* handle wait idle failure locked */
 	if (retval) {
@@ -838,7 +839,20 @@ void tty_ldisc_hangup(struct tty_struct *tty)
 	 * Avoid racing set_ldisc or tty_ldisc_release
 	 */
 	mutex_lock(&tty->ldisc_mutex);
-	tty_ldisc_halt(tty);
+
+	/*
+	 * this is like tty_ldisc_halt, but we need to give up
+	 * the BTM before calling cancel_delayed_work_sync,
+	 * which may need to wait for another function taking the BTM
+	 */
+	clear_bit(TTY_LDISC, &tty->flags);
+	tty_unlock();
+	cancel_delayed_work_sync(&tty->buf.work);
+	mutex_unlock(&tty->ldisc_mutex);
+
+	tty_lock();
+	mutex_lock(&tty->ldisc_mutex);
+
 	/* At this point we have a closed ldisc and we want to
 	   reopen it. We could defer this to the next open but
 	   it means auditing a lot of other paths so this is
@@ -912,6 +926,7 @@ void tty_ldisc_release(struct tty_struct *tty, struct tty_struct *o_tty)
 	 * race with the set_ldisc code path.
 	 */
 
+	tty_unlock();
 	tty_ldisc_halt(tty);
 #if defined(CONFIG_MSM_SMD0_WQ)
 	if (!strcmp(tty->name, "smd0"))
@@ -919,6 +934,7 @@ void tty_ldisc_release(struct tty_struct *tty, struct tty_struct *o_tty)
 	else
 #endif
 	flush_scheduled_work();
+	tty_lock();
 
 	mutex_lock(&tty->ldisc_mutex);
 	/*
