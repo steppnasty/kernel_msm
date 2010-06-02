@@ -24,7 +24,7 @@
 #include <linux/fs.h>
 #include <linux/delay.h>
 #include <linux/poll.h>
-#include <linux/smp_lock.h>
+#include <linux/mutex.h>
 #include <linux/wait.h>
 #include <asm/uaccess.h>
 #include <asm/io.h>
@@ -48,6 +48,7 @@
 			   __func__ , ## args);		\
 	} while (0)
 
+static DEFINE_MUTEX(cm4040_mutex);
 #define	CCID_DRIVER_BULK_DEFAULT_TIMEOUT  	(150*HZ)
 #define	CCID_DRIVER_ASYNC_POWERUP_TIMEOUT 	(35*HZ)
 #define	CCID_DRIVER_MINIMUM_TIMEOUT 		(3*HZ)
@@ -440,7 +441,7 @@ static int cm4040_open(struct inode *inode, struct file *filp)
 	if (minor >= CM_MAX_DEV)
 		return -ENODEV;
 
-	lock_kernel();
+	mutex_lock(&cm4040_mutex);
 	link = dev_table[minor];
 	if (link == NULL || !pcmcia_dev_present(link)) {
 		ret = -ENODEV;
@@ -469,7 +470,7 @@ static int cm4040_open(struct inode *inode, struct file *filp)
 	DEBUGP(2, dev, "<- cm4040_open (successfully)\n");
 	ret = nonseekable_open(inode, filp);
 out:
-	unlock_kernel();
+	mutex_unlock(&cm4040_mutex);
 	return ret;
 }
 
