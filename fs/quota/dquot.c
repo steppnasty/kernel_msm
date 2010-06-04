@@ -1313,6 +1313,15 @@ static int info_bdq_free(struct dquot *dquot, qsize_t space)
 	return QUOTA_NL_NOWARN;
 }
 
+static int dquot_active(const struct inode *inode)
+{
+	struct super_block *sb = inode->i_sb;
+
+	if (IS_NOQUOTA(inode))
+		return 0;
+	return sb_any_quota_loaded(sb) & ~sb_any_quota_suspended(sb);
+}
+
 /*
  * Initialize quota pointers in inode
  *
@@ -1332,7 +1341,7 @@ static void __dquot_initialize(struct inode *inode, int type)
 
 	/* First test before acquiring mutex - solves deadlocks when we
          * re-enter the quota code and are already holding the mutex */
-	if (!sb_any_quota_active(inode->i_sb) || IS_NOQUOTA(inode))
+	if (!dquot_active(inode))
 		return;
 
 	/* First get references to structures we might need. */
@@ -1516,7 +1525,7 @@ int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags)
 	 * First test before acquiring mutex - solves deadlocks when we
 	 * re-enter the quota code and are already holding the mutex
 	 */
-	if (!sb_any_quota_active(inode->i_sb) || IS_NOQUOTA(inode)) {
+	if (!dquot_active(inode)) {
 		inode_incr_space(inode, number, reserve);
 		goto out;
 	}
@@ -1568,7 +1577,7 @@ int dquot_alloc_inode(const struct inode *inode)
 
 	/* First test before acquiring mutex - solves deadlocks when we
          * re-enter the quota code and are already holding the mutex */
-	if (!sb_any_quota_active(inode->i_sb) || IS_NOQUOTA(inode))
+	if (!dquot_active(inode))
 		return 0;
 	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
 		warntype[cnt] = QUOTA_NL_NOWARN;
@@ -1605,7 +1614,7 @@ int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
 {
 	int cnt;
 
-	if (!sb_any_quota_active(inode->i_sb) || IS_NOQUOTA(inode)) {
+	if (!dquot_active(inode)) {
 		inode_claim_rsv_space(inode, number);
 		return 0;
 	}
@@ -1638,7 +1647,7 @@ void __dquot_free_space(struct inode *inode, qsize_t number, int flags)
 
 	/* First test before acquiring mutex - solves deadlocks when we
          * re-enter the quota code and are already holding the mutex */
-	if (!sb_any_quota_active(inode->i_sb) || IS_NOQUOTA(inode)) {
+	if (!dquot_active(inode)) {
 		inode_decr_space(inode, number, reserve);
 		return;
 	}
@@ -1676,7 +1685,7 @@ void dquot_free_inode(const struct inode *inode)
 
 	/* First test before acquiring mutex - solves deadlocks when we
          * re-enter the quota code and are already holding the mutex */
-	if (!sb_any_quota_active(inode->i_sb) || IS_NOQUOTA(inode))
+	if (!dquot_active(inode))
 		return;
 
 	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
@@ -1799,7 +1808,7 @@ int dquot_transfer(struct inode *inode, struct iattr *iattr)
 	struct super_block *sb = inode->i_sb;
 	int ret;
 
-	if (!sb_any_quota_active(sb) || IS_NOQUOTA(inode))
+	if (!dquot_active(inode))
 		return 0;
 
 	if (iattr->ia_valid & ATTR_UID && iattr->ia_uid != inode->i_uid)
