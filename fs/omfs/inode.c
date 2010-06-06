@@ -181,9 +181,13 @@ int omfs_sync_inode(struct inode *inode)
  * called when an entry is deleted, need to clear the bits in the
  * bitmaps.
  */
-static void omfs_delete_inode(struct inode *inode)
+static void omfs_evict_inode(struct inode *inode)
 {
 	truncate_inode_pages(&inode->i_data, 0);
+	end_writeback(inode);
+
+	if (inode->i_nlink)
+		return;
 
 	if (S_ISREG(inode->i_mode)) {
 		inode->i_size = 0;
@@ -191,7 +195,6 @@ static void omfs_delete_inode(struct inode *inode)
 	}
 
 	omfs_clear_range(inode->i_sb, inode->i_ino, 2);
-	clear_inode(inode);
 }
 
 struct inode *omfs_iget(struct super_block *sb, ino_t ino)
@@ -288,7 +291,7 @@ static int omfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 
 static const struct super_operations omfs_sops = {
 	.write_inode	= omfs_write_inode,
-	.delete_inode	= omfs_delete_inode,
+	.evict_inode	= omfs_evict_inode,
 	.put_super	= omfs_put_super,
 	.statfs		= omfs_statfs,
 	.show_options	= generic_show_options,
