@@ -2269,7 +2269,6 @@ void logfs_cleanup_rw(struct super_block *sb)
 {
 	struct logfs_super *super = logfs_super(sb);
 
-	destroy_meta_inode(super->s_segfile_inode);
 	logfs_mempool_destroy(super->s_block_pool);
 	logfs_mempool_destroy(super->s_shadow_pool);
 }
