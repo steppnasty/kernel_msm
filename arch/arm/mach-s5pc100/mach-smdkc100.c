@@ -149,7 +149,12 @@ static struct s3c_fb_platdata smdkc100_lcd_pdata __initdata = {
 	.setup_gpio	= s5pc100_fb_gpio_setup_24bpp,
 };
 
+static struct s3c_ide_platdata smdkc100_ide_pdata __initdata = {
+	.setup_gpio	= s5pc100_ide_setup_gpio,
+};
+
 static struct platform_device *smdkc100_devices[] __initdata = {
+	&s3c_device_cfcon,
 	&s3c_device_i2c0,
 	&s3c_device_i2c1,
 	&s3c_device_fb,
@@ -177,6 +182,7 @@ static void __init smdkc100_machine_init(void)
 	i2c_register_board_info(1, i2c_devs1, ARRAY_SIZE(i2c_devs1));
 
 	s3c_fb_set_platdata(&smdkc100_lcd_pdata);
+	s3c_ide_set_platdata(&smdkc100_ide_pdata);
 
 	/* LCD init */
 	gpio_request(S5PC100_GPD(0), "GPD");
