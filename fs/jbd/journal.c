@@ -1291,12 +1291,8 @@ int journal_check_used_features (journal_t *journal, unsigned long compat,
 int journal_check_available_features (journal_t *journal, unsigned long compat,
 				      unsigned long ro, unsigned long incompat)
 {
-	journal_superblock_t *sb;
-
 	if (!compat && !ro && !incompat)
 		return 1;
-
-	sb = journal->j_superblock;
 
 	/* We can support any known requested features iff the
 	 * superblock is in version 2.  Otherwise we fail to support any
@@ -1491,7 +1487,6 @@ int journal_flush(journal_t *journal)
 
 int journal_wipe(journal_t *journal, int write)
 {
-	journal_superblock_t *sb;
 	int err = 0;
 
 	J_ASSERT (!(journal->j_flags & JFS_LOADED));
@@ -1499,8 +1494,6 @@ int journal_wipe(journal_t *journal, int write)
 	err = load_superblock(journal);
 	if (err)
 		return err;
-
-	sb = journal->j_superblock;
 
 	if (!journal->j_tail)
 		goto no_recovery;
