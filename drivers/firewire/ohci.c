@@ -1737,7 +1737,8 @@ static int ohci_enable(struct fw_card *card,
 	reg_write(ohci, OHCI1394_ATRetries,
 		  OHCI1394_MAX_AT_REQ_RETRIES |
 		  (OHCI1394_MAX_AT_RESP_RETRIES << 4) |
-		  (OHCI1394_MAX_PHYS_RESP_RETRIES << 8));
+		  (OHCI1394_MAX_PHYS_RESP_RETRIES << 8) |
+		  (200 << 16));
 
 	seconds = lower_32_bits(get_seconds());
 	reg_write(ohci, OHCI1394_IsochronousCycleTimer, seconds << 25);
@@ -2029,6 +2030,10 @@ static u32 ohci_read_csr_reg(struct fw_card *card, int csr_offset)
 		spin_unlock_irqrestore(&ohci->lock, flags);
 		return value;
 
+	case CSR_BUSY_TIMEOUT:
+		value = reg_read(ohci, OHCI1394_ATRetries);
+		return (value >> 4) & 0x0ffff00f;
+
 	default:
 		WARN_ON(1);
 		return 0;
@@ -2057,6 +2062,13 @@ static void ohci_write_csr_reg(struct fw_card *card, int csr_offset, u32 value)
 		spin_lock_irqsave(&ohci->lock, flags);
 		ohci->bus_time = (ohci->bus_time & 0x7f) | (value & ~0x7f);
 		spin_unlock_irqrestore(&ohci->lock, flags);
+		break;
+
+	case CSR_BUSY_TIMEOUT:
+		value = (value & 0xf) | ((value & 0xf) << 4) |
+			((value & 0xf) << 8) | ((value & 0x0ffff000) << 4);
+		reg_write(ohci, OHCI1394_ATRetries, value);
+		flush_writes(ohci);
 		break;
 
 	default:
