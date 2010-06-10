@@ -1969,10 +1969,7 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 			goto invalid;
 		}
 
-		rx->skb->pkt_type = IEEE80211_SDATA_QUEUE_TYPE_FRAME;
-		skb_queue_tail(&sdata->skb_queue, rx->skb);
-		ieee80211_queue_work(&local->hw, &sdata->work);
-		return RX_QUEUED;
+		goto queue;
 	case WLAN_CATEGORY_SPECTRUM_MGMT:
 		if (local->hw.conf.channel->band != IEEE80211_BAND_5GHZ)
 			break;
@@ -2002,10 +1999,7 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 			if (memcmp(mgmt->bssid, sdata->u.mgd.bssid, ETH_ALEN))
 				break;
 
-			rx->skb->pkt_type = IEEE80211_SDATA_QUEUE_TYPE_FRAME;
-			skb_queue_tail(&sdata->skb_queue, rx->skb);
-			ieee80211_queue_work(&local->hw, &sdata->work);
-			return RX_QUEUED;
+			goto queue;
 		}
 		break;
 	case WLAN_CATEGORY_SA_QUERY:
@@ -2025,10 +2019,7 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 	case WLAN_CATEGORY_MESH_PATH_SEL:
 		if (!ieee80211_vif_is_mesh(&sdata->vif))
 			break;
-		rx->skb->pkt_type = IEEE80211_SDATA_QUEUE_TYPE_FRAME;
-		skb_queue_tail(&sdata->skb_queue, rx->skb);
-		ieee80211_queue_work(&local->hw, &sdata->work);
-		return RX_QUEUED;
+		goto queue;
 	}
 
  invalid:
@@ -2078,6 +2069,14 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 	if (rx->sta)
 		rx->sta->rx_packets++;
 	dev_kfree_skb(rx->skb);
+	return RX_QUEUED;
+
+ queue:
+	rx->skb->pkt_type = IEEE80211_SDATA_QUEUE_TYPE_FRAME;
+	skb_queue_tail(&sdata->skb_queue, rx->skb);
+	ieee80211_queue_work(&local->hw, &sdata->work);
+	if (rx->sta)
+		rx->sta->rx_packets++;
 	return RX_QUEUED;
 }
 
@@ -2134,6 +2133,8 @@ ieee80211_rx_h_mgmt(struct ieee80211_rx_data *rx)
 	rx->skb->pkt_type = IEEE80211_SDATA_QUEUE_TYPE_FRAME;
 	skb_queue_tail(&sdata->skb_queue, rx->skb);
 	ieee80211_queue_work(&rx->local->hw, &sdata->work);
+	if (rx->sta)
+		rx->sta->rx_packets++;
 
 	return RX_QUEUED;
 }
