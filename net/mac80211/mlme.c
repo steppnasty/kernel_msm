@@ -1754,7 +1754,7 @@ void ieee80211_sta_rx_queued_mgmt(struct ieee80211_sub_if_data *sdata,
 		default:
 			WARN(1, "unexpected: %d", rma);
 		}
-		goto out;
+		return;
 	}
 
 	mutex_unlock(&ifmgd->mtx);
@@ -1799,8 +1799,6 @@ void ieee80211_sta_rx_queued_mgmt(struct ieee80211_sub_if_data *sdata,
 
 		cfg80211_send_deauth(sdata->dev, (u8 *)mgmt, skb->len);
 	}
- out:
-	kfree_skb(skb);
 }
 
 static void ieee80211_sta_timer(unsigned long data)
