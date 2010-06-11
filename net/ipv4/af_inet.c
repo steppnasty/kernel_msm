@@ -1121,7 +1121,7 @@ static int inet_sk_reselect_saddr(struct sock *sk)
 	if (err)
 		return err;
 
-	sk_setup_caps(sk, &rt->u.dst);
+	sk_setup_caps(sk, &rt->dst);
 
 	new_saddr = rt->rt_src;
 
@@ -1187,7 +1187,7 @@ int inet_sk_rebuild_header(struct sock *sk)
 	err = ip_route_output_flow(sock_net(sk), &rt, &fl, sk, 0);
 }
 	if (!err)
-		sk_setup_caps(sk, &rt->u.dst);
+		sk_setup_caps(sk, &rt->dst);
 	else {
 		/* Routing failed... */
 		sk->sk_route_caps = 0;
