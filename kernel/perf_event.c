@@ -479,11 +479,6 @@ static void __perf_event_remove_from_context(void *info)
 		return;
 
 	raw_spin_lock(&ctx->lock);
-	/*
-	 * Protect the list operation against NMI by disabling the
-	 * events on a global level.
-	 */
-	perf_disable();
 
 	event_sched_out(event, cpuctx, ctx);
 
@@ -499,7 +494,6 @@ static void __perf_event_remove_from_context(void *info)
 			    perf_max_events - perf_reserved_percpu);
 	}
 
-	perf_enable();
 	raw_spin_unlock(&ctx->lock);
 }
 
@@ -804,12 +798,6 @@ static void __perf_install_in_context(void *info)
 	ctx->is_active = 1;
 	update_context_time(ctx);
 
-	/*
-	 * Protect the list operation against NMI by disabling the
-	 * events on a global level. NOP for non NMI based events.
-	 */
-	perf_disable();
-
 	add_event_to_ctx(event, ctx);
 
 	if (event->cpu != -1 && event->cpu != smp_processor_id())
@@ -851,8 +839,6 @@ static void __perf_install_in_context(void *info)
 		cpuctx->max_pertask--;
 
 unlock:
-	perf_enable();
-
 	raw_spin_unlock(&ctx->lock);
 }
 
@@ -973,12 +959,10 @@ static void __perf_event_enable(void *info)
 	if (!group_can_go_on(event, cpuctx, 1)) {
 		err = -EEXIST;
 	} else {
-		perf_disable();
 		if (event == leader)
 			err = group_sched_in(event, cpuctx, ctx);
 		else
 			err = event_sched_in(event, cpuctx, ctx);
-		perf_enable();
 	}
 
 	if (err) {
@@ -1091,9 +1075,8 @@ static void ctx_sched_out(struct perf_event_context *ctx,
 		goto out;
 	update_context_time(ctx);
 
-	perf_disable();
 	if (!ctx->nr_active)
-		goto out_enable;
+		goto out;
 
 	if (event_type & EVENT_PINNED) {
 		list_for_each_entry(event, &ctx->pinned_groups, group_entry)
@@ -1104,9 +1087,6 @@ static void ctx_sched_out(struct perf_event_context *ctx,
 		list_for_each_entry(event, &ctx->flexible_groups, group_entry)
 			group_sched_out(event, cpuctx, ctx);
 	}
-
- out_enable:
-	perf_enable();
 out:
 	raw_spin_unlock(&ctx->lock);
 }
@@ -1365,8 +1345,6 @@ ctx_sched_in(struct perf_event_context *ctx,
 
 	ctx->timestamp = perf_clock();
 
-	perf_disable();
-
 	/*
 	 * First go through the list and put on any pinned groups
 	 * in order to give them the best chance of going on.
@@ -1378,7 +1356,6 @@ ctx_sched_in(struct perf_event_context *ctx,
 	if (event_type & EVENT_FLEXIBLE)
 		ctx_flexible_sched_in(ctx, cpuctx);
 
-	perf_enable();
 out:
 	raw_spin_unlock(&ctx->lock);
 }
@@ -1426,8 +1403,6 @@ void perf_event_task_sched_in(struct task_struct *task)
 	if (cpuctx->task_ctx == ctx)
 		return;
 
-	perf_disable();
-
 	/*
 	 * We want to keep the following priority order:
 	 * cpu pinned (that don't need to move), task pinned,
@@ -1440,8 +1415,6 @@ void perf_event_task_sched_in(struct task_struct *task)
 	ctx_sched_in(ctx, cpuctx, EVENT_FLEXIBLE);
 
 	cpuctx->task_ctx = ctx;
-
-	perf_enable();
 }
 
 #define MAX_INTERRUPTS (~0ULL)
@@ -1556,11 +1529,9 @@ static void perf_adjust_period(struct perf_event *event, u64 nsec, u64 count)
 	hwc->sample_period = sample_period;
 
 	if (local64_read(&hwc->period_left) > 8*sample_period) {
-		perf_disable();
 		perf_event_stop(event);
 		local64_set(&hwc->period_left, 0);
 		perf_event_start(event);
-		perf_enable();
 	}
 }
 
@@ -1589,15 +1560,12 @@ static void perf_ctx_adjust_freq(struct perf_event_context *ctx)
 		 */
 		if (interrupts == MAX_INTERRUPTS) {
 			perf_log_throttle(event, 1);
-			perf_disable();
 			event->pmu->unthrottle(event);
-			perf_enable();
 		}
 
 		if (!event->attr.freq || !event->attr.sample_freq)
 			continue;
 
-		perf_disable();
 		event->pmu->read(event);
 		now = local64_read(&event->count);
 		delta = now - hwc->freq_count_stamp;
@@ -1605,7 +1573,6 @@ static void perf_ctx_adjust_freq(struct perf_event_context *ctx)
 
 		if (delta > 0)
 			perf_adjust_period(event, TICK_NSEC, delta);
-		perf_enable();
 	}
 	raw_spin_unlock(&ctx->lock);
 }
@@ -1648,7 +1615,6 @@ void perf_event_task_tick(struct task_struct *curr)
 	if (!rotate)
 		return;
 
-	perf_disable();
 	cpu_ctx_sched_out(cpuctx, EVENT_FLEXIBLE);
 	if (ctx)
 		task_ctx_sched_out(ctx, EVENT_FLEXIBLE);
@@ -1660,7 +1626,6 @@ void perf_event_task_tick(struct task_struct *curr)
 	cpu_ctx_sched_in(cpuctx, EVENT_FLEXIBLE);
 	if (ctx)
 		task_ctx_sched_in(curr, EVENT_FLEXIBLE);
-	perf_enable();
 }
 
 static int event_enable_on_exec(struct perf_event *event,
