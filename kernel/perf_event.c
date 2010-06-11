@@ -148,7 +148,7 @@ perf_lock_task_context(struct task_struct *task, unsigned long *flags)
 	struct perf_event_context *ctx;
 
 	rcu_read_lock();
- retry:
+retry:
 	ctx = rcu_dereference(task->perf_event_ctxp);
 	if (ctx) {
 		/*
@@ -620,7 +620,7 @@ void perf_event_disable(struct perf_event *event)
 		return;
 	}
 
- retry:
+retry:
 	task_oncpu_function_call(task, __perf_event_disable, event);
 
 	raw_spin_lock_irq(&ctx->lock);
@@ -850,7 +850,7 @@ static void __perf_install_in_context(void *info)
 	if (!err && !ctx->task && cpuctx->max_pertask)
 		cpuctx->max_pertask--;
 
- unlock:
+unlock:
 	perf_enable();
 
 	raw_spin_unlock(&ctx->lock);
@@ -923,10 +923,12 @@ static void __perf_event_mark_enabled(struct perf_event *event,
 
 	event->state = PERF_EVENT_STATE_INACTIVE;
 	event->tstamp_enabled = ctx->time - event->total_time_enabled;
-	list_for_each_entry(sub, &event->sibling_list, group_entry)
-		if (sub->state >= PERF_EVENT_STATE_INACTIVE)
+	list_for_each_entry(sub, &event->sibling_list, group_entry) {
+		if (sub->state >= PERF_EVENT_STATE_INACTIVE) {
 			sub->tstamp_enabled =
 				ctx->time - sub->total_time_enabled;
+		}
+	}
 }
 
 /*
@@ -992,7 +994,7 @@ static void __perf_event_enable(void *info)
 		}
 	}
 
- unlock:
+unlock:
 	raw_spin_unlock(&ctx->lock);
 }
 
@@ -1033,7 +1035,7 @@ void perf_event_enable(struct perf_event *event)
 	if (event->state == PERF_EVENT_STATE_ERROR)
 		event->state = PERF_EVENT_STATE_OFF;
 
- retry:
+retry:
 	raw_spin_unlock_irq(&ctx->lock);
 	task_oncpu_function_call(task, __perf_event_enable, event);
 
@@ -1053,7 +1055,7 @@ void perf_event_enable(struct perf_event *event)
 	if (event->state == PERF_EVENT_STATE_OFF)
 		__perf_event_mark_enabled(event, ctx);
 
- out:
+out:
 	raw_spin_unlock_irq(&ctx->lock);
 }
 
@@ -1093,17 +1095,19 @@ static void ctx_sched_out(struct perf_event_context *ctx,
 	if (!ctx->nr_active)
 		goto out_enable;
 
-	if (event_type & EVENT_PINNED)
+	if (event_type & EVENT_PINNED) {
 		list_for_each_entry(event, &ctx->pinned_groups, group_entry)
 			group_sched_out(event, cpuctx, ctx);
+	}
 
-	if (event_type & EVENT_FLEXIBLE)
+	if (event_type & EVENT_FLEXIBLE) {
 		list_for_each_entry(event, &ctx->flexible_groups, group_entry)
 			group_sched_out(event, cpuctx, ctx);
+	}
 
  out_enable:
 	perf_enable();
- out:
+out:
 	raw_spin_unlock(&ctx->lock);
 }
 
@@ -1342,9 +1346,10 @@ ctx_flexible_sched_in(struct perf_event_context *ctx,
 		if (event->cpu != -1 && event->cpu != smp_processor_id())
 			continue;
 
-		if (group_can_go_on(event, cpuctx, can_add_hw))
+		if (group_can_go_on(event, cpuctx, can_add_hw)) {
 			if (group_sched_in(event, cpuctx, ctx))
 				can_add_hw = 0;
+		}
 	}
 }
 
@@ -1374,7 +1379,7 @@ ctx_sched_in(struct perf_event_context *ctx,
 		ctx_flexible_sched_in(ctx, cpuctx);
 
 	perf_enable();
- out:
+out:
 	raw_spin_unlock(&ctx->lock);
 }
 
@@ -1715,7 +1720,7 @@ static void perf_event_enable_on_exec(struct task_struct *task)
 	raw_spin_unlock(&ctx->lock);
 
 	perf_event_task_sched_in(task);
- out:
+out:
 	local_irq_restore(flags);
 }
 
@@ -2054,7 +2059,7 @@ static struct perf_event_context *find_get_context(pid_t pid, int cpu)
 	if (!ptrace_may_access(task, PTRACE_MODE_READ))
 		goto errout;
 
- retry:
+retry:
 	ctx = perf_lock_task_context(task, &flags);
 	if (ctx) {
 		unclone_ctx(ctx);
@@ -2082,7 +2087,7 @@ static struct perf_event_context *find_get_context(pid_t pid, int cpu)
 	put_task_struct(task);
 	return ctx;
 
- errout:
+errout:
 	put_task_struct(task);
 	return ERR_PTR(err);
 }
@@ -3265,7 +3270,7 @@ again:
 	if (handle->wakeup != local_read(&buffer->wakeup))
 		perf_output_wakeup(handle);
 
- out:
+out:
 	preempt_enable();
 }
 
@@ -4563,7 +4568,7 @@ static int swevent_hlist_get_cpu(struct perf_event *event, int cpu)
 		rcu_assign_pointer(cpuctx->swevent_hlist, hlist);
 	}
 	cpuctx->hlist_refcount++;
- exit:
+exit:
 	mutex_unlock(&cpuctx->hlist_mutex);
 
 	return err;
@@ -4588,7 +4593,7 @@ static int swevent_hlist_get(struct perf_event *event)
 	put_online_cpus();
 
 	return 0;
- fail:
+fail:
 	for_each_possible_cpu(cpu) {
 		if (cpu == failed_cpu)
 			break;
