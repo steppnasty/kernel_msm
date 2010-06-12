@@ -2273,7 +2273,6 @@ int ath9k_hw_fill_cap_info(struct ath_hw *ah)
 bool ath9k_hw_getcapability(struct ath_hw *ah, enum ath9k_capability_type type,
 			    u32 capability, u32 *result)
 {
-	struct ath_regulatory *regulatory = ath9k_hw_regulatory(ah);
 	switch (type) {
 	case ATH9K_CAP_TKIP_MIC:
 		switch (capability) {
@@ -2299,21 +2298,6 @@ bool ath9k_hw_getcapability(struct ath_hw *ah, enum ath9k_capability_type type,
 					AR_STA_ID1_MCAST_KSRCH) ? true :
 					false;
 			}
-		}
-		return false;
-	case ATH9K_CAP_TXPOW:
-		switch (capability) {
-		case 0:
-			return 0;
-		case 1:
-			*result = regulatory->power_limit;
-			return 0;
-		case 2:
-			*result = regulatory->max_power_level;
-			return 0;
-		case 3:
-			*result = regulatory->tp_scale;
-			return 0;
 		}
 		return false;
 	case ATH9K_CAP_DS:
