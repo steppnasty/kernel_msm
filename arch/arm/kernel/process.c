@@ -28,10 +28,10 @@
 #include <linux/tick.h>
 #include <linux/utsname.h>
 #include <linux/uaccess.h>
+#include <linux/random.h>
 
 #include <asm/cacheflush.h>
 #include <asm/leds.h>
-#include <asm/cacheflush.h>
 #include <asm/processor.h>
 #include <asm/system.h>
 #include <asm/thread_notify.h>
@@ -531,4 +531,10 @@ unsigned long get_wchan(struct task_struct *p)
 			return frame.pc;
 	} while (count ++ < 16);
 	return 0;
+}
+
+unsigned long arch_randomize_brk(struct mm_struct *mm)
+{
+	unsigned long range_end = mm->brk + 0x02000000;
+	return randomize_range(mm->brk, range_end, 0) ? : mm->brk;
 }
