@@ -1929,6 +1929,22 @@ static inline void skb_orphan_try(struct sk_buff *skb)
 	}
 }
 
+/*
+ * Returns true if either:
+ *	1. skb has frag_list and the device doesn't support FRAGLIST, or
+ *	2. skb is fragmented and the device does not support SG, or if
+ *	   at least one of fragments is in highmem and device does not
+ *	   support DMA from it.
+ */
+static inline int skb_needs_linearize(struct sk_buff *skb,
+				      struct net_device *dev)
+{
+	return skb_is_nonlinear(skb) &&
+	       ((skb_has_frags(skb) && !(dev->features & NETIF_F_FRAGLIST)) ||
+	        (skb_shinfo(skb)->nr_frags && (!(dev->features & NETIF_F_SG) ||
+					      illegal_highdma(dev, skb))));
+}
+
 int dev_hard_start_xmit(struct sk_buff *skb, struct net_device *dev,
 			struct netdev_queue *txq)
 {
@@ -1953,6 +1969,22 @@ int dev_hard_start_xmit(struct sk_buff *skb, struct net_device *dev,
 				goto out_kfree_skb;
 			if (skb->next)
 				goto gso;
+		} else {
+			if (skb_needs_linearize(skb, dev) &&
+			    __skb_linearize(skb))
+				goto out_kfree_skb;
+
+			/* If packet is not checksummed and device does not
+			 * support checksumming for this protocol, complete
+			 * checksumming here.
+			 */
+			if (skb->ip_summed == CHECKSUM_PARTIAL) {
+				skb_set_transport_header(skb, skb->csum_start -
+					      skb_headroom(skb));
+				if (!dev_can_checksum(dev, skb) &&
+				     skb_checksum_help(skb))
+					goto out_kfree_skb;
+			}
 		}
 
 		rc = ops->ndo_start_xmit(skb, dev);
@@ -2121,22 +2153,6 @@ static inline int __dev_xmit_skb(struct sk_buff *skb, struct Qdisc *q,
 	return rc;
 }
 
-/*
- * Returns true if either:
- *	1. skb has frag_list and the device doesn't support FRAGLIST, or
- *	2. skb is fragmented and the device does not support SG, or if
- *	   at least one of fragments is in highmem and device does not
- *	   support DMA from it.
- */
-static inline int skb_needs_linearize(struct sk_buff *skb,
-				      struct net_device *dev)
-{
-	return skb_is_nonlinear(skb) &&
-	       ((skb_has_frags(skb) && !(dev->features & NETIF_F_FRAGLIST)) ||
-	        (skb_shinfo(skb)->nr_frags && (!(dev->features & NETIF_F_SG) ||
-					      illegal_highdma(dev, skb))));
-}
-
 static DEFINE_PER_CPU(int, xmit_recursion);
 #define RECURSION_LIMIT 10
 
@@ -2172,25 +2188,6 @@ int dev_queue_xmit(struct sk_buff *skb)
 	struct Qdisc *q;
 	int rc = -ENOMEM;
 
-	/* GSO will handle the following emulations directly. */
-	if (netif_needs_gso(dev, skb))
-		goto gso;
-
-	/* Convert a paged skb to linear, if required */
-	if (skb_needs_linearize(skb, dev) && __skb_linearize(skb))
-		goto out_kfree_skb;
-
-	/* If packet is not checksummed and device does not support
-	 * checksumming for this protocol, complete checksumming here.
-	 */
-	if (skb->ip_summed == CHECKSUM_PARTIAL) {
-		skb_set_transport_header(skb, skb->csum_start -
-					      skb_headroom(skb));
-		if (!dev_can_checksum(dev, skb) && skb_checksum_help(skb))
-			goto out_kfree_skb;
-	}
-
-gso:
 	/* Disable soft irqs for various locks below. Also
 	 * stops preemption for RCU.
 	 */
@@ -2256,7 +2253,6 @@ recursion_alert:
 	rc = -ENETDOWN;
 	rcu_read_unlock_bh();
 
-out_kfree_skb:
 	kfree_skb(skb);
 	return rc;
 out:
