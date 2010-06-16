@@ -93,3 +93,4 @@ obj-$(CONFIG_SERIAL_GRLIB_GAISLER_APBUART) += apbuart.o
 obj-$(CONFIG_SERIAL_ALTERA_JTAGUART) += altera_jtaguart.o
 obj-$(CONFIG_SERIAL_ALTERA_UART) += altera_uart.o
 obj-$(CONFIG_SERIAL_BCM_BT_LPM) += bcm_bt_lpm.o
+obj-$(CONFIG_SERIAL_MRST_MAX3110)	+= mrst_max3110.o
