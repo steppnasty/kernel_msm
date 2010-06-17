@@ -154,4 +154,11 @@ config CHARGER_PM8058
 	help
 	  Say Y to include support for the pm8058 charge controller
 
+config BATTERY_INTEL_MID
+	tristate "Battery driver for Intel MID platforms"
+	depends on INTEL_SCU_IPC && SPI
+	help
+	  Say Y here to enable the battery driver on Intel MID
+	  platforms.
+
 endif # POWER_SUPPLY
