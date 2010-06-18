@@ -116,18 +116,24 @@ static inline int of_node_to_nid(struct device_node *device) { return 0; }
  * OF interrupt mapping
  */
 
-/**
- * of_irq_map_init - Initialize the irq remapper
- * @flags:	flags defining workarounds to enable
- *
- * Some machines have bugs in the device-tree which require certain workarounds
- * to be applied. Call this before any interrupt mapping attempts to enable
- * those workarounds.
- */
 #define OF_IMAP_OLDWORLD_MAC	0x00000001
 #define OF_IMAP_NO_PHANDLE	0x00000002
 
-extern void of_irq_map_init(unsigned int flags);
+#if defined(CONFIG_PPC32) && defined(CONFIG_PPC_PMAC)
+/* Workarounds only needed for 32bit powermac machines */
+extern unsigned int of_irq_workarounds;
+extern struct device_node *of_irq_dflt_pic;
+extern int of_irq_map_oldworld(struct device_node *device, int index,
+			       struct of_irq *out_irq);
+#else
+#define of_irq_workarounds (0)
+#define of_irq_dflt_pic (NULL)
+static inline int of_irq_map_oldworld(struct device_node *device, int index,
+				      struct of_irq *out_irq)
+{
+	return -EINVAL;
+}
+#endif
 
 /**
  * of_irq_map_raw - Low level interrupt tree parsing
