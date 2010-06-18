@@ -223,7 +223,7 @@ static void iwlagn_rts_tx_cmd_flag(struct iwl_priv *priv,
 
 	if (priv->cfg->use_rts_for_ht &&
 	    info->flags & IEEE80211_TX_CTL_AMPDU) {
-		*tx_flags |= TX_CMD_FLG_RTS_CTS_MSK;
+		*tx_flags |= TX_CMD_FLG_PROT_REQUIRE_MSK;
 		return;
 	}
 }
