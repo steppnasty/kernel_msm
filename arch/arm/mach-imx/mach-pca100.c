@@ -51,6 +51,9 @@
 
 #define OTG_PHY_CS_GPIO (GPIO_PORTB + 23)
 #define USBH2_PHY_CS_GPIO (GPIO_PORTB + 24)
+#define SPI1_SS0 (GPIO_PORTD + 28)
+#define SPI1_SS1 (GPIO_PORTD + 27)
+#define SD2_CD (GPIO_PORTC + 29)
 
 static int pca100_pins[] = {
 	/* UART1 */
@@ -65,6 +68,7 @@ static int pca100_pins[] = {
 	PB7_PF_SD2_D3,
 	PB8_PF_SD2_CMD,
 	PB9_PF_SD2_CLK,
+	SD2_CD | GPIO_GPIO | GPIO_IN,
 	/* FEC */
 	PD0_AIN_FEC_TXD0,
 	PD1_AIN_FEC_TXD1,
@@ -152,6 +156,10 @@ static int pca100_pins[] = {
 	PA28_PF_HSYNC,
 	PA29_PF_VSYNC,
 	PA31_PF_OE_ACD,
+	/* free GPIO */
+	GPIO_PORTC | 31 | GPIO_GPIO | GPIO_IN, /* GPIO0_IRQ */
+	GPIO_PORTC | 25 | GPIO_GPIO | GPIO_IN, /* GPIO1_IRQ */
+	GPIO_PORTE | 5 | GPIO_GPIO | GPIO_IN, /* GPIO2_IRQ */
 };
 
 static const struct imxuart_platform_data uart_pdata __initconst = {
@@ -211,7 +219,7 @@ static struct spi_board_info pca100_spi_board_info[] __initdata = {
 	},
 };
 
-static int pca100_spi_cs[] = {GPIO_PORTD + 28, GPIO_PORTD + 27};
+static int pca100_spi_cs[] = {SPI1_SS0, SPI1_SS1};
 
 static const struct spi_imx_master pca100_spi0_data __initconst = {
 	.chipselect	= pca100_spi_cs,
@@ -385,7 +393,6 @@ static void __init pca100_init(void)
 
 	imx27_add_imx_uart0(&uart_pdata);
 
-	mxc_gpio_mode(GPIO_PORTC | 29 | GPIO_GPIO | GPIO_IN);
 	mxc_register_device(&mxc_sdhc_device1, &sdhc_pdata);
 
 	imx27_add_mxc_nand(&pca100_nand_board_info);
@@ -396,17 +403,9 @@ static void __init pca100_init(void)
 
 	imx27_add_i2c_imx1(&pca100_i2c1_data);
 
-	mxc_gpio_mode(GPIO_PORTD | 28 | GPIO_GPIO | GPIO_OUT);
-	mxc_gpio_mode(GPIO_PORTD | 27 | GPIO_GPIO | GPIO_OUT);
-
-	/* GPIO0_IRQ */
-	mxc_gpio_mode(GPIO_PORTC | 31 | GPIO_GPIO | GPIO_IN);
-	/* GPIO1_IRQ */
-	mxc_gpio_mode(GPIO_PORTC | 25 | GPIO_GPIO | GPIO_IN);
-	/* GPIO2_IRQ */
-	mxc_gpio_mode(GPIO_PORTE | 5 | GPIO_GPIO | GPIO_IN);
-
 #if defined(CONFIG_SPI_IMX) || defined(CONFIG_SPI_IMX_MODULE)
+	mxc_gpio_mode(GPIO_PORTD | 28 | GPIO_GPIO | GPIO_IN);
+	mxc_gpio_mode(GPIO_PORTD | 27 | GPIO_GPIO | GPIO_IN);
 	spi_register_board_info(pca100_spi_board_info,
 				ARRAY_SIZE(pca100_spi_board_info));
 	imx27_add_spi_imx0(&pca100_spi_0_data);
