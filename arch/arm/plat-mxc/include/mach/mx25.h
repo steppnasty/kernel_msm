@@ -48,6 +48,7 @@
 #define MX25_LCDC_BASE_ADDR		0x53fbc000
 #define MX25_KPP_BASE_ADDR		0x43fa8000
 #define MX25_OTG_BASE_ADDR		0x53ff4000
+#define MX25_CSI_BASE_ADDR		0x53ff8000
 
 #define MX25_INT_CSPI3		0
 #define MX25_INT_I2C1		3
@@ -58,6 +59,7 @@
 #define MX25_INT_SSI1		12
 #define MX25_INT_CSPI2		13
 #define MX25_INT_CSPI1		14
+#define MX25_INT_CSI		17
 #define MX25_INT_UART3		18
 #define MX25_INT_KPP		24
 #define MX25_INT_DRYICE		25
