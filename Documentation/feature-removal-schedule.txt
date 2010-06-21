@@ -498,17 +498,6 @@ Who:	Jan Kiszka <jan.kiszka@web.de>
 
 ----------------------------
 
-What:	KVM memory aliases support
-When:	July 2010
-Why:	Memory aliasing support is used for speeding up guest vga access
-	through the vga windows.
-
-	Modern userspace no longer uses this feature, so it's just bitrotted
-	code and can be removed with no impact.
-Who:	Avi Kivity <avi@redhat.com>
-
-----------------------------
-
 What:	KVM kernel-allocated memory slots
 When:	July 2010
 Why:	Since 2.6.25, kvm supports user-allocated memory slots, which are
