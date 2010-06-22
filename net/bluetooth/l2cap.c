@@ -1907,7 +1907,7 @@ static int l2cap_sock_sendmsg(struct kiocb *iocb, struct socket *sock, struct ms
 
 	default:
 		BT_DBG("bad state %1.1x", pi->mode);
-		err = -EINVAL;
+		err = -EBADFD;
 	}
 
 done:
