@@ -16,6 +16,9 @@
  *   the GNU Lesser General Public License for more details.
  *
  */
+#ifndef _CIFS_GLOB_H
+#define _CIFS_GLOB_H
+
 #include <linux/in.h>
 #include <linux/in6.h>
 #include <linux/slab.h>
@@ -735,3 +738,5 @@ GLOBAL_EXTERN unsigned int cifs_max_pending; /* MAX requests at once to server*/
 void cifs_oplock_break(struct work_struct *work);
 void cifs_oplock_break_get(struct cifsFileInfo *cfile);
 void cifs_oplock_break_put(struct cifsFileInfo *cfile);
+
+#endif	/* _CIFS_GLOB_H */
