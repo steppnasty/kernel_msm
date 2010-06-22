@@ -4453,7 +4453,7 @@ static int l2cap_connect_ind(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 type)
 	struct hlist_node *node;
 
 	if (type != ACL_LINK)
-		return 0;
+		return -EINVAL;
 
 	BT_DBG("hdev %s, bdaddr %s", hdev->name, batostr(bdaddr));
 
@@ -4486,7 +4486,7 @@ static int l2cap_connect_cfm(struct hci_conn *hcon, u8 status)
 	BT_DBG("hcon %p bdaddr %s status %d", hcon, batostr(&hcon->dst), status);
 
 	if (hcon->type != ACL_LINK)
-		return 0;
+		return -EINVAL;
 
 	if (!status) {
 		conn = l2cap_conn_add(hcon, status);
@@ -4515,7 +4515,7 @@ static int l2cap_disconn_cfm(struct hci_conn *hcon, u8 reason)
 	BT_DBG("hcon %p reason %d", hcon, reason);
 
 	if (hcon->type != ACL_LINK)
-		return 0;
+		return -EINVAL;
 
 	l2cap_conn_del(hcon, bt_err(reason));
 
