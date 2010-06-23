@@ -57,12 +57,16 @@ static void evdev_pass_event(struct evdev_client *client,
 			     struct input_event *event)
 {
 	/*
-	 * Interrupts are disabled, just acquire the lock
+	 * Interrupts are disabled, just acquire the lock.
+	 * Make sure we don't leave with the client buffer
+	 * "empty" by having client->head == client->tail.
 	 */
 	spin_lock(&client->buffer_lock);
 	wake_lock_timeout(&client->wake_lock, 5 * HZ);
-	client->buffer[client->head++] = *event;
-	client->head &= client->bufsize - 1;
+	do {
+		client->buffer[client->head++] = *event;
+		client->head &= client->bufsize - 1;
+	} while (client->head == client->tail);
 	spin_unlock(&client->buffer_lock);
 
 	if (event->type == EV_SYN)
