@@ -543,7 +543,8 @@ static int acpi_register_gsi_ioapic(struct device *dev, u32 gsi,
 	return gsi;
 }
 
-static int (*__acpi_register_gsi)(struct device *dev, u32 gsi, int trigger, int polarity) = acpi_register_gsi_pic;
+int (*__acpi_register_gsi)(struct device *dev, u32 gsi,
+			   int trigger, int polarity) = acpi_register_gsi_pic;
 
 /*
  * success: return IRQ number (>=0)
