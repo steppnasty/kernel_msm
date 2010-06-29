@@ -2780,7 +2780,6 @@ static int rt2800_ampdu_action(struct ieee80211_hw *hw,
 			       struct ieee80211_sta *sta,
 			       u16 tid, u16 *ssn)
 {
-	struct rt2x00_dev *rt2x00dev = hw->priv;
 	int ret = 0;
 
 	switch (action) {
@@ -2798,7 +2797,7 @@ static int rt2800_ampdu_action(struct ieee80211_hw *hw,
 	case IEEE80211_AMPDU_TX_OPERATIONAL:
 		break;
 	default:
-		WARNING(rt2x00dev, "Unknown AMPDU action\n");
+		WARNING((struct rt2x00_dev *)hw->priv, "Unknown AMPDU action\n");
 	}
 
 	return ret;
