@@ -124,5 +124,7 @@ static inline int of_node_to_nid(struct device_node *device) { return 0; }
 struct pci_dev;
 extern int of_irq_map_pci(struct pci_dev *pdev, struct of_irq *out_irq);
 
+extern void of_instantiate_rtc(void);
+
 #endif /* __KERNEL__ */
 #endif /* _POWERPC_PROM_H */
