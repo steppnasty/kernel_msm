@@ -2970,6 +2970,7 @@ static struct perf_callchain_entry *perf_callchain(struct pt_regs *regs)
 	entry->nr = 0;
 
 	if (!user_mode(regs)) {
+		perf_callchain_store(entry, PERF_CONTEXT_KERNEL);
 		perf_callchain_kernel(entry, regs);
 		if (current->mm)
 			regs = task_pt_regs(current);
@@ -2977,8 +2978,10 @@ static struct perf_callchain_entry *perf_callchain(struct pt_regs *regs)
 			regs = NULL;
 	}
 
-	if (regs)
+	if (regs) {
+		perf_callchain_store(entry, PERF_CONTEXT_USER);
 		perf_callchain_user(entry, regs);
+	}
 
 	return entry;
 }
