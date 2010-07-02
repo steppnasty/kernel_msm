@@ -22,7 +22,7 @@ obj-$(CONFIG_ARCH_MSM_ARM11) += acpuclock-arm11.o idle.o
 obj-$(CONFIG_ARCH_QSD8X50) += arch-init-scorpion.o acpuclock-scorpion.o
 obj-$(CONFIG_ARCH_MSM7X30) += acpuclock-7x30.o
 obj-$(CONFIG_ACPUCLOCK_DEBUG) += acpuclock_debug.o
-obj-$(CONFIG_ARCH_MSM7X30) += clock-7x30.o arch-init-7x30.o socinfo.o
+obj-$(CONFIG_ARCH_MSM7X30) += clock-local.o clock-7x30.o arch-init-7x30.o socinfo.o
 obj-$(CONFIG_ARCH_MSM7X30) += spm.o
 
 obj-$(CONFIG_CPU_V7) += idle-v7.o msm_fault_handlers.o
