@@ -229,17 +229,6 @@ void clk_exit_sleep(void);
 #define USE_MIN (CLKFLAG_USE_MIN_TO_SET | CLKFLAG_SHARED)
 
 #if defined(CONFIG_ARCH_MSM7X30)
-enum {
-	PLL_0 = 0,
-	PLL_1,
-	PLL_2,
-	PLL_3,
-	PLL_4,
-	PLL_5,
-	PLL_6,
-	NUM_PLL
-};
-
 unsigned long clk_get_max_axi_khz(void);
 #endif
 
