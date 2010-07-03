@@ -381,7 +381,7 @@ static int __devinit virtblk_probe(struct virtio_device *vdev)
 		 * flushing a volatile write cache on the host.  Use that
 		 * to implement write barrier support.
 		 */
-		blk_queue_ordered(q, QUEUE_ORDERED_DRAIN_FLUSH, NULL);
+		blk_queue_ordered(q, QUEUE_ORDERED_DRAIN_FLUSH);
 	} else if (virtio_has_feature(vdev, VIRTIO_BLK_F_BARRIER)) {
 		/*
 		 * If the BARRIER feature is supported the host expects us
