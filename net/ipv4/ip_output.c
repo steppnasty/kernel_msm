@@ -442,7 +442,6 @@ static void ip_copy_metadata(struct sk_buff *to, struct sk_buff *from)
 int ip_fragment(struct sk_buff *skb, int (*output)(struct sk_buff *))
 {
 	struct iphdr *iph;
-	int raw = 0;
 	int ptr;
 	struct net_device *dev;
 	struct sk_buff *skb2;
@@ -587,7 +586,7 @@ slow_path_clean:
 
 slow_path:
 	left = skb->len - hlen;		/* Space per frame */
-	ptr = raw + hlen;		/* Where to start from */
+	ptr = hlen;		/* Where to start from */
 
 	/* for bridged IP traffic encapsulated inside f.e. a vlan header,
 	 * we need to make room for the encapsulating header
