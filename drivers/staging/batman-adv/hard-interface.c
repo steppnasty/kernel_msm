@@ -153,12 +153,10 @@ static void check_known_mac_addr(uint8_t *addr)
 		if (!compare_orig(batman_if->net_dev->dev_addr, addr))
 			continue;
 
-		printk(KERN_WARNING "batman-adv:"
-		    "The newly added mac address (%pM) already exists on: %s\n",
-		    addr, batman_if->dev);
-		printk(KERN_WARNING "batman-adv:"
-		    "It is strongly recommended to keep mac addresses unique"
-		    "to avoid problems!\n");
+		pr_warning("The newly added mac address (%pM) already exists "
+			   "on: %s\n", addr, batman_if->dev);
+		pr_warning("It is strongly recommended to keep mac addresses "
+			   "unique to avoid problems!\n");
 	}
 	rcu_read_unlock();
 }
@@ -192,7 +190,8 @@ void update_min_mtu(void)
 		soft_device->mtu = min_mtu;
 }
 
-static void hardif_activate_interface(struct bat_priv *bat_priv,
+static void hardif_activate_interface(struct net_device *net_dev,
+				      struct bat_priv *bat_priv,
 				      struct batman_if *batman_if)
 {
 	if (batman_if->if_status != IF_INACTIVE)
@@ -208,8 +207,7 @@ static void hardif_activate_interface(struct bat_priv *bat_priv,
 	if (!bat_priv->primary_if)
 		set_primary_if(bat_priv, batman_if);
 
-	printk(KERN_INFO "batman-adv:Interface activated: %s\n",
-	       batman_if->dev);
+	bat_info(net_dev, "Interface activated: %s\n", batman_if->dev);
 
 	if (atomic_read(&module_state) == MODULE_INACTIVE)
 		activate_module();
@@ -218,7 +216,8 @@ static void hardif_activate_interface(struct bat_priv *bat_priv,
 	return;
 }
 
-static void hardif_deactivate_interface(struct batman_if *batman_if)
+static void hardif_deactivate_interface(struct net_device *net_dev,
+					struct batman_if *batman_if)
 {
 	if ((batman_if->if_status != IF_ACTIVE) &&
 	   (batman_if->if_status != IF_TO_BE_ACTIVATED))
@@ -226,8 +225,7 @@ static void hardif_deactivate_interface(struct batman_if *batman_if)
 
 	batman_if->if_status = IF_INACTIVE;
 
-	printk(KERN_INFO "batman-adv:Interface deactivated: %s\n",
-	       batman_if->dev);
+	bat_info(net_dev, "Interface deactivated: %s\n", batman_if->dev);
 
 	update_min_mtu();
 }
@@ -245,9 +243,8 @@ int hardif_enable_interface(struct batman_if *batman_if)
 	batman_if->packet_buff = kmalloc(batman_if->packet_len, GFP_ATOMIC);
 
 	if (!batman_if->packet_buff) {
-		printk(KERN_ERR "batman-adv:"
-		       "Can't add interface packet (%s): out of memory\n",
-		       batman_if->dev);
+		bat_err(soft_device, "Can't add interface packet (%s): "
+			"out of memory\n", batman_if->dev);
 		goto err;
 	}
 
@@ -265,15 +262,14 @@ int hardif_enable_interface(struct batman_if *batman_if)
 	orig_hash_add_if(batman_if, bat_priv->num_ifaces);
 
 	atomic_set(&batman_if->seqno, 1);
-	printk(KERN_INFO "batman-adv:Adding interface: %s\n", batman_if->dev);
+	bat_info(soft_device, "Adding interface: %s\n", batman_if->dev);
 
 	if (hardif_is_iface_up(batman_if))
-		hardif_activate_interface(bat_priv, batman_if);
+		hardif_activate_interface(soft_device, bat_priv, batman_if);
 	else
-		printk(KERN_ERR "batman-adv:"
-		       "Not using interface %s "
-		       "(retrying later): interface not active\n",
-		       batman_if->dev);
+		bat_err(soft_device, "Not using interface %s "
+			"(retrying later): interface not active\n",
+			batman_if->dev);
 
 	/* begin scheduling originator messages on that interface */
 	schedule_own_packet(batman_if);
@@ -291,12 +287,12 @@ void hardif_disable_interface(struct batman_if *batman_if)
 	struct bat_priv *bat_priv = netdev_priv(soft_device);
 
 	if (batman_if->if_status == IF_ACTIVE)
-		hardif_deactivate_interface(batman_if);
+		hardif_deactivate_interface(soft_device, batman_if);
 
 	if (batman_if->if_status != IF_INACTIVE)
 		return;
 
-	printk(KERN_INFO "batman-adv:Removing interface: %s\n", batman_if->dev);
+	bat_info(soft_device, "Removing interface: %s\n", batman_if->dev);
 	bat_priv->num_ifaces--;
 	orig_hash_del_if(batman_if, bat_priv->num_ifaces);
 
@@ -325,8 +321,7 @@ static struct batman_if *hardif_add_interface(struct net_device *net_dev)
 
 	batman_if = kmalloc(sizeof(struct batman_if), GFP_ATOMIC);
 	if (!batman_if) {
-		printk(KERN_ERR "batman-adv:"
-		       "Can't add interface (%s): out of memory\n",
+		pr_err("Can't add interface (%s): out of memory\n",
 		       net_dev->name);
 		goto release_dev;
 	}
@@ -411,11 +406,11 @@ static int hard_if_event(struct notifier_block *this,
 
 	switch (event) {
 	case NETDEV_UP:
-		hardif_activate_interface(bat_priv, batman_if);
+		hardif_activate_interface(soft_device, bat_priv, batman_if);
 		break;
 	case NETDEV_GOING_DOWN:
 	case NETDEV_DOWN:
-		hardif_deactivate_interface(batman_if);
+		hardif_deactivate_interface(soft_device, batman_if);
 		break;
 	case NETDEV_UNREGISTER:
 		hardif_remove_interface(batman_if);
