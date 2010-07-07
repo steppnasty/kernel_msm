@@ -324,6 +324,9 @@ struct intel_limit {
 #define IRONLAKE_DP_P1_MIN		1
 #define IRONLAKE_DP_P1_MAX		2
 
+/* FDI */
+#define IRONLAKE_FDI_FREQ		2700000 /* in kHz for mode->clock */
+
 static bool
 intel_find_best_PLL(const intel_limit_t *limit, struct drm_crtc *crtc,
 		    int target, int refclk, intel_clock_t *best_clock);
@@ -2447,8 +2450,8 @@ static bool intel_crtc_mode_fixup(struct drm_crtc *crtc,
 
 	if (HAS_PCH_SPLIT(dev)) {
 		/* FDI link clock is fixed at 2.7G */
-		if (mode->clock * 3 > 27000 * 4)
-			return MODE_CLOCK_HIGH;
+		if (mode->clock * 3 > IRONLAKE_FDI_FREQ * 4)
+			return false;
 	}
 
 	/* XXX some encoders set the crtcinfo, others don't.
