@@ -783,6 +783,8 @@ static int sd_prep_fn(struct request_queue *q, struct request *rq)
  *	or from within the kernel (e.g. as a result of a mount(1) ).
  *	In the latter case @inode and @filp carry an abridged amount
  *	of information as noted above.
+ *
+ *	Locking: called with bdev->bd_mutex held.
  **/
 static int sd_open(struct block_device *bdev, fmode_t mode)
 {
@@ -795,7 +797,6 @@ static int sd_open(struct block_device *bdev, fmode_t mode)
 
 	SCSI_LOG_HLQUEUE(3, sd_printk(KERN_INFO, sdkp, "sd_open\n"));
 
-	lock_kernel();
 	sdev = sdkp->device;
 
 	retval = scsi_autopm_get_device(sdev);
@@ -838,19 +839,17 @@ static int sd_open(struct block_device *bdev, fmode_t mode)
 	if (!scsi_device_online(sdev))
 		goto error_out;
 
-	if (!sdkp->openers++ && sdev->removable) {
+	if ((atomic_inc_return(&sdkp->openers) == 1) && sdev->removable) {
 		if (scsi_block_when_processing_errors(sdev))
 			scsi_set_medium_removal(sdev, SCSI_REMOVAL_PREVENT);
 	}
 
-	unlock_kernel();
 	return 0;
 
 error_out:
 	scsi_autopm_put_device(sdev);
 error_autopm:
 	scsi_disk_put(sdkp);
-	unlock_kernel();
 	return retval;	
 }
 
@@ -864,6 +863,8 @@ error_autopm:
  *
  *	Note: may block (uninterruptible) if error recovery is underway
  *	on this disk.
+ *
+ *	Locking: called with bdev->bd_mutex held.
  **/
 static int sd_release(struct gendisk *disk, fmode_t mode)
 {
@@ -872,8 +873,7 @@ static int sd_release(struct gendisk *disk, fmode_t mode)
 
 	SCSI_LOG_HLQUEUE(3, sd_printk(KERN_INFO, sdkp, "sd_release\n"));
 
-	lock_kernel();
-	if (!--sdkp->openers && sdev->removable) {
+	if (atomic_dec_return(&sdkp->openers) && sdev->removable) {
 		if (scsi_block_when_processing_errors(sdev))
 			scsi_set_medium_removal(sdev, SCSI_REMOVAL_ALLOW);
 	}
@@ -885,7 +885,6 @@ static int sd_release(struct gendisk *disk, fmode_t mode)
 
 	scsi_autopm_put_device(sdev);
 	scsi_disk_put(sdkp);
-	unlock_kernel();
 	return 0;
 }
 
@@ -938,7 +937,6 @@ static int sd_ioctl(struct block_device *bdev, fmode_t mode,
 	SCSI_LOG_IOCTL(1, printk("sd_ioctl: disk=%s, cmd=0x%x\n",
 						disk->disk_name, cmd));
 
-	lock_kernel();
 	/*
 	 * If we are in the middle of error recovery, don't let anyone
 	 * else try and use this device.  Also, if error recovery fails, it
@@ -968,7 +966,6 @@ static int sd_ioctl(struct block_device *bdev, fmode_t mode,
 			break;
 	}
 out:
-	unlock_kernel();
 	return error;
 }
 
@@ -2361,7 +2358,7 @@ static int sd_probe(struct device *dev)
 	sdkp->driver = &sd_template;
 	sdkp->disk = gd;
 	sdkp->index = index;
-	sdkp->openers = 0;
+	atomic_set(&sdkp->openers, 0);
 	sdkp->previous_state = 1;
 
 	if (!sdp->request_queue->rq_timeout) {
