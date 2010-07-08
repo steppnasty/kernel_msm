@@ -1075,7 +1075,7 @@ static const struct block_device_operations xlvbd_block_fops =
 	.open = blkif_open,
 	.release = blkif_release,
 	.getgeo = blkif_getgeo,
-	.locked_ioctl = blkif_ioctl,
+	.ioctl = blkif_ioctl,
 };
 
 
