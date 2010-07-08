@@ -3327,10 +3327,12 @@ static struct page *niu_find_rxpage(struct rx_ring_info *rp, u64 addr,
 	for (; (p = *pp) != NULL; pp = (struct page **) &p->mapping) {
 		if (p->index == addr) {
 			*link = pp;
-			break;
+			goto found;
 		}
 	}
+	BUG();
 
+found:
 	return p;
 }
 
