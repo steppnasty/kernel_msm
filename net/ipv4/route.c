@@ -1324,6 +1324,7 @@ void __ip_select_ident(struct iphdr *iph, struct dst_entry *dst, int more)
 
 	ip_select_fb_ident(iph);
 }
+EXPORT_SYMBOL(__ip_select_ident);
 
 static void rt_del(unsigned hash, struct rtable *rt)
 {
@@ -2735,7 +2736,6 @@ int __ip_route_output_key(struct net *net, struct rtable **rp,
 slow_output:
 	return ip_route_output_slow(net, rp, flp);
 }
-
 EXPORT_SYMBOL_GPL(__ip_route_output_key);
 
 static struct dst_entry *ipv4_blackhole_dst_check(struct dst_entry *dst, u32 cookie)
@@ -2824,13 +2824,13 @@ int ip_route_output_flow(struct net *net, struct rtable **rp, struct flowi *flp,
 
 	return 0;
 }
-
 EXPORT_SYMBOL_GPL(ip_route_output_flow);
 
 int ip_route_output_key(struct net *net, struct rtable **rp, struct flowi *flp)
 {
 	return ip_route_output_flow(net, rp, flp, NULL, 0);
 }
+EXPORT_SYMBOL(ip_route_output_key);
 
 static int rt_fill_info(struct net *net,
 			struct sk_buff *skb, u32 pid, u32 seq, int event,
@@ -3368,6 +3368,3 @@ void __init ip_static_sysctl_init(void)
 	register_sysctl_paths(ipv4_path, ipv4_skeleton);
 }
 #endif
-
-EXPORT_SYMBOL(__ip_select_ident);
-EXPORT_SYMBOL(ip_route_output_key);
