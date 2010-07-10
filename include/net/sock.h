@@ -773,6 +773,7 @@ struct proto {
 	int			*sysctl_wmem;
 	int			*sysctl_rmem;
 	int			max_header;
+	bool			no_autobind;
 
 	struct kmem_cache	*slab;
 	unsigned int		obj_size;
