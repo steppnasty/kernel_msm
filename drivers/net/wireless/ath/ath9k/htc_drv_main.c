@@ -493,8 +493,7 @@ static int ath9k_debugfs_open(struct inode *inode, struct file *file)
 static ssize_t read_file_tgt_stats(struct file *file, char __user *user_buf,
 				   size_t count, loff_t *ppos)
 {
-	struct ath9k_htc_priv *priv =
-		(struct ath9k_htc_priv *) file->private_data;
+	struct ath9k_htc_priv *priv = file->private_data;
 	struct ath9k_htc_target_stats cmd_rsp;
 	char buf[512];
 	unsigned int len = 0;
@@ -537,8 +536,7 @@ static const struct file_operations fops_tgt_stats = {
 static ssize_t read_file_xmit(struct file *file, char __user *user_buf,
 			      size_t count, loff_t *ppos)
 {
-	struct ath9k_htc_priv *priv =
-		(struct ath9k_htc_priv *) file->private_data;
+	struct ath9k_htc_priv *priv = file->private_data;
 	char buf[512];
 	unsigned int len = 0;
 
@@ -583,8 +581,7 @@ static const struct file_operations fops_xmit = {
 static ssize_t read_file_recv(struct file *file, char __user *user_buf,
 			      size_t count, loff_t *ppos)
 {
-	struct ath9k_htc_priv *priv =
-		(struct ath9k_htc_priv *) file->private_data;
+	struct ath9k_htc_priv *priv = file->private_data;
 	char buf[512];
 	unsigned int len = 0;
 
