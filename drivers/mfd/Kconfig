@@ -590,6 +590,13 @@ config MARIMBA_TSADC
 	  Say yes here if you want to include support for TSADC in the
 	  Qualcomm Marimba chip.
 
+config MFD_JZ4740_ADC
+	tristate "Support for the JZ4740 SoC ADC core"
+	select MFD_CORE
+	depends on MACH_JZ4740
+	help
+	  Say yes here if you want support for the ADC unit in the JZ4740 SoC.
+	  This driver is necessary for jz4740-battery and jz4740-hwmon driver.
 
 endif # MFD_SUPPORT
 
