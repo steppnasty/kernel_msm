@@ -1101,7 +1101,6 @@ struct input_mt_slot {
  * @repeat_key: stores key code of the last key pressed; used to implement
  *	software autorepeat
  * @timer: timer for software autorepeat
- * @sync: set to 1 when there were no new events since last EV_SYNC
  * @abs: current values for reports from absolute axes
  * @rep: current values for autorepeat parameters (delay, rate)
  * @mt: pointer to array of struct input_mt_slot holding current values
@@ -1146,6 +1145,7 @@ struct input_mt_slot {
  *	last user closes the device
  * @going_away: marks devices that are in a middle of unregistering and
  *	causes input_open_device*() fail with -ENODEV.
+ * @sync: set to %true when there were no new events since last EV_SYN
  * @dev: driver model's view of this device
  * @h_list: list of input handles associated with the device. When
  *	accessing the list dev->mutex must be held
@@ -1182,8 +1182,6 @@ struct input_dev {
 	unsigned int repeat_key;
 	struct timer_list timer;
 
-	int sync;
-
 	int abs[ABS_CNT];
 	int rep[REP_MAX + 1];
 
@@ -1214,6 +1212,8 @@ struct input_dev {
 
 	unsigned int users;
 	bool going_away;
+
+	bool sync;
 
 	struct device dev;
 
