@@ -75,9 +75,11 @@ static int __ocfs2_page_mkwrite(struct file *file, struct buffer_head *di_bh,
 	/*
 	 * Another node might have truncated while we were waiting on
 	 * cluster locks.
+	 * We don't check size == 0 before the shift. This is borrowed
+	 * from do_generic_file_read.
 	 */
-	last_index = size >> PAGE_CACHE_SHIFT;
-	if (page->index > last_index) {
+	last_index = (size - 1) >> PAGE_CACHE_SHIFT;
+	if (unlikely(!size || page->index > last_index)) {
 		ret = -EINVAL;
 		goto out;
 	}
@@ -108,7 +110,7 @@ static int __ocfs2_page_mkwrite(struct file *file, struct buffer_head *di_bh,
 	 * because the "write" would invalidate their data.
 	 */
 	if (page->index == last_index)
-		len = size & ~PAGE_CACHE_MASK;
+		len = ((size - 1) & ~PAGE_CACHE_MASK) + 1;
 
 	ret = ocfs2_write_begin_nolock(file, mapping, pos, len, 0, &locked_page,
 				       &fsdata, di_bh, page);
