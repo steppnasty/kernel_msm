@@ -35,6 +35,7 @@ obj-y				+= eeprom/
 obj-y				+= cb710/
 obj-y				+= mpu3050/
 obj-$(CONFIG_VMWARE_BALLOON)	+= vmware_balloon.o
+obj-$(CONFIG_ARM_CHARLCD)	+= arm-charlcd.o
 obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_APANIC)		+= apanic.o
 obj-$(CONFIG_SENSORS_BMA150_SPI)+= bma150_spi.o
