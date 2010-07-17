@@ -34,6 +34,7 @@ obj-$(CONFIG_BATTERY_BQ27510)   += bq27510_battery.o ubattery_alg.o
 obj-$(CONFIG_BATTERY_DA9030)	+= da9030_battery.o
 obj-$(CONFIG_BATTERY_MAX17040)	+= max17040_battery.o
 obj-$(CONFIG_BATTERY_Z2)	+= z2_battery.o
+obj-$(CONFIG_BATTERY_S3C_ADC)	+= s3c_adc_battery.o
 obj-$(CONFIG_CHARGER_PCF50633)	+= pcf50633-charger.o
 obj-$(CONFIG_CHARGER_PM8058)	+= pm8058-charger.o
 obj-$(CONFIG_BATTERY_INTEL_MID)	+= intel_mid_battery.o
