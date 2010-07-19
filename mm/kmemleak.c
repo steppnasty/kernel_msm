@@ -215,6 +215,9 @@ static int kmemleak_stack_scan = 1;
 static int kmemleak_default = 0;
 /* protects the memory scanning, parameters and debug/kmemleak file access */
 static DEFINE_MUTEX(scan_mutex);
+/* setting kmemleak=on, will set this var, skipping the disable */
+static int kmemleak_skip_disable;
+
 
 /*
  * Early object allocation/freeing logging. Kmemleak is initialized after the
@@ -1644,7 +1647,9 @@ static int kmemleak_boot_config(char *str)
 		return -EINVAL;
 	if (strcmp(str, "off") == 0)
 		kmemleak_disable();
-	else if (strcmp(str, "on") != 0)
+	else if (strcmp(str, "on") == 0)
+		kmemleak_skip_disable = 1;
+	else
 		return -EINVAL;
 	return 0;
 }
@@ -1663,6 +1668,13 @@ void __init kmemleak_init(void)
 		kmemleak_disable();
 		return;
 	}
+
+#ifdef CONFIG_DEBUG_KMEMLEAK_DEFAULT_OFF
+	if (!kmemleak_skip_disable) {
+		kmemleak_disable();
+		return;
+	}
+#endif
 
 	jiffies_min_age = msecs_to_jiffies(MSECS_MIN_AGE);
 	jiffies_scan_wait = msecs_to_jiffies(SECS_SCAN_WAIT * 1000);
