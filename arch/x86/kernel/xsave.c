@@ -352,7 +352,7 @@ unsigned int sig_xstate_size = sizeof(struct _fpstate);
 /*
  * Enable the extended processor state save/restore feature
  */
-void __cpuinit xsave_init(void)
+static void __cpuinit __xsave_init(void)
 {
 	if (!cpu_has_xsave)
 		return;
@@ -439,7 +439,7 @@ void __ref xsave_cntxt_init(void)
 	 * Support only the state known to OS.
 	 */
 	pcntxt_mask = pcntxt_mask & XCNTXT_MASK;
-	xsave_init();
+	__xsave_init();
 
 	/*
 	 * Recompute the context size for enabled features
@@ -455,4 +455,14 @@ void __ref xsave_cntxt_init(void)
 	printk(KERN_INFO "xsave/xrstor: enabled xstate_bv 0x%llx, "
 	       "cntxt size 0x%x\n",
 	       pcntxt_mask, xstate_size);
+}
+
+void __cpuinit xsave_init(void)
+{
+	/*
+	 * Boot processor to setup the FP and extended state context info.
+	 */
+	if (!smp_processor_id())
+		init_thread_xstate();
+	__xsave_init();
 }
