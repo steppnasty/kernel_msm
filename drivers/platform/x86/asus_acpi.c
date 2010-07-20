@@ -1334,7 +1334,8 @@ static int asus_hotk_get_info(void)
 			return -ENODEV;
 		}
 		hotk->methods = &model_conf[hotk->model];
-		return AE_OK;
+		kfree(model);
+		return 0;
 	}
 	hotk->methods = &model_conf[hotk->model];
 	printk(KERN_NOTICE "  %s model detected, supported\n", string);
@@ -1368,7 +1369,7 @@ static int asus_hotk_get_info(void)
 
 	kfree(model);
 
-	return AE_OK;
+	return 0;
 }
 
 static int asus_hotk_check(void)
