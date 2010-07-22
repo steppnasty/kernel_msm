@@ -272,8 +272,6 @@ static inline void ReleaseVmbusChannel(void *context)
 	DPRINT_DBG(VMBUS, "channel released (%p)", channel);
 
 	kfree(channel);
-
-	DPRINT_EXIT(VMBUS);
 }
 
 /*
@@ -349,7 +347,6 @@ static void VmbusChannelProcessOffer(void *context)
 		DPRINT_DBG(VMBUS, "Ignoring duplicate offer for relid (%d)",
 			   newChannel->OfferMsg.ChildRelId);
 		FreeVmbusChannel(newChannel);
-		DPRINT_EXIT(VMBUS);
 		return;
 	}
 
@@ -406,7 +403,6 @@ static void VmbusChannelProcessOffer(void *context)
 			}
 		}
 	}
-	DPRINT_EXIT(VMBUS);
 }
 
 /*
@@ -417,7 +413,6 @@ static void VmbusChannelProcessRescindOffer(void *context)
 	struct vmbus_channel *channel = context;
 
 	VmbusChildDeviceRemove(channel->DeviceObject);
-	DPRINT_EXIT(VMBUS);
 }
 
 /*
@@ -448,7 +443,6 @@ static void VmbusChannelOnOffer(struct vmbus_channel_message_header *hdr)
 	if (!fSupported) {
 		DPRINT_DBG(VMBUS, "Ignoring channel offer notification for "
 			   "child relid %d", offer->ChildRelId);
-		DPRINT_EXIT(VMBUS);
 		return;
 	}
 
@@ -497,8 +491,6 @@ static void VmbusChannelOnOffer(struct vmbus_channel_message_header *hdr)
 	/* TODO: Make sure the offer comes from our parent partition */
 	osd_schedule_callback(newChannel->ControlWQ, VmbusChannelProcessOffer,
 			      newChannel);
-
-	DPRINT_EXIT(VMBUS);
 }
 
 /*
@@ -522,8 +514,6 @@ static void VmbusChannelOnOfferRescind(struct vmbus_channel_message_header *hdr)
 	osd_schedule_callback(channel->ControlWQ,
 			      VmbusChannelProcessRescindOffer,
 			      channel);
-
-	DPRINT_EXIT(VMBUS);
 }
 
 /*
@@ -534,7 +524,6 @@ static void VmbusChannelOnOfferRescind(struct vmbus_channel_message_header *hdr)
 static void VmbusChannelOnOffersDelivered(
 			struct vmbus_channel_message_header *hdr)
 {
-	DPRINT_EXIT(VMBUS);
 }
 
 /*
@@ -579,8 +568,6 @@ static void VmbusChannelOnOpenResult(struct vmbus_channel_message_header *hdr)
 		}
 	}
 	spin_unlock_irqrestore(&gVmbusConnection.channelmsg_lock, flags);
-
-	DPRINT_EXIT(VMBUS);
 }
 
 /*
@@ -629,8 +616,6 @@ static void VmbusChannelOnGpadlCreated(struct vmbus_channel_message_header *hdr)
 		}
 	}
 	spin_unlock_irqrestore(&gVmbusConnection.channelmsg_lock, flags);
-
-	DPRINT_EXIT(VMBUS);
 }
 
 /*
@@ -675,8 +660,6 @@ static void VmbusChannelOnGpadlTorndown(
 		}
 	}
 	spin_unlock_irqrestore(&gVmbusConnection.channelmsg_lock, flags);
-
-	DPRINT_EXIT(VMBUS);
 }
 
 /*
@@ -714,8 +697,6 @@ static void VmbusChannelOnVersionResponse(
 		}
 	}
 	spin_unlock_irqrestore(&gVmbusConnection.channelmsg_lock, flags);
-
-	DPRINT_EXIT(VMBUS);
 }
 
 /* Channel message dispatch table */
@@ -774,7 +755,6 @@ void VmbusOnChannelMessage(void *Context)
 
 	/* Free the msg that was allocated in VmbusOnMsgDPC() */
 	kfree(msg);
-	DPRINT_EXIT(VMBUS);
 }
 
 /*
@@ -831,7 +811,6 @@ Cleanup:
 		kfree(msgInfo);
 	}
 
-	DPRINT_EXIT(VMBUS);
 	return ret;
 }
 
