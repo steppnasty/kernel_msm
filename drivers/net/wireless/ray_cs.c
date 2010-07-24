@@ -784,7 +784,6 @@ static void ray_release(struct pcmcia_device *link)
 {
 	struct net_device *dev = link->priv;
 	ray_dev_t *local = netdev_priv(dev);
-	int i;
 
 	dev_dbg(&link->dev, "ray_release\n");
 
@@ -793,13 +792,6 @@ static void ray_release(struct pcmcia_device *link)
 	iounmap(local->sram);
 	iounmap(local->rmem);
 	iounmap(local->amem);
-	/* Do bother checking to see if these succeed or not */
-	i = pcmcia_release_window(link, local->amem_handle);
-	if (i != 0)
-		dev_dbg(&link->dev, "ReleaseWindow(local->amem) ret = %x\n", i);
-	i = pcmcia_release_window(link, local->rmem_handle);
-	if (i != 0)
-		dev_dbg(&link->dev, "ReleaseWindow(local->rmem) ret = %x\n", i);
 	pcmcia_disable_device(link);
 
 	dev_dbg(&link->dev, "ray_release ending\n");
