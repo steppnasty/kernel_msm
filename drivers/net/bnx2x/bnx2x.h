@@ -32,7 +32,7 @@
 
 #if defined(CONFIG_CNIC) || defined(CONFIG_CNIC_MODULE)
 #define BCM_CNIC 1
-#include "cnic_if.h"
+#include "../cnic_if.h"
 #endif
 
 
@@ -1062,10 +1062,6 @@ struct bnx2x {
 
 	/* used to synchronize stats collecting */
 	int			stats_state;
-
-	/* used for synchronization of concurrent threads statistics handling */
-	spinlock_t		stats_lock;
-
 	/* used by dmae command loader */
 	struct dmae_command	stats_dmae;
 	int			executer_idx;

@@ -57,8 +57,8 @@
 #include "bnx2x_init_ops.h"
 #include "bnx2x_dump.h"
 
-#define DRV_MODULE_VERSION	"1.52.53-2"
-#define DRV_MODULE_RELDATE	"2010/21/07"
+#define DRV_MODULE_VERSION	"1.52.53-1"
+#define DRV_MODULE_RELDATE	"2010/18/04"
 #define BNX2X_BC_VER		0x040200
 
 #include <linux/firmware.h>
@@ -3803,8 +3803,6 @@ static void bnx2x_storm_stats_post(struct bnx2x *bp)
 		struct eth_query_ramrod_data ramrod_data = {0};
 		int i, rc;
 
-		spin_lock_bh(&bp->stats_lock);
-
 		ramrod_data.drv_counter = bp->stats_counter++;
 		ramrod_data.collect_port = bp->port.pmf ? 1 : 0;
 		for_each_queue(bp, i)
@@ -3818,8 +3816,6 @@ static void bnx2x_storm_stats_post(struct bnx2x *bp)
 			bp->spq_left++;
 			bp->stats_pending = 1;
 		}
-
-		spin_unlock_bh(&bp->stats_lock);
 	}
 }
 
@@ -4385,14 +4381,6 @@ static int bnx2x_storm_stats_update(struct bnx2x *bp)
 	struct host_func_stats *fstats = bnx2x_sp(bp, func_stats);
 	struct bnx2x_eth_stats *estats = &bp->eth_stats;
 	int i;
-	u16 cur_stats_counter;
-
-	/* Make sure we use the value of the counter
-	 * used for sending the last stats ramrod.
-	 */
-	spin_lock_bh(&bp->stats_lock);
-	cur_stats_counter = bp->stats_counter - 1;
-	spin_unlock_bh(&bp->stats_lock);
 
 	memcpy(&(fstats->total_bytes_received_hi),
 	       &(bnx2x_sp(bp, func_stats_base)->total_bytes_received_hi),
@@ -4420,22 +4408,25 @@ static int bnx2x_storm_stats_update(struct bnx2x *bp)
 		u32 diff;
 
 		/* are storm stats valid? */
-		if (le16_to_cpu(xclient->stats_counter) != cur_stats_counter) {
+		if ((u16)(le16_to_cpu(xclient->stats_counter) + 1) !=
+							bp->stats_counter) {
 			DP(BNX2X_MSG_STATS, "[%d] stats not updated by xstorm"
 			   "  xstorm counter (0x%x) != stats_counter (0x%x)\n",
-			   i, xclient->stats_counter, cur_stats_counter + 1);
+			   i, xclient->stats_counter, bp->stats_counter);
 			return -1;
 		}
-		if (le16_to_cpu(tclient->stats_counter) != cur_stats_counter) {
+		if ((u16)(le16_to_cpu(tclient->stats_counter) + 1) !=
+							bp->stats_counter) {
 			DP(BNX2X_MSG_STATS, "[%d] stats not updated by tstorm"
 			   "  tstorm counter (0x%x) != stats_counter (0x%x)\n",
-			   i, tclient->stats_counter, cur_stats_counter + 1);
+			   i, tclient->stats_counter, bp->stats_counter);
 			return -2;
 		}
-		if (le16_to_cpu(uclient->stats_counter) != cur_stats_counter) {
+		if ((u16)(le16_to_cpu(uclient->stats_counter) + 1) !=
+							bp->stats_counter) {
 			DP(BNX2X_MSG_STATS, "[%d] stats not updated by ustorm"
 			   "  ustorm counter (0x%x) != stats_counter (0x%x)\n",
-			   i, uclient->stats_counter, cur_stats_counter + 1);
+			   i, uclient->stats_counter, bp->stats_counter);
 			return -4;
 		}
 
@@ -4872,18 +4863,16 @@ static const struct {
 
 static void bnx2x_stats_handle(struct bnx2x *bp, enum bnx2x_stats_event event)
 {
-	enum bnx2x_stats_state state;
+	enum bnx2x_stats_state state = bp->stats_state;
 
 	if (unlikely(bp->panic))
 		return;
 
-	/* Protect a state change flow */
-	spin_lock_bh(&bp->stats_lock);
-	state = bp->stats_state;
-	bp->stats_state = bnx2x_stats_stm[state][event].next_state;
-	spin_unlock_bh(&bp->stats_lock);
-
 	bnx2x_stats_stm[state][event].action(bp);
+	bp->stats_state = bnx2x_stats_stm[state][event].next_state;
+
+	/* Make sure the state has been "changed" */
+	smp_wmb();
 
 	if ((event != STATS_EVENT_UPDATE) || netif_msg_timer(bp))
 		DP(BNX2X_MSG_STATS, "state %d -> event %d -> state %d\n",
@@ -9933,7 +9922,6 @@ static int __devinit bnx2x_init_bp(struct bnx2x *bp)
 
 	mutex_init(&bp->port.phy_mutex);
 	mutex_init(&bp->fw_mb_mutex);
-	spin_lock_init(&bp->stats_lock);
 #ifdef BCM_CNIC
 	mutex_init(&bp->cnic_mutex);
 #endif
