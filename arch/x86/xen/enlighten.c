@@ -1285,6 +1285,7 @@ void xen_hvm_init_shared_info(void)
 	}
 }
 
+#ifdef CONFIG_XEN_PVHVM
 static int __cpuinit xen_hvm_cpu_notify(struct notifier_block *self,
 				    unsigned long action, void *hcpu)
 {
@@ -1341,3 +1342,4 @@ const __refconst struct hypervisor_x86 x86_hyper_xen_hvm = {
 	.init_platform		= xen_hvm_guest_init,
 };
 EXPORT_SYMBOL(x86_hyper_xen_hvm);
+#endif

@@ -2037,6 +2037,7 @@ void __init xen_init_mmu_ops(void)
 	vmap_lazy_unmap = false;
 }
 
+#ifdef CONFIG_XEN_PVHVM
 static void xen_hvm_exit_mmap(struct mm_struct *mm)
 {
 	struct xen_hvm_pagetable_dying a;
@@ -2068,6 +2069,7 @@ void __init xen_hvm_init_mmu_ops(void)
 	if (is_pagetable_dying_supported())
 		pv_mmu_ops.exit_mmap = xen_hvm_exit_mmap;
 }
+#endif
 
 /* Protected by xen_reservation_lock. */
 #define MAX_CONTIG_ORDER 9 /* 2MB */
