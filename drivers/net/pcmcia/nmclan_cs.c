@@ -148,7 +148,6 @@ Include Files
 #include <linux/ioport.h>
 #include <linux/bitops.h>
 
-#include <pcmcia/cs.h>
 #include <pcmcia/cisreg.h>
 #include <pcmcia/cistpl.h>
 #include <pcmcia/ds.h>
@@ -462,7 +461,7 @@ static int nmclan_probe(struct pcmcia_device *link)
     spin_lock_init(&lp->bank_lock);
     link->resource[0]->end = 32;
     link->resource[0]->flags |= IO_DATA_PATH_WIDTH_AUTO;
-    link->conf.Attributes = CONF_ENABLE_IRQ;
+    link->config_flags |= CONF_ENABLE_IRQ;
     link->config_index = 1;
     link->config_regs = PRESENT_OPTION;
 
@@ -651,7 +650,7 @@ static int nmclan_config(struct pcmcia_device *link)
   ret = pcmcia_request_exclusive_irq(link, mace_interrupt);
   if (ret)
 	  goto failed;
-  ret = pcmcia_request_configuration(link, &link->conf);
+  ret = pcmcia_enable_device(link);
   if (ret)
 	  goto failed;
 
