@@ -818,13 +818,10 @@ static int check_sig(struct pcmcia_device *link)
     }
 
     if (width) {
-	    modconf_t mod = {
-		    .Attributes = CONF_IO_CHANGE_WIDTH,
-	    };
 	    pr_info("using 8-bit IO window\n");
 
 	    smc91c92_suspend(link);
-	    pcmcia_modify_configuration(link, &mod);
+	    pcmcia_fixup_iowidth(link);
 	    smc91c92_resume(link);
 	    return check_sig(link);
     }
