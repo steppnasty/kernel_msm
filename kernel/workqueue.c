@@ -3522,7 +3522,7 @@ out_unlock:
 }
 #endif /* CONFIG_FREEZER */
 
-void __init init_workqueues(void)
+static int __init init_workqueues(void)
 {
 	unsigned int cpu;
 	int i;
@@ -3574,4 +3574,6 @@ void __init init_workqueues(void)
 	system_unbound_wq = alloc_workqueue("events_unbound", WQ_UNBOUND,
 					    WQ_UNBOUND_MAX_ACTIVE);
 	BUG_ON(!system_wq || !system_long_wq || !system_nrt_wq);
+	return 0;
 }
+early_initcall(init_workqueues);
