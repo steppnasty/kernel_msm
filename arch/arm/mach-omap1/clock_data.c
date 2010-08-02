@@ -551,6 +551,24 @@ static struct clk usb_dc_ck7xx = {
 	.enable_bit	= SOFT_USB_OTG_DPLL_REQ_SHIFT,
 };
 
+static struct clk uart1_7xx = {
+	.name		= "uart1_ck",
+	.ops		= &clkops_generic,
+	/* Direct from ULPD, no parent */
+	.rate		= 12000000,
+	.enable_reg	= OMAP1_IO_ADDRESS(SOFT_REQ_REG),
+	.enable_bit	= 9,
+};
+
+static struct clk uart2_7xx = {
+	.name		= "uart2_ck",
+	.ops		= &clkops_generic,
+	/* Direct from ULPD, no parent */
+	.rate		= 12000000,
+	.enable_reg	= OMAP1_IO_ADDRESS(SOFT_REQ_REG),
+	.enable_bit	= 11,
+};
+
 static struct clk mclk_1510 = {
 	.name		= "mclk",
 	.ops		= &clkops_generic,
@@ -697,7 +715,9 @@ static struct omap_clk omap_clks[] = {
 	/* ULPD clocks */
 	CLK(NULL,	"uart1_ck",	&uart1_1510,	CK_1510 | CK_310),
 	CLK(NULL,	"uart1_ck",	&uart1_16xx.clk, CK_16XX),
+	CLK(NULL,	"uart1_ck",	&uart1_7xx,	CK_7XX),
 	CLK(NULL,	"uart2_ck",	&uart2_ck,	CK_16XX | CK_1510 | CK_310),
+	CLK(NULL,	"uart2_ck",	&uart2_7xx,	CK_7XX),
 	CLK(NULL,	"uart3_ck",	&uart3_1510,	CK_1510 | CK_310),
 	CLK(NULL,	"uart3_ck",	&uart3_16xx.clk, CK_16XX),
 	CLK(NULL,	"usb_clko",	&usb_clko,	CK_16XX | CK_1510 | CK_310),
