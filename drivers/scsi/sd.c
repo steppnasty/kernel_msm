@@ -795,6 +795,7 @@ static int sd_open(struct block_device *bdev, fmode_t mode)
 
 	SCSI_LOG_HLQUEUE(3, sd_printk(KERN_INFO, sdkp, "sd_open\n"));
 
+	lock_kernel();
 	sdev = sdkp->device;
 
 	retval = scsi_autopm_get_device(sdev);
@@ -842,12 +843,14 @@ static int sd_open(struct block_device *bdev, fmode_t mode)
 			scsi_set_medium_removal(sdev, SCSI_REMOVAL_PREVENT);
 	}
 
+	unlock_kernel();
 	return 0;
 
 error_out:
 	scsi_autopm_put_device(sdev);
 error_autopm:
 	scsi_disk_put(sdkp);
+	unlock_kernel();
 	return retval;	
 }
 
@@ -869,6 +872,7 @@ static int sd_release(struct gendisk *disk, fmode_t mode)
 
 	SCSI_LOG_HLQUEUE(3, sd_printk(KERN_INFO, sdkp, "sd_release\n"));
 
+	lock_kernel();
 	if (!--sdkp->openers && sdev->removable) {
 		if (scsi_block_when_processing_errors(sdev))
 			scsi_set_medium_removal(sdev, SCSI_REMOVAL_ALLOW);
@@ -881,6 +885,7 @@ static int sd_release(struct gendisk *disk, fmode_t mode)
 
 	scsi_autopm_put_device(sdev);
 	scsi_disk_put(sdkp);
+	unlock_kernel();
 	return 0;
 }
 
