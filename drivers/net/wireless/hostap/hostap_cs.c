@@ -700,9 +700,7 @@ MODULE_DEVICE_TABLE(pcmcia, hostap_cs_ids);
 
 
 static struct pcmcia_driver hostap_driver = {
-	.drv		= {
-		.name	= "hostap_cs",
-	},
+	.name		= "hostap_cs",
 	.probe		= hostap_cs_probe,
 	.remove		= prism2_detach,
 	.owner		= THIS_MODULE,

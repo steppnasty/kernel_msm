@@ -993,14 +993,6 @@ static int daqp_cs_resume(struct pcmcia_device *p_dev);
 static int daqp_cs_attach(struct pcmcia_device *);
 static void daqp_cs_detach(struct pcmcia_device *);
 
-/*
-   The dev_info variable is the "key" that is used to match up this
-   device driver with appropriate cards, through the card configuration
-   database.
-*/
-
-static const dev_info_t dev_info = "quatech_daqp_cs";
-
 /*======================================================================
 
     daqp_cs_attach() creates an "instance" of the driver, allocating
@@ -1176,9 +1168,7 @@ static struct pcmcia_driver daqp_cs_driver = {
 	.resume = daqp_cs_resume,
 	.id_table = daqp_cs_id_table,
 	.owner = THIS_MODULE,
-	.drv = {
-		.name = dev_info,
-		},
+	.name = "quatech_daqp_cs",
 };
 
 int __init init_module(void)

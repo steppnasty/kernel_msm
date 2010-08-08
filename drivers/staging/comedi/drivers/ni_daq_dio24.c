@@ -209,14 +209,6 @@ static void dio24_cs_detach(struct pcmcia_device *);
    less on other parts of the kernel.
 */
 
-/*
-   The dev_info variable is the "key" that is used to match up this
-   device driver with appropriate cards, through the card configuration
-   database.
-*/
-
-static const dev_info_t dev_info = "ni_daq_dio24";
-
 struct local_info_t {
 	struct pcmcia_device *link;
 	int stop;
@@ -392,9 +384,7 @@ struct pcmcia_driver dio24_cs_driver = {
 	.resume = dio24_cs_resume,
 	.id_table = dio24_cs_ids,
 	.owner = THIS_MODULE,
-	.drv = {
-		.name = dev_info,
-		},
+	.name = "ni_daq_dio24",
 };
 
 static int __init init_dio24_cs(void)

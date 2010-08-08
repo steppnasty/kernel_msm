@@ -660,14 +660,6 @@ static void das16cs_pcmcia_detach(struct pcmcia_device *);
    less on other parts of the kernel.
 */
 
-/*
-   The dev_info variable is the "key" that is used to match up this
-   device driver with appropriate cards, through the card configuration
-   database.
-*/
-
-static dev_info_t dev_info = "cb_das16_cs";
-
 struct local_info_t {
 	struct pcmcia_device *link;
 	int stop;
@@ -803,9 +795,7 @@ struct pcmcia_driver das16cs_driver = {
 	.resume = das16cs_pcmcia_resume,
 	.id_table = das16cs_id_table,
 	.owner = THIS_MODULE,
-	.drv = {
-		.name = dev_info,
-		},
+	.name = "cb_das16_cs",
 };
 
 static int __init init_das16cs_pcmcia_cs(void)

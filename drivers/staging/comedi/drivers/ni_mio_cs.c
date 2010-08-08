@@ -259,7 +259,6 @@ static void cs_release(struct pcmcia_device *link);
 static void cs_detach(struct pcmcia_device *);
 
 static struct pcmcia_device *cur_dev = NULL;
-static const dev_info_t dev_info = "ni_mio_cs";
 
 static int cs_attach(struct pcmcia_device *link)
 {
@@ -438,9 +437,7 @@ struct pcmcia_driver ni_mio_cs_driver = {
 	.resume = &mio_cs_resume,
 	.id_table = ni_mio_cs_ids,
 	.owner = THIS_MODULE,
-	.drv = {
-		.name = dev_info,
-		},
+	.name = "ni_mio_cs",
 };
 
 int init_module(void)

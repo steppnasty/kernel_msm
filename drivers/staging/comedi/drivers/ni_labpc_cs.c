@@ -187,14 +187,6 @@ static void labpc_cs_detach(struct pcmcia_device *);
    less on other parts of the kernel.
 */
 
-/*
-   The dev_info variable is the "key" that is used to match up this
-   device driver with appropriate cards, through the card configuration
-   database.
-*/
-
-static const dev_info_t dev_info = "daqcard-1200";
-
 struct local_info_t {
 	struct pcmcia_device *link;
 	int stop;
@@ -368,9 +360,7 @@ struct pcmcia_driver labpc_cs_driver = {
 	.resume = labpc_cs_resume,
 	.id_table = labpc_cs_ids,
 	.owner = THIS_MODULE,
-	.drv = {
-		.name = dev_info,
-		},
+	.name = "daqcard-1200",
 };
 
 static int __init init_labpc_cs(void)
