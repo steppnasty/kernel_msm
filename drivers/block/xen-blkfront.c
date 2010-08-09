@@ -1262,6 +1262,7 @@ static int blkif_release(struct gendisk *disk, fmode_t mode)
 		kfree(info);
 	}
 
+out:
 	unlock_kernel();
 	return 0;
 }
