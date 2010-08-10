@@ -797,7 +797,7 @@ static struct vmap_block *new_vmap_block(gfp_t gfp_mask)
 					node, gfp_mask);
 	if (IS_ERR(va)) {
 		kfree(vb);
-		return ERR_PTR(PTR_ERR(va));
+		return ERR_CAST(va);
 	}
 
 	err = radix_tree_preload(gfp_mask);
