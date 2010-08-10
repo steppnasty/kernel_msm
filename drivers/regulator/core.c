@@ -57,6 +57,7 @@ struct regulator {
 	int uA_load;
 	int min_uV;
 	int max_uV;
+	int enabled;
 	char *supply_name;
 	struct device_attribute dev_attr;
 	struct regulator_dev *rdev;
@@ -117,6 +118,16 @@ static int regulator_check_voltage(struct regulator_dev *rdev,
 		printk(KERN_ERR "%s: operation not allowed for %s\n",
 		       __func__, rdev_get_name(rdev));
 		return -EPERM;
+	}
+
+	/* check if requested voltage range actually overlaps the constraints */
+	if (*max_uV < rdev->constraints->min_uV ||
+	    *min_uV > rdev->constraints->max_uV) {
+		printk(KERN_ERR "%s: requested voltage range [%d, %d] for %s "
+			"does not fit within constraints: [%d, %d]\n",
+			__func__, *min_uV, *max_uV, rdev_get_name(rdev),
+			rdev->constraints->min_uV, rdev->constraints->max_uV);
+		return -EINVAL;
 	}
 
 	if (*max_uV > rdev->constraints->max_uV)
@@ -1346,6 +1357,12 @@ int regulator_enable(struct regulator *regulator)
 
 	mutex_lock(&rdev->mutex);
 	ret = _regulator_enable(rdev);
+	if (ret)
+		goto out;
+
+	regulator->enabled++;
+
+out:
 	mutex_unlock(&rdev->mutex);
 	return ret;
 }
@@ -1414,7 +1431,14 @@ int regulator_disable(struct regulator *regulator)
 	int ret = 0;
 
 	mutex_lock(&rdev->mutex);
+
 	ret = _regulator_disable(rdev);
+	if (ret)
+		goto out;
+
+	regulator->enabled--;
+
+out:
 	mutex_unlock(&rdev->mutex);
 	return ret;
 }
@@ -1627,7 +1651,6 @@ int regulator_set_voltage(struct regulator *regulator, int min_uV, int max_uV)
 		selector = -1;
 
 out:
-	_notifier_call_chain(rdev, REGULATOR_EVENT_VOLTAGE_CHANGE, NULL);
 	mutex_unlock(&rdev->mutex);
 	return ret;
 }
