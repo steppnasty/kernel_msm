@@ -100,3 +100,4 @@ obj-$(CONFIG_PMIC8901)          += pmic8901.o
 endif
 endif
 obj-$(CONFIG_MFD_JZ4740_ADC)	+= jz4740-adc.o
+obj-$(CONFIG_MFD_TPS6586X)	+= tps6586x.o
