@@ -31,6 +31,7 @@
 #include <plat/cpu.h>
 #include <plat/devs.h>
 #include <plat/clock.h>
+#include <plat/fb-core.h>
 #include <plat/s5pv210.h>
 #include <plat/adc-core.h>
 #include <plat/ata-core.h>
@@ -106,6 +107,8 @@ void __init s5pv210_map_io(void)
 	s3c_fimc_setname(0, "s5pv210-fimc");
 	s3c_fimc_setname(1, "s5pv210-fimc");
 	s3c_fimc_setname(2, "s5pv210-fimc");
+
+	s3c_fb_setname("s5pv210-fb");
 
 	/* Use s5pv210-keypad instead of samsung-keypad */
 	samsung_keypad_setname("s5pv210-keypad");

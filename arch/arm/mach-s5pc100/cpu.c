@@ -43,6 +43,7 @@
 #include <plat/sdhci.h>
 #include <plat/adc-core.h>
 #include <plat/onenand-core.h>
+#include <plat/fb-core.h>
 
 #include <plat/s5pc100.h>
 
@@ -97,6 +98,7 @@ void __init s5pc100_map_io(void)
 
 	s3c_onenand_setname("s5pc100-onenand");
 	s3c_cfcon_setname("s5pc100-pata");
+	s3c_fb_setname("s5pc100-fb");
 }
 
 void __init s5pc100_init_clocks(int xtal)
