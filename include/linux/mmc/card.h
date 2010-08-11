@@ -95,6 +95,7 @@ struct mmc_card {
 #define MMC_TYPE_SDIO		2		/* SDIO card */
 #define MMC_TYPE_SDIO_WIMAX	3		/* SDIO card of WIMAX */
 #define MMC_TYPE_SDIO_SVLTE	4		/* SDIO card of SVLTE*/
+#define MMC_TYPE_SD_COMBO	5		/* SD combo (IO+mem) card */
 
 	unsigned int		state;		/* (our) card state */
 #define MMC_STATE_PRESENT	(1<<0)		/* present in sysfs */
