@@ -18,6 +18,7 @@
 
 #include "core.h"
 #include "bus.h"
+#include "sd.h"
 #include "sdio_bus.h"
 #include "mmc_ops.h"
 #include "sd_ops.h"
@@ -222,10 +223,26 @@ static int sdio_enable_hs(struct mmc_card *card)
 	if (ret)
 		return ret;
 
-	mmc_card_set_highspeed(card);
-	mmc_set_timing(card->host, MMC_TIMING_SD_HS);
+	return 1;
+}
 
-	return 0;
+static unsigned mmc_sdio_get_max_clock(struct mmc_card *card)
+{
+	unsigned max_dtr;
+
+	if (mmc_card_highspeed(card)) {
+		/*
+		 * The SDIO specification doesn't mention how
+		 * the CIS transfer speed register relates to
+		 * high-speed, but it seems that 50 MHz is
+		 * mandatory.
+		 */
+		max_dtr = 50000000;
+	} else {
+		max_dtr = card->cis.max_dtr;
+	}
+
+	return max_dtr;
 }
 
 /*
@@ -348,37 +365,15 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	 * Switch to high-speed (if supported).
 	 */
 	err = sdio_enable_hs(card);
-	if (err)
+	if (err > 0)
+		mmc_sd_go_highspeed(card);
+	else if (err)
 		goto remove;
 
 	/*
 	 * Change to the card's maximum speed.
 	 */
-	if (mmc_card_highspeed(card)) {
-		/*
-		 * The SDIO specification doesn't mention how
-		 * the CIS transfer speed register relates to
-		 * high-speed, but it seems that 50 MHz is
-		 * mandatory.
-		 */
-#ifndef CONFIG_SDIO_CES
-		mmc_set_clock(host, 50000000);
-#else
-        printk("[WLAN][CES] set 25M\n");
-      	mmc_set_clock(host, 25000000);
-#endif
-	} else {
-#ifdef CONFIG_WIMAX
-		mmc_set_clock(host, 49152000);
-#else
-#ifndef CONFIG_SDIO_CES
-     mmc_set_clock(host, card->cis.max_dtr);
-#else
-     printk("[WLAN][CES] set 25M in max_dtr\n");
-     mmc_set_clock(host, 25000000);
-#endif
-#endif
-	}
+	mmc_set_clock(host, mmc_sdio_get_max_clock(card));
 
 	/*
 	 * Switch to wider bus (if supported).
