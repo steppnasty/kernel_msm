@@ -114,28 +114,18 @@ static int mmc_decode_cid(struct mmc_card *card)
 static int mmc_decode_csd(struct mmc_card *card)
 {
 	struct mmc_csd *csd = &card->csd;
-	unsigned int e, m, csd_struct;
+	unsigned int e, m;
 	u32 *resp = card->raw_csd;
 
 	/*
 	 * We only understand CSD structure v1.1 and v1.2.
 	 * v1.2 has extra information in bits 15, 11 and 10.
+	 * We also support eMMC v4.4 & v4.41.
 	 */
-	csd_struct = UNSTUFF_BITS(resp, 126, 2);
-#if defined(CONFIG_ARCH_MSM7X30) || defined(CONFIG_ARCH_MSM8X60)
-	/* for eMMC spec v4.4, csd_struct value will be 3		*/
-	/* for eMMC spec v4.1-v4.3 csd struct value will be 2	*/
-	/* currently we don't support csd_struct version No. 1.0	*/
-	if (csd_struct == 0) {
+	csd->structure = UNSTUFF_BITS(resp, 126, 2);
+	if (csd->structure == 0) {
 		printk(KERN_ERR "%s: unrecognised CSD structure version %d\n",
-			mmc_hostname(card->host), csd_struct);
-#else
-	/* For SanDisk iNAND, after comparing 1.3 with 1.2, I think	*/
-	/* 1.3 is compatible with 1.2.					*/
-	if (csd_struct != 1 && csd_struct != 2 && csd_struct != 3) {
-		printk(KERN_ERR "%s: unrecognised CSD structure version 1.%d\n",
-			mmc_hostname(card->host), csd_struct);
-#endif
+			mmc_hostname(card->host), csd->structure);
 		return -EINVAL;
 	}
 
