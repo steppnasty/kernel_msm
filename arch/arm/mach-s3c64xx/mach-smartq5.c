@@ -108,10 +108,10 @@ static struct platform_device smartq5_buttons_device  = {
 
 static struct s3c_fb_pd_win smartq5_fb_win0 = {
 	.win_mode	= {
-		.left_margin	= 40,
-		.right_margin	= 216,
-		.upper_margin	= 10,
-		.lower_margin	= 35,
+		.left_margin	= 216,
+		.right_margin	= 40,
+		.upper_margin	= 35,
+		.lower_margin	= 10,
 		.hsync_len	= 1,
 		.vsync_len	= 1,
 		.xres		= 800,
