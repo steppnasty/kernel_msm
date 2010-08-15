@@ -1879,6 +1879,8 @@ static int udf_fill_super(struct super_block *sb, void *options, int silent)
 	struct kernel_lb_addr rootdir, fileset;
 	struct udf_sb_info *sbi;
 
+	lock_kernel();
+
 	uopt.flags = (1 << UDF_FLAG_USE_AD_IN_ICB) | (1 << UDF_FLAG_STRICT);
 	uopt.uid = -1;
 	uopt.gid = -1;
@@ -1887,8 +1889,10 @@ static int udf_fill_super(struct super_block *sb, void *options, int silent)
 	uopt.dmode = UDF_INVALID_MODE;
 
 	sbi = kzalloc(sizeof(struct udf_sb_info), GFP_KERNEL);
-	if (!sbi)
+	if (!sbi) {
+		unlock_kernel();
 		return -ENOMEM;
+	}
 
 	sb->s_fs_info = sbi;
 
@@ -2034,6 +2038,7 @@ static int udf_fill_super(struct super_block *sb, void *options, int silent)
 		goto error_out;
 	}
 	sb->s_maxbytes = MAX_LFS_FILESIZE;
+	unlock_kernel();
 	return 0;
 
 error_out:
@@ -2054,6 +2059,7 @@ error_out:
 	kfree(sbi);
 	sb->s_fs_info = NULL;
 
+	unlock_kernel();
 	return -EINVAL;
 }
 
