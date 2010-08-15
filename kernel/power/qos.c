@@ -133,6 +133,7 @@ static const struct file_operations pm_qos_power_fops = {
 	.read = pm_qos_power_read,
 	.open = pm_qos_power_open,
 	.release = pm_qos_power_release,
+	.llseek = noop_llseek,
 };
 
 /* unlocked internal variant */

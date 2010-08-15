@@ -4168,6 +4168,7 @@ static const struct file_operations pmcraid_fops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = pmcraid_chr_ioctl,
 #endif
+	.llseek = noop_llseek,
 };
 
 
