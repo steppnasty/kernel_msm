@@ -1,8 +1,8 @@
 VERSION = 2
 PATCHLEVEL = 6
-SUBLEVEL = 35
-EXTRAVERSION = .14
-NAME = Yokohama
+SUBLEVEL = 36
+EXTRAVERSION = -rc1
+NAME = Sheep on Meth
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
