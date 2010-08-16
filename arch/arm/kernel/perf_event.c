@@ -1043,8 +1043,8 @@ armv6pmu_handle_irq(int irq_num,
 	/*
 	 * Handle the pending perf events.
 	 *
-	 * Note: this call *must* be run with interrupts enabled. For
-	 * platforms that can have the PMU interrupts raised as a PMI, this
+	 * Note: this call *must* be run with interrupts disabled. For
+	 * platforms that can have the PMU interrupts raised as an NMI, this
 	 * will not work.
 	 */
 	perf_event_do_pending();
@@ -2019,8 +2019,8 @@ static irqreturn_t armv7pmu_handle_irq(int irq_num, void *dev)
 	/*
 	 * Handle the pending perf events.
 	 *
-	 * Note: this call *must* be run with interrupts enabled. For
-	 * platforms that can have the PMU interrupts raised as a PMI, this
+	 * Note: this call *must* be run with interrupts disabled. For
+	 * platforms that can have the PMU interrupts raised as an NMI, this
 	 * will not work.
 	 */
 	perf_event_do_pending();
