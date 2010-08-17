@@ -30,8 +30,6 @@ DEFINE_MUTEX(event_mutex);
 LIST_HEAD(ftrace_events);
 LIST_HEAD(ftrace_common_fields);
 
-#define COMMON_FIELD_COUNT	5
-
 struct list_head *
 trace_get_fields(struct ftrace_event_call *event_call)
 {
@@ -237,35 +235,6 @@ static void ftrace_clear_events(void)
 	list_for_each_entry(call, &ftrace_events, list) {
 		ftrace_event_enable_disable(call, 0);
 	}
-	mutex_unlock(&event_mutex);
-}
-
-static void __put_system(struct event_subsystem *system)
-{
-	struct event_filter *filter = system->filter;
-
-	WARN_ON_ONCE(system->ref_count == 0);
-	if (--system->ref_count)
-		return;
-
-	if (filter) {
-		kfree(filter->filter_string);
-		kfree(filter);
-	}
-	kfree(system->name);
-	kfree(system);
-}
-
-static void __get_system(struct event_subsystem *system)
-{
-	WARN_ON_ONCE(system->ref_count == 0);
-	system->ref_count++;
-}
-
-static void put_system(struct event_subsystem *system)
-{
-	mutex_lock(&event_mutex);
-	__put_system(system);
 	mutex_unlock(&event_mutex);
 }
 
@@ -552,7 +521,7 @@ system_enable_read(struct file *filp, char __user *ubuf, size_t cnt,
 		   loff_t *ppos)
 {
 	const char set_to_char[4] = { '?', '0', '1', 'X' };
-	struct event_subsystem *system = filp->private_data;
+	const char *system = filp->private_data;
 	struct ftrace_event_call *call;
 	char buf[2];
 	int set = 0;
@@ -563,7 +532,7 @@ system_enable_read(struct file *filp, char __user *ubuf, size_t cnt,
 		if (!call->name || !call->class || !call->class->reg)
 			continue;
 
-		if (system && strcmp(call->class->system, system->name) != 0)
+		if (system && strcmp(call->class->system, system) != 0)
 			continue;
 
 		/*
@@ -593,8 +562,7 @@ static ssize_t
 system_enable_write(struct file *filp, const char __user *ubuf, size_t cnt,
 		    loff_t *ppos)
 {
-	struct event_subsystem *system = filp->private_data;
-	const char *name = NULL;
+	const char *system = filp->private_data;
 	unsigned long val;
 	char buf[64];
 	ssize_t ret;
@@ -618,14 +586,7 @@ system_enable_write(struct file *filp, const char __user *ubuf, size_t cnt,
 	if (val != 0 && val != 1)
 		return -EINVAL;
 
-	/*
-	 * Opening of "enable" adds a ref count to system,
-	 * so the name is safe to use.
-	 */
-	if (system)
-		name = system->name;
-
-	ret = __ftrace_set_clr_event(NULL, name, NULL, val);
+	ret = __ftrace_set_clr_event(NULL, system, NULL, val);
 	if (ret)
 		goto out;
 
@@ -637,58 +598,31 @@ out:
 	return ret;
 }
 
-static void print_event_fields(struct trace_seq *s, struct list_head *head)
-{
-	struct ftrace_event_field *field;
-
-	list_for_each_entry_reverse(field, head, link) {
-		/*
-		 * Smartly shows the array type(except dynamic array).
-		 * Normal:
-		 *	field:TYPE VAR
-		 * If TYPE := TYPE[LEN], it is shown:
-		 *	field:TYPE VAR[LEN]
-		 */
-		const char *array_descriptor = strchr(field->type, '[');
-
-		if (!strncmp(field->type, "__data_loc", 10))
-			array_descriptor = NULL;
-
-		if (!array_descriptor) {
-			trace_seq_printf(s, "\tfield:%s %s;\toffset:%u;"
-					"\tsize:%u;\tsigned:%d;\n",
-					field->type, field->name, field->offset,
-					field->size, !!field->is_signed);
-		} else {
-			trace_seq_printf(s, "\tfield:%.*s %s%s;\toffset:%u;"
-					"\tsize:%u;\tsigned:%d;\n",
-					(int)(array_descriptor - field->type),
-					field->type, field->name,
-					array_descriptor, field->offset,
-					field->size, !!field->is_signed);
-		}
-	}
-}
-
 enum {
 	FORMAT_HEADER		= 1,
-	FORMAT_PRINTFMT		= 2,
+	FORMAT_FIELD_SEPERATOR	= 2,
+	FORMAT_PRINTFMT		= 3,
 };
 
 static void *f_next(struct seq_file *m, void *v, loff_t *pos)
 {
 	struct ftrace_event_call *call = m->private;
 	struct ftrace_event_field *field;
-	struct list_head *head;
-	loff_t index = *pos;
+	struct list_head *common_head = &ftrace_common_fields;
+	struct list_head *head = trace_get_fields(call);
 
 	(*pos)++;
 
-	head = trace_get_fields(call);
-
 	switch ((unsigned long)v) {
 	case FORMAT_HEADER:
+		if (unlikely(list_empty(common_head)))
+			return NULL;
 
+		field = list_entry(common_head->prev,
+				   struct ftrace_event_field, link);
+		return field;
+
+	case FORMAT_FIELD_SEPERATOR:
 		if (unlikely(list_empty(head)))
 			return NULL;
 
@@ -700,22 +634,13 @@ static void *f_next(struct seq_file *m, void *v, loff_t *pos)
 		return NULL;
 	}
 
-	/*
-	 * To separate common fields from event fields, the
-	 * LSB is set on the first event field. Clear it in case.
-	 */
-	v = (void *)((unsigned long)v & ~1L);
-
 	field = v;
-	if (field->link.prev == head)
+	if (field->link.prev == common_head)
+		return (void *)FORMAT_FIELD_SEPERATOR;
+	else if (field->link.prev == head)
 		return (void *)FORMAT_PRINTFMT;
 
 	field = list_entry(field->link.prev, struct ftrace_event_field, link);
-
-	/* Set the LSB to notify f_show to print an extra newline */
-	if (index == COMMON_FIELD_COUNT)
-		field = (struct ftrace_event_field *)
-			((unsigned long)field | 1);
 
 	return field;
 }
@@ -750,20 +675,14 @@ static int f_show(struct seq_file *m, void *v)
 		seq_printf(m, "format:\n");
 		return 0;
 
+	case FORMAT_FIELD_SEPERATOR:
+		seq_putc(m, '\n');
+		return 0;
+
 	case FORMAT_PRINTFMT:
 		seq_printf(m, "\nprint fmt: %s\n",
 			   call->print_fmt);
 		return 0;
-	}
-
-	/*
-	 * To separate common fields from event fields, the
-	 * LSB is set on the first event field. Clear it and
-	 * print a newline if it is set.
-	 */
-	if ((unsigned long)v & 1) {
-		seq_putc(m, '\n');
-		v = (void *)((unsigned long)v & ~1L);
 	}
 
 	field = v;
@@ -900,52 +819,6 @@ event_filter_write(struct file *filp, const char __user *ubuf, size_t cnt,
 	return cnt;
 }
 
-static LIST_HEAD(event_subsystems);
-
-static int subsystem_open(struct inode *inode, struct file *filp)
-{
-	struct event_subsystem *system = NULL;
-	int ret;
-
-	if (!inode->i_private)
-		goto skip_search;
-
-	/* Make sure the system still exists */
-	mutex_lock(&event_mutex);
-	list_for_each_entry(system, &event_subsystems, list) {
-		if (system == inode->i_private) {
-			/* Don't open systems with no events */
-			if (!system->nr_events) {
-				system = NULL;
-				break;
-			}
-			__get_system(system);
-			break;
-		}
-	}
-	mutex_unlock(&event_mutex);
-
-	if (system != inode->i_private)
-		return -ENODEV;
-
- skip_search:
-	ret = tracing_open_generic(inode, filp);
-	if (ret < 0 && system)
-		put_system(system);
-
-	return ret;
-}
-
-static int subsystem_release(struct inode *inode, struct file *file)
-{
-	struct event_subsystem *system = inode->i_private;
-
-	if (system)
-		put_system(system);
-
-	return 0;
-}
-
 static ssize_t
 subsystem_filter_read(struct file *filp, char __user *ubuf, size_t cnt,
 		      loff_t *ppos)
@@ -1080,17 +953,15 @@ static const struct file_operations ftrace_event_filter_fops = {
 };
 
 static const struct file_operations ftrace_subsystem_filter_fops = {
-	.open = subsystem_open,
+	.open = tracing_open_generic,
 	.read = subsystem_filter_read,
 	.write = subsystem_filter_write,
-	.release = subsystem_release,
 };
 
 static const struct file_operations ftrace_system_enable_fops = {
-	.open = subsystem_open,
+	.open = tracing_open_generic,
 	.read = system_enable_read,
 	.write = system_enable_write,
-	.release = subsystem_release,
 };
 
 static const struct file_operations ftrace_show_header_fops = {
@@ -1118,6 +989,8 @@ static struct dentry *event_trace_events_dir(void)
 	return d_events;
 }
 
+static LIST_HEAD(event_subsystems);
+
 static struct dentry *
 event_subsystem_dir(const char *name, struct dentry *d_events)
 {
@@ -1127,7 +1000,6 @@ event_subsystem_dir(const char *name, struct dentry *d_events)
 	/* First see if we did not already create this dir */
 	list_for_each_entry(system, &event_subsystems, list) {
 		if (strcmp(system->name, name) == 0) {
-			__get_system(system);
 			system->nr_events++;
 			return system->entry;
 		}
@@ -1150,7 +1022,6 @@ event_subsystem_dir(const char *name, struct dentry *d_events)
 	}
 
 	system->nr_events = 1;
-	system->ref_count = 1;
 	system->name = kstrdup(name, GFP_KERNEL);
 	if (!system->name) {
 		debugfs_remove(system->entry);
@@ -1178,7 +1049,8 @@ event_subsystem_dir(const char *name, struct dentry *d_events)
 			   "'%s/filter' entry\n", name);
 	}
 
-	trace_create_file("enable", 0644, system->entry, system,
+	trace_create_file("enable", 0644, system->entry,
+			  (void *)system->name,
 			  &ftrace_system_enable_fops);
 
 	return system->entry;
@@ -1299,9 +1171,16 @@ static void remove_subsystem_dir(const char *name)
 	list_for_each_entry(system, &event_subsystems, list) {
 		if (strcmp(system->name, name) == 0) {
 			if (!--system->nr_events) {
+				struct event_filter *filter = system->filter;
+
 				debugfs_remove_recursive(system->entry);
 				list_del(&system->list);
-				__put_system(system);
+				if (filter) {
+					kfree(filter->filter_string);
+					kfree(filter);
+				}
+				kfree(system->name);
+				kfree(system);
 			}
 			break;
 		}
