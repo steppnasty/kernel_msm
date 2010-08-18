@@ -12,6 +12,7 @@ config ARCH_MSM7X00A
 	bool "MSM7x00A / MSM7x01A"
 	select ARCH_MSM_ARM11
 	select CPU_V6
+	select HAS_MSM_DEBUG_UART_PHYS
 
 config ARCH_MSM7225
         bool "Qualcomm MSM7225"
@@ -32,6 +33,7 @@ config ARCH_MSM7X30
 	select MSM_GPIOMUX
 	select REGULATOR
 	select MSM_PROC_COMM_REGULATOR
+	select HAS_MSM_DEBUG_UART_PHYS
 	select MSM_MULTIMEDIA_USE_ION
 	select ARM_HAS_SG_CHAIN
 
@@ -41,6 +43,7 @@ config ARCH_QSD8X50
 	select MSM_VIC
 	select CPU_V7
 	select MSM_GPIOMUX
+	select HAS_MSM_DEBUG_UART_PHYS
 	select VERIFY_PERMISSION_FAULT
 
 config ARCH_MSM8X60
@@ -93,6 +96,9 @@ config  ARCH_MSM_SCORPIONMP
 config  ARCH_MSM_KRAITMP
 	select ARCH_MSM_KRAIT
 	select MSM_SMP
+	bool
+
+config HAS_MSM_DEBUG_UART_PHYS
 	bool
 
 config  MSM_VIC
@@ -249,6 +255,7 @@ config MSM_DEBUG_UART
 	default 11 if MSM_DEBUG_UART11
 	default 12 if MSM_DEBUG_UART12
 
+if HAS_MSM_DEBUG_UART_PHYS
 choice
 	prompt "Debug UART"
 
@@ -272,6 +279,7 @@ choice
 	config MSM_DEBUG_UART12
 		bool "UART12"
 endchoice
+endif
 
 config FORCE_WARNING_AS_ERROR
 	bool "Force warning as error"
