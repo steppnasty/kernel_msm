@@ -1488,6 +1488,8 @@ static void gcwq_mayday_timeout(unsigned long __gcwq)
  * otherwise.
  */
 static bool maybe_create_worker(struct global_cwq *gcwq)
+__releases(&gcwq->lock)
+__acquires(&gcwq->lock)
 {
 	if (!need_to_create_worker(gcwq))
 		return false;
@@ -1725,6 +1727,8 @@ static void cwq_dec_nr_in_flight(struct cpu_workqueue_struct *cwq, int color)
  * spin_lock_irq(gcwq->lock) which is released and regrabbed.
  */
 static void process_one_work(struct worker *worker, struct work_struct *work)
+__releases(&gcwq->lock)
+__acquires(&gcwq->lock)
 {
 	struct cpu_workqueue_struct *cwq = get_work_cwq(work);
 	struct global_cwq *gcwq = cwq->gcwq;
@@ -3239,6 +3243,8 @@ static int __cpuinit trustee_thread(void *__gcwq)
  * multiple times.  To be used by cpu_callback.
  */
 static void __cpuinit wait_trustee_state(struct global_cwq *gcwq, int state)
+__releases(&gcwq->lock)
+__acquires(&gcwq->lock)
 {
 	if (!(gcwq->trustee_state == state ||
 	      gcwq->trustee_state == TRUSTEE_DONE)) {
