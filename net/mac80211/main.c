@@ -813,6 +813,7 @@ void ieee80211_unregister_hw(struct ieee80211_hw *hw)
 	 */
 	del_timer_sync(&local->work_timer);
 
+	cancel_work_sync(&local->restart_work);
 	cancel_work_sync(&local->reconfig_filter);
 
 	ieee80211_clear_tx_pending(local);
