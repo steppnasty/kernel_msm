@@ -3341,7 +3341,7 @@ int __init ata_sff_init(void)
 	return 0;
 }
 
-void __exit ata_sff_exit(void)
+void ata_sff_exit(void)
 {
 	destroy_workqueue(ata_sff_wq);
 }
