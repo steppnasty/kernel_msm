@@ -34,7 +34,6 @@
 #include <mach/mx25.h>
 #include <mach/imx-uart.h>
 #include <mach/imxfb.h>
-#include <mach/ssi.h>
 #include <mach/audmux.h>
 
 #include "devices.h"
@@ -204,7 +203,8 @@ static struct i2c_board_info eukrea_mbimxsd_i2c_devices[] = {
 	},
 };
 
-struct imx_ssi_platform_data eukrea_mbimxsd_ssi_pdata = {
+static const
+struct imx_ssi_platform_data eukrea_mbimxsd_ssi_pdata __initconst = {
 	.flags = IMX_SSI_SYN | IMX_SSI_NET | IMX_SSI_USE_I2S_SLAVE,
 };
 
@@ -238,7 +238,7 @@ void __init eukrea_mbimxsd25_baseboard_init(void)
 
 	mxc_register_device(&mxc_uart_device1, &uart_pdata);
 	mxc_register_device(&mx25_fb_device, &eukrea_mximxsd_fb_pdata);
-	mxc_register_device(&imx_ssi_device0, &eukrea_mbimxsd_ssi_pdata);
+	imx25_add_imx_ssi(0, &eukrea_mbimxsd_ssi_pdata);
 
 	gpio_request(GPIO_LED1, "LED1");
 	gpio_direction_output(GPIO_LED1, 1);
