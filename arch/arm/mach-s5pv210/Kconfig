@@ -65,7 +65,7 @@ config MACH_AQUILA
 	select S5P_DEV_FIMC0
 	select S5P_DEV_FIMC1
 	select S5P_DEV_FIMC2
-	select S5PC110_DEV_ONENAND
+	select S5P_DEV_ONENAND
 	select S3C_DEV_HSMMC
 	select S3C_DEV_HSMMC1
 	select S3C_DEV_HSMMC2
@@ -82,7 +82,7 @@ config MACH_GONI
 	select S5P_DEV_FIMC0
 	select S5P_DEV_FIMC1
 	select S5P_DEV_FIMC2
-	select S5PC110_DEV_ONENAND
+	select S5P_DEV_ONENAND
 	select S3C_DEV_HSMMC
 	select S3C_DEV_HSMMC1
 	select S3C_DEV_HSMMC2
@@ -108,11 +108,6 @@ config MACH_SMDKC110
 	  S5PC110(MCP) is one of package option of S5PV210
 
 endmenu
-
-config S5PC110_DEV_ONENAND
-	bool
-	help
-	  Compile in platform device definition for OneNAND1 controller
 
 menu "S5PV210 Machines"
 
