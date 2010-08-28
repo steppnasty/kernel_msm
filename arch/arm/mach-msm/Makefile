@@ -301,7 +301,7 @@ obj-$(CONFIG_ARCH_MSM8X60) += gpiomux-8x60.o gpiomux-v2.o gpiomux.o
 ifdef CONFIG_MSM_V2_TLMM
 obj-y	+= gpio-v2.o
 else
-obj-y	+= gpio.o generic_gpio.o
+obj-y += generic_gpio.o
 endif
 obj-$(CONFIG_MSM_SLEEP_STATS) += msm_sleep_stats.o
 obj-$(CONFIG_MSM_SHOW_RESUME_IRQ) += msm_show_resume_irq.o
