@@ -3567,8 +3567,7 @@ static int __init init_workqueues(void)
 		spin_lock_init(&gcwq->lock);
 		INIT_LIST_HEAD(&gcwq->worklist);
 		gcwq->cpu = cpu;
-		if (cpu == WORK_CPU_UNBOUND)
-			gcwq->flags |= GCWQ_DISASSOCIATED;
+		gcwq->flags |= GCWQ_DISASSOCIATED;
 
 		INIT_LIST_HEAD(&gcwq->idle_list);
 		for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)
@@ -3592,6 +3591,8 @@ static int __init init_workqueues(void)
 		struct global_cwq *gcwq = get_gcwq(cpu);
 		struct worker *worker;
 
+		if (cpu != WORK_CPU_UNBOUND)
+			gcwq->flags &= ~GCWQ_DISASSOCIATED;
 		worker = create_worker(gcwq, true);
 		BUG_ON(!worker);
 		spin_lock_irq(&gcwq->lock);
