@@ -521,6 +521,7 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id)
 	init_timer(&q->unplug_timer);
 	setup_timer(&q->timeout, blk_rq_timed_out_timer, (unsigned long) q);
 	INIT_LIST_HEAD(&q->timeout_list);
+	INIT_LIST_HEAD(&q->pending_barriers);
 	INIT_WORK(&q->unplug_work, blk_unplug_work);
 
 	kobject_init(&q->kobj, &blk_queue_ktype);
@@ -1190,6 +1191,7 @@ static int __make_request(struct request_queue *q, struct bio *bio)
 	const bool sync = !!(bio->bi_rw & REQ_SYNC);
 	const bool unplug = !!(bio->bi_rw & REQ_UNPLUG);
 	const unsigned long ff = bio->bi_rw & REQ_FAILFAST_MASK;
+	int where = ELEVATOR_INSERT_SORT;
 	int rw_flags;
 
 	/* REQ_HARDBARRIER is no more */
@@ -1208,7 +1210,12 @@ static int __make_request(struct request_queue *q, struct bio *bio)
 
 	spin_lock_irq(q->queue_lock);
 
-	if (unlikely((bio->bi_rw & REQ_HARDBARRIER)) || elv_queue_empty(q))
+	if (bio->bi_rw & REQ_HARDBARRIER) {
+		where = ELEVATOR_INSERT_FRONT;
+		goto get_rq;
+	}
+
+	if (elv_queue_empty(q))
 		goto get_rq;
 
 	el_ret = elv_merge(q, &req, bio);
@@ -1308,7 +1315,7 @@ get_rq:
 
 	/* insert the request into the elevator */
 	drive_stat_acct(req, 1);
-	__elv_add_request(q, req, ELEVATOR_INSERT_SORT, 0);
+	__elv_add_request(q, req, where, 0);
 out:
 	if (unplug || !queue_should_plug(q))
 		__generic_unplug_device(q);

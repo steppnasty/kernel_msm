@@ -62,7 +62,7 @@ static inline struct request *__elv_next_request(struct request_queue *q)
 			rq = list_entry_rq(q->queue_head.next);
 			rq = blk_do_ordered(q, rq);
 			if (rq)
-				return !IS_ERR(rq) ? rq : NULL;
+				return rq;
 		}
 
 		if (test_bit(QUEUE_FLAG_DEAD, &q->queue_flags) ||
