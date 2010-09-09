@@ -2384,7 +2384,7 @@ static void create_hp_imux(struct via_spec *spec)
 	/* for hp mode select */
 	i = 0;
 	while (texts[i] != NULL) {
-		imux->items[imux->num_items].label =  texts[i];
+		strcpy(imux->items[imux->num_items].label, texts[i]);
 		imux->items[imux->num_items].index = i;
 		imux->num_items++;
 		i++;
@@ -2431,7 +2431,8 @@ static int vt_auto_create_analog_input_ctls(struct via_spec *spec,
 	/* for internal loopback recording select */
 	for (idx = 0; idx < num_idxs; idx++) {
 		if (pin_idxs[idx] == 0xff) {
-			imux->items[imux->num_items].label = "Stereo Mixer";
+			strcpy(imux->items[imux->num_items].label,
+			       "Stereo Mixer");
 			imux->items[imux->num_items].index = idx;
 			imux->num_items++;
 			break;
@@ -2453,8 +2454,8 @@ static int vt_auto_create_analog_input_ctls(struct via_spec *spec,
 					   type_idx, idx, cap_nid);
 		if (err < 0)
 			return err;
-		imux->items[imux->num_items].label =
-			snd_hda_get_input_pin_label(cfg, i);
+		snd_hda_get_input_pin_label(cfg, i,
+			imux->items[imux->num_items].label);
 		imux->items[imux->num_items].index = idx;
 		imux->num_items++;
 	}
@@ -4344,7 +4345,7 @@ static int vt1702_auto_create_hp_ctls(struct via_spec *spec, hda_nid_t pin)
 	/* for hp mode select */
 	i = 0;
 	while (texts[i] != NULL)	{
-		imux->items[imux->num_items].label =  texts[i];
+		strcpy(imux->items[imux->num_items].label, texts[i]);
 		imux->items[imux->num_items].index = i;
 		imux->num_items++;
 		i++;
@@ -5528,7 +5529,7 @@ static int vt2002P_auto_create_analog_input_ctls(struct via_spec *spec,
 		return err;
 
 	/* for digital mic select */
-	imux->items[imux->num_items].label = "Digital Mic";
+	strcpy(imux->items[imux->num_items].label, "Digital Mic");
 	imux->items[imux->num_items].index = 4;
 	imux->num_items++;
 
@@ -5851,7 +5852,7 @@ static int vt1812_auto_create_analog_input_ctls(struct via_spec *spec,
 		return err;
 
 	/* for digital mic select */
-	imux->items[imux->num_items].label = "Digital Mic";
+	strcpy(imux->items[imux->num_items].label, "Digital Mic");
 	imux->items[imux->num_items].index = 6;
 	imux->num_items++;
 
