@@ -5917,6 +5917,7 @@ inherit_event(struct perf_event *parent_event,
 	      struct perf_event_context *child_ctx)
 {
 	struct perf_event *child_event;
+	unsigned long flags;
 
 	/*
 	 * Instead of creating recursive hierarchies of events,
@@ -5961,7 +5962,9 @@ inherit_event(struct perf_event *parent_event,
 	/*
 	 * Link it up in the child's context:
 	 */
+	raw_spin_lock_irqsave(&child_ctx->lock, flags);
 	add_event_to_ctx(child_event, child_ctx);
+	raw_spin_unlock_irqrestore(&child_ctx->lock, flags);
 
 	/*
 	 * Get a reference to the parent filp - we will fput it
