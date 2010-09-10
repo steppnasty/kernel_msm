@@ -21,6 +21,7 @@
 #include <linux/irq.h>
 #include <linux/module.h>
 #include "gpio_hw.h"
+#include <mach/gpiomux.h>
 #include "proc_comm.h"
 #include "smd_private.h"
 
@@ -51,6 +52,8 @@ module_param_named(debug_mask, msm_gpio_debug_mask, int,
 			.direction_input = msm_gpio_direction_input,	\
 			.direction_output = msm_gpio_direction_output,	\
 			.to_irq = msm_gpio_to_irq,			\
+			.request = msm_gpio_request,			\
+			.free = msm_gpio_free,				\
 		}							\
 	}
 
@@ -177,6 +180,21 @@ static int msm_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 {
 	return MSM_GPIO_TO_INT(chip->base + offset);
 }
+
+#ifdef CONFIG_MSM_GPIOMUX
+static int msm_gpio_request(struct gpio_chip *chip, unsigned offset)
+{
+	return msm_gpiomux_get(chip->base + offset);
+}
+
+static void msm_gpio_free(struct gpio_chip *chip, unsigned offset)
+{
+	msm_gpiomux_put(chip->base + offset);
+}
+#else
+#define msm_gpio_request NULL
+#define msm_gpio_free NULL
+#endif
 
 struct msm_gpio_chip msm_gpio_chips[] = {
 #if defined(CONFIG_ARCH_MSM7X00A)
