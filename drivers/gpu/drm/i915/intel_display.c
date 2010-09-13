@@ -5186,8 +5186,6 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 	drm_crtc_init(dev, &intel_crtc->base, &intel_crtc_funcs);
 
 	drm_mode_crtc_set_gamma_size(&intel_crtc->base, 256);
-	intel_crtc->pipe = pipe;
-	intel_crtc->plane = pipe;
 	for (i = 0; i < 256; i++) {
 		intel_crtc->lut_r[i] = i;
 		intel_crtc->lut_g[i] = i;
@@ -5197,9 +5195,9 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 	/* Swap pipes & planes for FBC on pre-965 */
 	intel_crtc->pipe = pipe;
 	intel_crtc->plane = pipe;
-	if (IS_MOBILE(dev) && (IS_I9XX(dev) && !IS_I965G(dev))) {
+	if (IS_MOBILE(dev) && IS_GEN3(dev)) {
 		DRM_DEBUG_KMS("swapping pipes & planes for FBC\n");
-		intel_crtc->plane = ((pipe == 0) ? 1 : 0);
+		intel_crtc->plane = !pipe;
 	}
 
 	BUG_ON(pipe >= ARRAY_SIZE(dev_priv->plane_to_crtc_mapping) ||
