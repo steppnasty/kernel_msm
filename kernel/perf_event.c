@@ -3811,7 +3811,7 @@ static void perf_event_task_event(struct perf_task_event *task_event)
 	struct pmu *pmu;
 	int ctxn;
 
-	rcu_read_lock_sched();
+	rcu_read_lock();
 	list_for_each_entry_rcu(pmu, &pmus, entry) {
 		cpuctx = this_cpu_ptr(pmu->pmu_cpu_context);
 		perf_event_task_ctx(&cpuctx->ctx, task_event);
@@ -3826,7 +3826,7 @@ static void perf_event_task_event(struct perf_task_event *task_event)
 		if (ctx)
 			perf_event_task_ctx(ctx, task_event);
 	}
-	rcu_read_unlock_sched();
+	rcu_read_unlock();
 }
 
 static void perf_event_task(struct task_struct *task,
@@ -3944,7 +3944,7 @@ static void perf_event_comm_event(struct perf_comm_event *comm_event)
 
 	comm_event->event_id.header.size = sizeof(comm_event->event_id) + size;
 
-	rcu_read_lock_sched();
+	rcu_read_lock();
 	list_for_each_entry_rcu(pmu, &pmus, entry) {
 		cpuctx = this_cpu_ptr(pmu->pmu_cpu_context);
 		perf_event_comm_ctx(&cpuctx->ctx, comm_event);
@@ -3957,7 +3957,7 @@ static void perf_event_comm_event(struct perf_comm_event *comm_event)
 		if (ctx)
 			perf_event_comm_ctx(ctx, comm_event);
 	}
-	rcu_read_unlock_sched();
+	rcu_read_unlock();
 }
 
 void perf_event_comm(struct task_struct *task)
@@ -4127,7 +4127,7 @@ got_name:
 
 	mmap_event->event_id.header.size = sizeof(mmap_event->event_id) + size;
 
-	rcu_read_lock_sched();
+	rcu_read_lock();
 	list_for_each_entry_rcu(pmu, &pmus, entry) {
 		cpuctx = this_cpu_ptr(pmu->pmu_cpu_context);
 		perf_event_mmap_ctx(&cpuctx->ctx, mmap_event,
@@ -4143,7 +4143,7 @@ got_name:
 					vma->vm_flags & VM_EXEC);
 		}
 	}
-	rcu_read_unlock_sched();
+	rcu_read_unlock();
 
 	kfree(buf);
 }
@@ -5219,10 +5219,11 @@ void perf_pmu_unregister(struct pmu *pmu)
 	mutex_unlock(&pmus_lock);
 
 	/*
-	 * We use the pmu list either under SRCU or preempt_disable,
-	 * synchronize_srcu() implies synchronize_sched() so we're good.
+	 * We dereference the pmu list under both SRCU and regular RCU, so
+	 * synchronize against both of those.
 	 */
 	synchronize_srcu(&pmus_srcu);
+	synchronize_rcu();
 
 	free_percpu(pmu->pmu_disable_count);
 	free_pmu_context(pmu->pmu_cpu_context);
