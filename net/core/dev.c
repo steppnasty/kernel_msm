@@ -131,6 +131,7 @@
 #include <trace/events/net.h>
 #include <trace/events/skb.h>
 #include <linux/pci.h>
+#include <linux/inetdevice.h>
 
 #include "net-sysfs.h"
 
