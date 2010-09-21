@@ -628,6 +628,12 @@ struct drm_nouveau_private {
 		atomic_t validate_sequence;
 	} ttm;
 
+	struct {
+		spinlock_t lock;
+		struct drm_mm heap;
+		struct nouveau_bo *bo;
+	} fence;
+
 	int fifo_alloc_count;
 	struct nouveau_channel *fifos[NOUVEAU_MAX_CHANNEL_NR];
 
@@ -1243,6 +1249,8 @@ extern int nouveau_bo_sync_gpu(struct nouveau_bo *, struct nouveau_channel *);
 
 /* nouveau_fence.c */
 struct nouveau_fence;
+extern int nouveau_fence_init(struct drm_device *);
+extern void nouveau_fence_fini(struct drm_device *);
 extern int nouveau_fence_channel_init(struct nouveau_channel *);
 extern void nouveau_fence_channel_fini(struct nouveau_channel *);
 extern void nouveau_fence_update(struct nouveau_channel *);
