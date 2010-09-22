@@ -933,11 +933,11 @@ init_cifs(void)
 
 	rc = cifs_fscache_register();
 	if (rc)
-		goto out;
+		goto out_clean_proc;
 
 	rc = cifs_init_inodecache();
 	if (rc)
-		goto out_clean_proc;
+		goto out_unreg_fscache;
 
 	rc = cifs_init_mids();
 	if (rc)
@@ -958,22 +958,20 @@ init_cifs(void)
 
 	return 0;
 
- out_unregister_key_type:
 #ifdef CONFIG_CIFS_UPCALL
-	unregister_key_type(&cifs_spnego_key_type);
- out_unregister_filesystem:
-#endif
+out_unregister_filesystem:
 	unregister_filesystem(&cifs_fs_type);
- out_destroy_request_bufs:
+#endif
+out_destroy_request_bufs:
 	cifs_destroy_request_bufs();
- out_destroy_mids:
+out_destroy_mids:
 	cifs_destroy_mids();
- out_destroy_inodecache:
+out_destroy_inodecache:
 	cifs_destroy_inodecache();
- out_clean_proc:
-	cifs_proc_clean();
+out_unreg_fscache:
 	cifs_fscache_unregister();
- out:
+out_clean_proc:
+	cifs_proc_clean();
 	return rc;
 }
 
