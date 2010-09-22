@@ -2712,6 +2712,7 @@ static struct iwl_hcmd_utils_ops iwl3945_hcmd_utils = {
 	.build_addsta_hcmd = iwl3945_build_addsta_hcmd,
 	.rts_tx_cmd_flag = iwlcore_rts_tx_cmd_flag,
 	.request_scan = iwl3945_request_scan,
+	.post_scan = iwl3945_post_scan,
 };
 
 static const struct iwl_ops iwl3945_ops = {
