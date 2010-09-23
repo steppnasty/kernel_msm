@@ -2135,8 +2135,7 @@ intel_sdvo_tv_init(struct intel_sdvo *intel_sdvo, int type)
 	return true;
 
 err:
-	intel_sdvo_destroy_enhance_property(connector);
-	kfree(intel_sdvo_connector);
+	intel_sdvo_destroy(connector);
 	return false;
 }
 
@@ -2209,8 +2208,7 @@ intel_sdvo_lvds_init(struct intel_sdvo *intel_sdvo, int device)
 	return true;
 
 err:
-	intel_sdvo_destroy_enhance_property(connector);
-	kfree(intel_sdvo_connector);
+	intel_sdvo_destroy(connector);
 	return false;
 }
 
