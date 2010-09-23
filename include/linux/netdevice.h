@@ -1050,8 +1050,10 @@ struct net_device {
 #endif
 
 	/* mid-layer private */
-	void			*ml_priv;
-
+	union {
+		void				*ml_priv;
+		struct pcpu_lstats __percpu	*lstats; /* loopback stats */
+	};
 	/* bridge stuff */
 	struct net_bridge_port	*br_port;
 	/* GARP */
