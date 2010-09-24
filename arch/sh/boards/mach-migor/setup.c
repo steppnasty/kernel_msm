@@ -454,7 +454,6 @@ static struct soc_camera_link ov7725_link = {
 	.power		= ov7725_power,
 	.board_info	= &migor_i2c_camera[0],
 	.i2c_adapter_id	= 0,
-	.module_name	= "ov772x",
 	.priv		= &ov7725_info,
 };
 
@@ -467,7 +466,6 @@ static struct soc_camera_link tw9910_link = {
 	.power		= tw9910_power,
 	.board_info	= &migor_i2c_camera[1],
 	.i2c_adapter_id	= 0,
-	.module_name	= "tw9910",
 	.priv		= &tw9910_info,
 };
 
