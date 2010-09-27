@@ -89,27 +89,27 @@ static void op_perf_setup(void)
 
 static int op_create_counter(int cpu, int event)
 {
+	int ret = 0;
 	struct perf_event *pevent;
 
-	if (!counter_config[event].enabled || perf_events[cpu][event])
-		return 0;
+	if (!counter_config[event].enabled || (perf_events[cpu][event] != NULL))
+		return ret;
 
 	pevent = perf_event_create_kernel_counter(&counter_config[event].attr,
-						  cpu, NULL,
+						  cpu, -1,
 						  op_overflow_handler);
 
-	if (IS_ERR(pevent))
-		return PTR_ERR(pevent);
-
-	if (pevent->state != PERF_EVENT_STATE_ACTIVE) {
+	if (IS_ERR(pevent)) {
+		ret = PTR_ERR(pevent);
+	} else if (pevent->state != PERF_EVENT_STATE_ACTIVE) {
 		pr_warning("oprofile: failed to enable event %d "
 				"on CPU %d\n", event, cpu);
-		return -EBUSY;
+		ret = -EBUSY;
+	} else {
+		perf_events[cpu][event] = pevent;
 	}
 
-	perf_events[cpu][event] = pevent;
-
-	return 0;
+	return ret;
 }
 
 static void op_destroy_counter(int cpu, int event)
@@ -134,10 +134,11 @@ static int op_perf_start(void)
 		for (event = 0; event < num_counters; ++event) {
 			ret = op_create_counter(cpu, event);
 			if (ret)
-				return ret;
+				goto out;
 		}
 	}
 
+out:
 	return ret;
 }
 
@@ -263,7 +264,7 @@ static int __init init_driverfs(void)
 
 	ret = platform_driver_register(&oprofile_driver);
 	if (ret)
-		return ret;
+		goto out;
 
 	oprofile_pdev =	platform_device_register_simple(
 				oprofile_driver.driver.name, 0, NULL, 0);
@@ -272,6 +273,7 @@ static int __init init_driverfs(void)
 		platform_driver_unregister(&oprofile_driver);
 	}
 
+out:
 	return ret;
 }
 
@@ -347,7 +349,74 @@ static void arm_backtrace(struct pt_regs * const regs, unsigned int depth)
 		tail = user_backtrace(tail);
 }
 
-void oprofile_arch_exit(void)
+int __init oprofile_perf_init(struct oprofile_operations *ops)
+{
+	int cpu, ret = 0;
+
+	memset(&perf_events, 0, sizeof(perf_events));
+
+	num_counters = perf_num_counters();
+	if (num_counters <= 0) {
+		pr_info("oprofile: no performance counters\n");
+		ret = -ENODEV;
+		goto out;
+	}
+
+	counter_config = kcalloc(num_counters,
+			sizeof(struct op_counter_config), GFP_KERNEL);
+
+	if (!counter_config) {
+		pr_info("oprofile: failed to allocate %d "
+				"counters\n", num_counters);
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	ret = init_driverfs();
+	if (ret)
+		goto out;
+
+	for_each_possible_cpu(cpu) {
+		perf_events[cpu] = kcalloc(num_counters,
+				sizeof(struct perf_event *), GFP_KERNEL);
+		if (!perf_events[cpu]) {
+			pr_info("oprofile: failed to allocate %d perf events "
+					"for cpu %d\n", num_counters, cpu);
+			ret = -ENOMEM;
+			goto out;
+		}
+	}
+
+	ops->create_files	= oprofile_perf_create_files;
+	ops->setup		= oprofile_perf_setup;
+	ops->start		= oprofile_perf_start;
+	ops->stop		= oprofile_perf_stop;
+	ops->shutdown		= oprofile_perf_stop;
+	ops->cpu_type		= op_name_from_perf_id();
+
+	if (!ops->cpu_type)
+		ret = -ENODEV;
+	else
+		pr_info("oprofile: using %s\n", ops->cpu_type);
+
+out:
+	if (ret) {
+		for_each_possible_cpu(cpu)
+			kfree(perf_events[cpu]);
+		kfree(counter_config);
+	}
+
+	return ret;
+}
+
+int __init oprofile_arch_init(struct oprofile_operations *ops)
+{
+	ops->backtrace		= arm_backtrace;
+
+	return oprofile_perf_init(ops);
+}
+
+void __exit oprofile_perf_exit(void)
 {
 	int cpu, id;
 	struct perf_event *event;
@@ -366,65 +435,10 @@ void oprofile_arch_exit(void)
 	exit_driverfs();
 }
 
-int __init oprofile_arch_init(struct oprofile_operations *ops)
+void __exit oprofile_arch_exit(void)
 {
-	int cpu, ret = 0;
-
-	ret = init_driverfs();
-	if (ret)
-		return ret;
-
-	memset(&perf_events, 0, sizeof(perf_events));
-
-	num_counters = perf_num_counters();
-	if (num_counters <= 0) {
-		pr_info("oprofile: no performance counters\n");
-		ret = -ENODEV;
-		goto out;
-	}
-
-	counter_config = kcalloc(num_counters,
-			sizeof(struct op_counter_config), GFP_KERNEL);
-
-	if (!counter_config) {
-		pr_info("oprofile: failed to allocate %d "
-				"counters\n", num_counters);
-		ret = -ENOMEM;
-		perf_num_counters = 0;
-		goto out;
-	}
-
-	for_each_possible_cpu(cpu) {
-		perf_events[cpu] = kcalloc(num_counters,
-				sizeof(struct perf_event *), GFP_KERNEL);
-		if (!perf_events[cpu]) {
-			pr_info("oprofile: failed to allocate %d perf events "
-					"for cpu %d\n", num_counters, cpu);
-			ret = -ENOMEM;
-			goto out;
-		}
-	}
-
-	ops->backtrace		= arm_backtrace;
-	ops->create_files	= oprofile_perf_create_files;
-	ops->setup		= oprofile_perf_setup;
-	ops->start		= oprofile_perf_start;
-	ops->stop		= oprofile_perf_stop;
-	ops->shutdown		= oprofile_perf_stop;
-	ops->cpu_type		= op_name_from_perf_id();
-
-	if (!ops->cpu_type)
-		ret = -ENODEV;
-	else
-		pr_info("oprofile: using %s\n", ops->cpu_type);
-
-out:
-	if (ret)
-		oprofile_arch_exit();
-
-	return ret;
+	oprofile_perf_exit();
 }
-
 #else
 int __init oprofile_arch_init(struct oprofile_operations *ops)
 {
