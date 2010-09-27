@@ -4092,7 +4092,7 @@ static inline bool ixgbe_set_sriov_queues(struct ixgbe_adapter *adapter)
  * fallthrough conditions.
  *
  **/
-static void ixgbe_set_num_queues(struct ixgbe_adapter *adapter)
+static int ixgbe_set_num_queues(struct ixgbe_adapter *adapter)
 {
 	/* Start with base case */
 	adapter->num_rx_queues = 1;
@@ -4101,7 +4101,7 @@ static void ixgbe_set_num_queues(struct ixgbe_adapter *adapter)
 	adapter->num_rx_queues_per_pool = 1;
 
 	if (ixgbe_set_sriov_queues(adapter))
-		return;
+		goto done;
 
 #ifdef IXGBE_FCOE
 	if (ixgbe_set_fcoe_queues(adapter))
@@ -4124,8 +4124,10 @@ static void ixgbe_set_num_queues(struct ixgbe_adapter *adapter)
 	adapter->num_tx_queues = 1;
 
 done:
-	/* Notify the stack of the (possibly) reduced Tx Queue count. */
+	/* Notify the stack of the (possibly) reduced queue counts. */
 	netif_set_real_num_tx_queues(adapter->netdev, adapter->num_tx_queues);
+	return netif_set_real_num_rx_queues(adapter->netdev,
+					    adapter->num_rx_queues);
 }
 
 static void ixgbe_acquire_msix_vectors(struct ixgbe_adapter *adapter,
@@ -4554,7 +4556,9 @@ static int ixgbe_set_interrupt_capability(struct ixgbe_adapter *adapter)
 	if (adapter->flags & IXGBE_FLAG_SRIOV_ENABLED)
 		ixgbe_disable_sriov(adapter);
 
-	ixgbe_set_num_queues(adapter);
+	err = ixgbe_set_num_queues(adapter);
+	if (err)
+		return err;
 
 	err = pci_enable_msi(adapter->pdev);
 	if (!err) {
@@ -4679,7 +4683,9 @@ int ixgbe_init_interrupt_scheme(struct ixgbe_adapter *adapter)
 	int err;
 
 	/* Number of supported queues */
-	ixgbe_set_num_queues(adapter);
+	err = ixgbe_set_num_queues(adapter);
+	if (err)
+		return err;
 
 	err = ixgbe_set_interrupt_capability(adapter);
 	if (err) {
