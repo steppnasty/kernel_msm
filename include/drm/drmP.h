@@ -1158,6 +1158,7 @@ extern int drm_release(struct inode *inode, struct file *filp);
 extern int drm_mmap(struct file *filp, struct vm_area_struct *vma);
 extern int drm_mmap_locked(struct file *filp, struct vm_area_struct *vma);
 extern void drm_vm_open_locked(struct vm_area_struct *vma);
+extern void drm_vm_close_locked(struct vm_area_struct *vma);
 extern unsigned int drm_poll(struct file *filp, struct poll_table_struct *wait);
 
 				/* Memory management support (drm_memory.h) */
