@@ -224,8 +224,10 @@ static int intel_fbdev_destroy(struct drm_device *dev,
 	drm_fb_helper_fini(&ifbdev->helper);
 
 	drm_framebuffer_cleanup(&ifb->base);
-	if (ifb->obj)
+	if (ifb->obj) {
+		drm_gem_object_handle_unreference(ifb->obj);
 		drm_gem_object_unreference(ifb->obj);
+	}
 
 	return 0;
 }
