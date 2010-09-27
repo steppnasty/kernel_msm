@@ -349,4 +349,5 @@ void __init zoom_peripherals_init(void)
 	platform_device_register(&omap_vwlan_device);
 	usb_musb_init(&musb_board_data);
 	enable_board_wakeup_source();
+	omap_serial_init();
 }
