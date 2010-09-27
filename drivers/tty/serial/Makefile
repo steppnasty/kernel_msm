@@ -97,3 +97,4 @@ obj-$(CONFIG_SERIAL_ALTERA_UART) += altera_uart.o
 obj-$(CONFIG_SERIAL_BCM_BT_LPM) += bcm_bt_lpm.o
 obj-$(CONFIG_SERIAL_MRST_MAX3110)	+= mrst_max3110.o
 obj-$(CONFIG_SERIAL_MFD_HSU)	+= mfd.o
+obj-$(CONFIG_SERIAL_OMAP) += omap-serial.o
