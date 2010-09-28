@@ -53,7 +53,7 @@ endif
 obj-$(CONFIG_MARIMBA_TSADC)	+= marimba-tsadc.o
 obj-$(CONFIG_BAHAMA_CORE)	+= bahama-core.o
 obj-$(CONFIG_TPS65023)		+= tps65023.o
-obj-$(CONFIG_MFD_MC13783)	+= mc13783-core.o
+obj-$(CONFIG_MFD_MC13XXX)	+= mc13xxx-core.o
 
 obj-$(CONFIG_MFD_CORE)		+= mfd-core.o
 
