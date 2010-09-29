@@ -1289,6 +1289,7 @@ static int pipe_skb_send(struct sock *sk, struct sk_buff *skb)
 {
 	struct pep_sock *pn = pep_sk(sk);
 	struct pnpipehdr *ph;
+	int err;
 #ifdef CONFIG_PHONET_PIPECTRLR
 	struct sockaddr_pn spn = {
 		.spn_family = AF_PHONET,
@@ -1315,10 +1316,15 @@ static int pipe_skb_send(struct sock *sk, struct sk_buff *skb)
 		ph->message_id = PNS_PIPE_DATA;
 	ph->pipe_handle = pn->pipe_handle;
 #ifdef CONFIG_PHONET_PIPECTRLR
-	return pn_skb_send(sk, skb, &spn);
+	err = pn_skb_send(sk, skb, &spn);
 #else
-	return pn_skb_send(sk, skb, &pipe_srv);
+	err = pn_skb_send(sk, skb, &pipe_srv);
 #endif
+
+	if (err && pn_flow_safe(pn->tx_fc))
+		atomic_inc(&pn->tx_credits);
+	return err;
+
 }
 
 static int pep_sendmsg(struct kiocb *iocb, struct sock *sk,
