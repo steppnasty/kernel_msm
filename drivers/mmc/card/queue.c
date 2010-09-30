@@ -260,7 +260,9 @@ int mmc_init_queue(struct mmc_queue *mq, struct mmc_card *card, spinlock_t *lock
 	else if (mmc_card_sdio(card))
 		mq->thread = kthread_run(mmc_queue_thread, mq, "sdio-qd");
 	else
-		mq->thread = kthread_run(mmc_queue_thread, mq, "mmcqd");
+		mq->thread = kthread_run(mmc_queue_thread, mq, "mmcqd/%d",
+			host->index);
+
 	if (IS_ERR(mq->thread)) {
 		ret = PTR_ERR(mq->thread);
 		goto free_bounce_sg;
