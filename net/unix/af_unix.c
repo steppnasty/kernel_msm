@@ -1531,6 +1531,8 @@ restart:
 		goto restart;
 	}
 
+	if (sock_flag(other, SOCK_RCVTSTAMP))
+		__net_timestamp(skb);
 	skb_queue_tail(&other->sk_receive_queue, skb);
 	if (max_level > unix_sk(other)->recursion_level)
 		unix_sk(other)->recursion_level = max_level;
@@ -1747,6 +1749,9 @@ static int unix_dgram_recvmsg(struct kiocb *iocb, struct socket *sock,
 	err = skb_copy_datagram_iovec(skb, 0, msg->msg_iov, size);
 	if (err)
 		goto out_free;
+
+	if (sock_flag(sk, SOCK_RCVTSTAMP))
+		__sock_recv_timestamp(msg, sk, skb);
 
 	if (!siocb->scm) {
 		siocb->scm = &tmp_scm;
