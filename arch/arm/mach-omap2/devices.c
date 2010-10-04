@@ -26,10 +26,10 @@
 #include <plat/control.h>
 #include <plat/tc.h>
 #include <plat/board.h>
+#include <plat/mcbsp.h>
 #include <mach/gpio.h>
 #include <plat/mmc.h>
 #include <plat/dma.h>
-#include <plat/mcbsp.h>
 #include <plat/omap_hwmod.h>
 #include <plat/omap_device.h>
 
