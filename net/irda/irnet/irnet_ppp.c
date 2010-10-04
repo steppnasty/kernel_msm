@@ -483,7 +483,6 @@ dev_irnet_open(struct inode *	inode,
   ap = kzalloc(sizeof(*ap), GFP_KERNEL);
   DABORT(ap == NULL, -ENOMEM, FS_ERROR, "Can't allocate struct irnet...\n");
 
-  lock_kernel();
   /* initialize the irnet structure */
   ap->file = file;
 
@@ -505,18 +504,20 @@ dev_irnet_open(struct inode *	inode,
     {
       DERROR(FS_ERROR, "Can't setup IrDA link...\n");
       kfree(ap);
-      unlock_kernel();
+
       return err;
     }
 
   /* For the control channel */
   ap->event_index = irnet_events.index;	/* Cancel all past events */
 
+  mutex_init(&ap->lock);
+
   /* Put our stuff where we will be able to find it later */
   file->private_data = ap;
 
   DEXIT(FS_TRACE, " - ap=0x%p\n", ap);
-  unlock_kernel();
+
   return 0;
 }
 
@@ -667,7 +668,9 @@ dev_irnet_ioctl(
 	{
 	  DEBUG(FS_INFO, "Entering PPP discipline.\n");
 	  /* PPP channel setup (ap->chan in configured in dev_irnet_open())*/
-	  lock_kernel();
+	  if (mutex_lock_interruptible(&ap->lock))
+		  return -EINTR;
+
 	  err = ppp_register_channel(&ap->chan);
 	  if(err == 0)
 	    {
@@ -680,14 +683,17 @@ dev_irnet_ioctl(
 	    }
 	  else
 	    DERROR(FS_ERROR, "Can't setup PPP channel...\n");
-          unlock_kernel();
+
+          mutex_unlock(&ap->lock);
 	}
       else
 	{
 	  /* In theory, should be N_TTY */
 	  DEBUG(FS_INFO, "Exiting PPP discipline.\n");
 	  /* Disconnect from the generic PPP layer */
-	  lock_kernel();
+	  if (mutex_lock_interruptible(&ap->lock))
+		  return -EINTR;
+
 	  if(ap->ppp_open)
 	    {
 	      ap->ppp_open = 0;
@@ -696,24 +702,31 @@ dev_irnet_ioctl(
 	  else
 	    DERROR(FS_ERROR, "Channel not registered !\n");
 	  err = 0;
-	  unlock_kernel();
+
+	  mutex_unlock(&ap->lock);
 	}
       break;
 
       /* Query PPP channel and unit number */
     case PPPIOCGCHAN:
-      lock_kernel();
+      if (mutex_lock_interruptible(&ap->lock))
+	      return -EINTR;
+
       if(ap->ppp_open && !put_user(ppp_channel_index(&ap->chan),
 						(int __user *)argp))
 	err = 0;
-      unlock_kernel();
+
+      mutex_unlock(&ap->lock);
       break;
     case PPPIOCGUNIT:
-      lock_kernel();
+      if (mutex_lock_interruptible(&ap->lock))
+	      return -EINTR;
+
       if(ap->ppp_open && !put_user(ppp_unit_number(&ap->chan),
 						(int __user *)argp))
         err = 0;
-      unlock_kernel();
+
+      mutex_unlock(&ap->lock);
       break;
 
       /* All these ioctls can be passed both directly and from ppp_generic,
@@ -733,9 +746,12 @@ dev_irnet_ioctl(
       if(!capable(CAP_NET_ADMIN))
 	err = -EPERM;
       else {
-	lock_kernel();
+	if (mutex_lock_interruptible(&ap->lock))
+	      return -EINTR;
+
 	err = ppp_irnet_ioctl(&ap->chan, cmd, arg);
-	unlock_kernel();
+
+	mutex_unlock(&ap->lock);
       }
       break;
 
@@ -743,7 +759,9 @@ dev_irnet_ioctl(
       /* Get termios */
     case TCGETS:
       DEBUG(FS_INFO, "Get termios.\n");
-      lock_kernel();
+      if (mutex_lock_interruptible(&ap->lock))
+	      return -EINTR;
+
 #ifndef TCGETS2
       if(!kernel_termios_to_user_termios((struct termios __user *)argp, &ap->termios))
 	err = 0;
@@ -751,12 +769,15 @@ dev_irnet_ioctl(
       if(kernel_termios_to_user_termios_1((struct termios __user *)argp, &ap->termios))
 	err = 0;
 #endif
-      unlock_kernel();
+
+      mutex_unlock(&ap->lock);
       break;
       /* Set termios */
     case TCSETSF:
       DEBUG(FS_INFO, "Set termios.\n");
-      lock_kernel();
+      if (mutex_lock_interruptible(&ap->lock))
+	      return -EINTR;
+
 #ifndef TCGETS2
       if(!user_termios_to_kernel_termios(&ap->termios, (struct termios __user *)argp))
 	err = 0;
@@ -764,7 +785,8 @@ dev_irnet_ioctl(
       if(!user_termios_to_kernel_termios_1(&ap->termios, (struct termios __user *)argp))
 	err = 0;
 #endif
-      unlock_kernel();
+
+      mutex_unlock(&ap->lock);
       break;
 
       /* Set DTR/RTS */
@@ -787,9 +809,10 @@ dev_irnet_ioctl(
        * We should also worry that we don't accept junk here and that
        * we get rid of our own buffers */
 #ifdef FLUSH_TO_PPP
-      lock_kernel();
+      if (mutex_lock_interruptible(&ap->lock))
+	      return -EINTR;
       ppp_output_wakeup(&ap->chan);
-      unlock_kernel();
+      mutex_unlock(&ap->lock);
 #endif /* FLUSH_TO_PPP */
       err = 0;
       break;
