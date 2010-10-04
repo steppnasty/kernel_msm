@@ -26,13 +26,13 @@
 #include <linux/vfs.h>
 #include <linux/highuid.h>
 #include <linux/sched.h>
-#include <linux/smb_fs.h>
-#include <linux/smbno.h>
-#include <linux/smb_mount.h>
 
 #include <asm/system.h>
 #include <asm/uaccess.h>
 
+#include "smb_fs.h"
+#include "smbno.h"
+#include "smb_mount.h"
 #include "smb_debug.h"
 #include "getopt.h"
 #include "proto.h"
@@ -501,12 +501,10 @@ static int smb_fill_super(struct super_block *sb, void *raw_data, int silent)
 	void *mem;
 	static int warn_count;
 
-	lock_kernel();
-
 	if (warn_count < 5) {
 		warn_count++;
 		printk(KERN_EMERG "smbfs is deprecated and will be removed"
-			" from the 2.6.27 kernel. Please migrate to cifs\n");
+			" from the 2.6.37 kernel. Please migrate to cifs\n");
 	}
 
 	if (!raw_data)
@@ -623,7 +621,6 @@ static int smb_fill_super(struct super_block *sb, void *raw_data, int silent)
 
 	smb_new_dentry(sb->s_root);
 
-	unlock_kernel();
 	return 0;
 
 out_no_root:
@@ -646,11 +643,9 @@ out_wrong_data:
 out_no_data:
 	printk(KERN_ERR "smb_fill_super: missing data argument\n");
 out_fail:
-	unlock_kernel();
 	return -EINVAL;
 out_no_server:
 	printk(KERN_ERR "smb_fill_super: cannot allocate struct smb_sb_info\n");
-	unlock_kernel();
 	return -ENOMEM;
 }
 
