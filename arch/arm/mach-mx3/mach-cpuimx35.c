@@ -46,7 +46,6 @@
 #include <mach/iomux-mx35.h>
 #include <mach/mxc_nand.h>
 #include <mach/mxc_ehci.h>
-#include <mach/ulpi.h>
 
 #include "devices.h"
 
@@ -168,17 +167,12 @@ static void __init mxc_board_init(void)
 			ARRAY_SIZE(eukrea_cpuimx35_i2c_devices));
 	mxc_register_device(&mxc_i2c_device0, &eukrea_cpuimx35_i2c_1_data);
 
-#if defined(CONFIG_USB_ULPI)
-	if (otg_mode_host) {
-		otg_pdata.otg = otg_ulpi_create(&mxc_ulpi_access_ops,
-				ULPI_OTG_DRVVBUS | ULPI_OTG_DRVVBUS_EXT);
-
+	if (otg_mode_host)
 		mxc_register_device(&mxc_otg_host, &otg_pdata);
-	}
-	mxc_register_device(&mxc_usbh1, &usbh1_pdata);
-#endif
-	if (!otg_mode_host)
+	else
 		mxc_register_device(&mxc_otg_udc_device, &otg_device_pdata);
+
+	mxc_register_device(&mxc_usbh1, &usbh1_pdata);
 
 #ifdef CONFIG_MACH_EUKREA_MBIMXSD35_BASEBOARD
 	eukrea_mbimxsd35_baseboard_init();
