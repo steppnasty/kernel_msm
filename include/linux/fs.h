@@ -1735,6 +1735,7 @@ static inline void file_accessed(struct file *file)
 }
 
 int sync_inode(struct inode *inode, struct writeback_control *wbc);
+int sync_inode_metadata(struct inode *inode, int wait);
 
 struct file_system_type {
 	const char *name;
