@@ -1832,9 +1832,11 @@ void page_zero_new_buffers(struct page *page, unsigned from, unsigned to)
 }
 EXPORT_SYMBOL(page_zero_new_buffers);
 
-int block_prepare_write(struct page *page, unsigned from, unsigned to,
+int __block_write_begin(struct page *page, loff_t pos, unsigned len,
 		get_block_t *get_block)
 {
+	unsigned from = pos & (PAGE_CACHE_SIZE - 1);
+	unsigned to = from + len;
 	struct inode *inode = page->mapping->host;
 	unsigned block_start, block_end;
 	sector_t block;
@@ -1914,7 +1916,7 @@ int block_prepare_write(struct page *page, unsigned from, unsigned to,
 	}
 	return err;
 }
-EXPORT_SYMBOL(block_prepare_write);
+EXPORT_SYMBOL(__block_write_begin);
 
 static int __block_commit_write(struct inode *inode, struct page *page,
 		unsigned from, unsigned to)
@@ -1950,15 +1952,6 @@ static int __block_commit_write(struct inode *inode, struct page *page,
 		SetPageUptodate(page);
 	return 0;
 }
-
-int __block_write_begin(struct page *page, loff_t pos, unsigned len,
-		get_block_t *get_block)
-{
-	unsigned start = pos & (PAGE_CACHE_SIZE - 1);
-
-	return block_prepare_write(page, start, start + len, get_block);
-}
-EXPORT_SYMBOL(__block_write_begin);
 
 /*
  * block_write_begin takes care of the basic task of block allocation and
@@ -2377,7 +2370,7 @@ block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
 	else
 		end = PAGE_CACHE_SIZE;
 
-	ret = block_prepare_write(page, 0, end, get_block);
+	ret = __block_write_begin(page, 0, end, get_block);
 	if (!ret)
 		ret = block_commit_write(page, 0, end);
 
