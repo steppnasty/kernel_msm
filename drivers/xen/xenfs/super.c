@@ -102,6 +102,7 @@ static int xenfs_fill_super(struct super_block *sb, void *data, int silent)
 		[1] = {},
 		{ "xenbus", &xenbus_file_ops, S_IRUSR|S_IWUSR },
 		{ "capabilities", &capabilities_file_ops, S_IRUGO },
+		{ "privcmd", &privcmd_file_ops, S_IRUSR|S_IWUSR },
 		{""},
 	};
 	int rc;
@@ -115,8 +116,6 @@ static int xenfs_fill_super(struct super_block *sb, void *data, int silent)
 				  &xsd_kva_file_ops, NULL, S_IRUSR|S_IWUSR);
 		xenfs_create_file(sb, sb->s_root, "xsd_port",
 				  &xsd_port_file_ops, NULL, S_IRUSR|S_IWUSR);
-		xenfs_create_file(sb, sb->s_root, "privcmd",
-				  &privcmd_file_ops, NULL, S_IRUSR|S_IWUSR);
 	}
 
 	return rc;
