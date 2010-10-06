@@ -23,7 +23,6 @@
 #include <linux/clk.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
-#include <linux/fec.h>
 #include <linux/platform_device.h>
 #include <linux/usb/otg.h>
 #include <linux/usb/ulpi.h>
@@ -68,7 +67,7 @@ static struct pad_desc eukrea_cpuimx25_pads[] = {
 	MX25_PAD_I2C1_DAT__I2C1_DAT,
 };
 
-static struct fec_platform_data mx25_fec_pdata = {
+static const struct fec_platform_data mx25_fec_pdata __initconst = {
 	.phy	= PHY_INTERFACE_MODE_RMII,
 };
 
@@ -128,7 +127,7 @@ static void __init eukrea_cpuimx25_init(void)
 	mxc_register_device(&mxc_uart_device0, &uart_pdata);
 	mxc_register_device(&mxc_nand_device, &eukrea_cpuimx25_nand_board_info);
 	mxc_register_device(&mx25_rtc_device, NULL);
-	mxc_register_device(&mx25_fec_device, &mx25_fec_pdata);
+	imx25_add_fec(&mx25_fec_pdata);
 
 	i2c_register_board_info(0, eukrea_cpuimx25_i2c_devices,
 				ARRAY_SIZE(eukrea_cpuimx25_i2c_devices));
