@@ -9,7 +9,6 @@ typedef struct {
 } ____cacheline_aligned irq_cpustat_t;
 
 #include <linux/irq_cpustat.h>	/* Standard mappings for irq_cpustat_t above */
-#include <linux/irq.h>
 
 #ifndef ack_bad_irq
 static inline void ack_bad_irq(unsigned int irq)
