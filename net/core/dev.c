@@ -1602,8 +1602,6 @@ int netif_set_real_num_rx_queues(struct net_device *dev, unsigned int rxq)
 						  rxq);
 		if (rc)
 			return rc;
-	} else {
-		dev->num_rx_queues = rxq;
 	}
 
 	dev->real_num_rx_queues = rxq;
