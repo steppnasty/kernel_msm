@@ -33,11 +33,11 @@
 
 #include <plat/board.h>
 #include <plat/common.h>
-#include <plat/control.h>
 #include <plat/usb.h>
 #include <plat/display.h>
 
 #include "mux.h"
+#include "control.h"
 
 #define AM35XX_EVM_MDIO_FREQUENCY	(1000000)
 
