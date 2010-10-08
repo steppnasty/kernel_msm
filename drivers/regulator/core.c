@@ -70,7 +70,8 @@ struct regulator {
 };
 
 static int _regulator_is_enabled(struct regulator_dev *rdev);
-static int _regulator_disable(struct regulator_dev *rdev);
+static int _regulator_disable(struct regulator_dev *rdev,
+		struct regulator_dev **supply_rdev_ptr);
 static int _regulator_get_voltage(struct regulator_dev *rdev);
 static int _regulator_get_current_limit(struct regulator_dev *rdev);
 static unsigned int _regulator_get_mode(struct regulator_dev *rdev);
@@ -1392,7 +1393,8 @@ out:
 EXPORT_SYMBOL_GPL(regulator_enable);
 
 /* locks held by regulator_disable() */
-static int _regulator_disable(struct regulator_dev *rdev)
+static int _regulator_disable(struct regulator_dev *rdev,
+		struct regulator_dev **supply_rdev_ptr)
 {
 	int ret = 0;
 
@@ -1420,8 +1422,7 @@ static int _regulator_disable(struct regulator_dev *rdev)
 		}
 
 		/* decrease our supplies ref count and disable if required */
-		if (rdev->supply)
-			_regulator_disable(rdev->supply);
+		*supply_rdev_ptr = rdev->supply;
 
 		rdev->use_count = 0;
 	} else if (rdev->use_count > 1) {
@@ -1451,11 +1452,11 @@ static int _regulator_disable(struct regulator_dev *rdev)
 int regulator_disable(struct regulator *regulator)
 {
 	struct regulator_dev *rdev = regulator->rdev;
+	struct regulator_dev *supply_rdev = NULL;
 	int ret = 0;
 
 	mutex_lock(&rdev->mutex);
-
-	ret = _regulator_disable(rdev);
+	ret = _regulator_disable(rdev, &supply_rdev);
 	if (ret)
 		goto out;
 
@@ -1463,12 +1464,23 @@ int regulator_disable(struct regulator *regulator)
 
 out:
 	mutex_unlock(&rdev->mutex);
+
+	/* decrease our supplies ref count and disable if required */
+	while (supply_rdev != NULL) {
+		rdev = supply_rdev;
+
+		mutex_lock(&rdev->mutex);
+		_regulator_disable(rdev, &supply_rdev);
+		mutex_unlock(&rdev->mutex);
+	}
+
 	return ret;
 }
 EXPORT_SYMBOL_GPL(regulator_disable);
 
 /* locks held by regulator_force_disable() */
-static int _regulator_force_disable(struct regulator_dev *rdev)
+static int _regulator_force_disable(struct regulator_dev *rdev,
+		struct regulator_dev **supply_rdev_ptr)
 {
 	int ret = 0;
 
@@ -1487,8 +1499,7 @@ static int _regulator_force_disable(struct regulator_dev *rdev)
 	}
 
 	/* decrease our supplies ref count and disable if required */
-	if (rdev->supply)
-		_regulator_disable(rdev->supply);
+	*supply_rdev_ptr = rdev->supply;
 
 	rdev->use_count = 0;
 	return ret;
@@ -1505,12 +1516,17 @@ static int _regulator_force_disable(struct regulator_dev *rdev)
  */
 int regulator_force_disable(struct regulator *regulator)
 {
+	struct regulator_dev *supply_rdev = NULL;
 	int ret;
 
 	mutex_lock(&regulator->rdev->mutex);
 	regulator->uA_load = 0;
-	ret = _regulator_force_disable(regulator->rdev);
+	ret = _regulator_force_disable(regulator->rdev, &supply_rdev);
 	mutex_unlock(&regulator->rdev->mutex);
+
+	if (supply_rdev)
+		regulator_disable(get_device_regulator(rdev_get_dev(supply_rdev)));
+
 	return ret;
 }
 EXPORT_SYMBOL_GPL(regulator_force_disable);
