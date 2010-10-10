@@ -19,14 +19,14 @@
  *
  */
 
-#include "wl1251_debugfs.h"
+#include "debugfs.h"
 
 #include <linux/skbuff.h>
 #include <linux/slab.h>
 
 #include "wl1251.h"
-#include "wl1251_acx.h"
-#include "wl1251_ps.h"
+#include "acx.h"
+#include "ps.h"
 
 /* ms */
 #define WL1251_DEBUGFS_STATS_LIFETIME 1000
@@ -48,7 +48,6 @@ static ssize_t name## _read(struct file *file, char __user *userbuf,	\
 static const struct file_operations name## _ops = {			\
 	.read = name## _read,						\
 	.open = wl1251_open_file_generic,				\
-	.llseek	= generic_file_llseek,					\
 };
 
 #define DEBUGFS_ADD(name, parent)					\
@@ -85,7 +84,6 @@ static ssize_t sub## _ ##name## _read(struct file *file,		\
 static const struct file_operations sub## _ ##name## _ops = {		\
 	.read = sub## _ ##name## _read,					\
 	.open = wl1251_open_file_generic,				\
-	.llseek	= generic_file_llseek,					\
 };
 
 #define DEBUGFS_FWSTATS_ADD(sub, name)				\
