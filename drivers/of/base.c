@@ -58,7 +58,7 @@ DEFINE_RWLOCK(devtree_lock);
 
 int of_n_addr_cells(struct device_node *np)
 {
-	const int *ip;
+	const __be32 *ip;
 
 	do {
 		if (np->parent)
@@ -74,7 +74,7 @@ EXPORT_SYMBOL(of_n_addr_cells);
 
 int of_n_size_cells(struct device_node *np)
 {
-	const int *ip;
+	const __be32 *ip;
 
 	do {
 		if (np->parent)
