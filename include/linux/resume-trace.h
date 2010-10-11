@@ -15,9 +15,10 @@ enum {
 
 #ifdef CONFIG_PM_TRACE
 #include <asm/resume-trace.h>
+#include <linux/types.h>
 
 extern int pm_trace_enabled;
-extern int pm_trace_mask;
+extern int pm_trace_dev_match;
 
 static inline int pm_trace_is_enabled(void)
 {
@@ -27,6 +28,7 @@ static inline int pm_trace_is_enabled(void)
 struct device;
 extern void set_trace_device(struct device *);
 extern void generate_resume_trace(const void *tracedata, unsigned int user);
+extern int show_trace_dev_match(char *buf, size_t size);
 
 #ifdef CONFIG_PM_TRACE_RTC
 #define TRACE_DEVICE(dev) do { \
@@ -38,7 +40,7 @@ extern void generate_resume_trace(const void *tracedata, unsigned int user);
 #endif
 
 #define TRACE_MASK(type, format, arg...) do {\
-	if (pm_trace_mask & type) \
+	if (pm_trace_dev_match & type) \
 		pr_info("[PM.%x] " format, type, ## arg); \
 	} while(0)
 

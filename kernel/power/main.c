@@ -293,29 +293,23 @@ pm_trace_store(struct kobject *kobj, struct kobj_attribute *attr,
 
 power_attr(pm_trace);
 
-int pm_trace_mask;
-static ssize_t
-pm_trace_mask_show(struct kobject *kobj, struct kobj_attribute *attr,
-			     char *buf)
+int pm_trace_dev_match;
+static ssize_t pm_trace_dev_match_show(struct kobject *kobj,
+				       struct kobj_attribute *attr,
+				       char *buf)
 {
-	return sprintf(buf, "%d\n", pm_trace_mask);
+	return show_trace_dev_match(buf, PAGE_SIZE);
 }
 
 static ssize_t
-pm_trace_mask_store(struct kobject *kobj, struct kobj_attribute *attr,
-	       const char *buf, size_t n)
+pm_trace_dev_match_store(struct kobject *kobj, struct kobj_attribute *attr,
+			 const char *buf, size_t n)
 {
-	int val;
-
-	if (sscanf(buf, "%d", &val) > 0) {
-		pm_trace_mask = val;
-		return n;
-	}
 	return -EINVAL;
 }
 
+power_attr(pm_trace_dev_match);
 
-power_attr(pm_trace_mask);
 #endif /* CONFIG_PM_TRACE */
 
 #ifdef CONFIG_USER_WAKELOCK
@@ -367,7 +361,7 @@ static struct attribute * g[] = {
 	&state_attr.attr,
 #ifdef CONFIG_PM_TRACE
 	&pm_trace_attr.attr,
-	&pm_trace_mask_attr.attr,
+	&pm_trace_dev_match_attr.attr,
 #endif
 #ifdef CONFIG_PM_SLEEP
 	&pm_async_attr.attr,
