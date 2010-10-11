@@ -263,8 +263,10 @@ enum ocfs2_mount_options
 						   control lists */
 	OCFS2_MOUNT_USRQUOTA = 1 << 10, /* We support user quotas */
 	OCFS2_MOUNT_GRPQUOTA = 1 << 11, /* We support group quotas */
-	OCFS2_MOUNT_HB_NONE = 1 << 12, /* No heartbeat */
-	OCFS2_MOUNT_HB_GLOBAL = 1 << 13, /* Global heartbeat */
+	OCFS2_MOUNT_COHERENCY_BUFFERED = 1 << 12 /* Allow concurrent O_DIRECT
+						    writes */
+	OCFS2_MOUNT_HB_NONE = 1 << 13, /* No heartbeat */
+	OCFS2_MOUNT_HB_GLOBAL = 1 << 14, /* Global heartbeat */
 };
 
 #define OCFS2_OSB_SOFT_RO			0x0001

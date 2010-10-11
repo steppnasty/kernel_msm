@@ -178,6 +178,8 @@ enum {
 	Opt_noacl,
 	Opt_usrquota,
 	Opt_grpquota,
+	Opt_coherency_buffered,
+	Opt_coherency_full,
 	Opt_resv_level,
 	Opt_dir_resv_level,
 	Opt_err,
@@ -207,6 +209,8 @@ static const match_table_t tokens = {
 	{Opt_noacl, "noacl"},
 	{Opt_usrquota, "usrquota"},
 	{Opt_grpquota, "grpquota"},
+	{Opt_coherency_buffered, "coherency=buffered"},
+	{Opt_coherency_full, "coherency=full"},
 	{Opt_resv_level, "resv_level=%u"},
 	{Opt_dir_resv_level, "dir_resv_level=%u"},
 	{Opt_err, NULL}
@@ -1463,6 +1467,12 @@ static int ocfs2_parse_options(struct super_block *sb,
 		case Opt_grpquota:
 			mopt->mount_opt |= OCFS2_MOUNT_GRPQUOTA;
 			break;
+		case Opt_coherency_buffered:
+			mopt->mount_opt |= OCFS2_MOUNT_COHERENCY_BUFFERED;
+			break;
+		case Opt_coherency_full:
+			mopt->mount_opt &= ~OCFS2_MOUNT_COHERENCY_BUFFERED;
+			break;
 		case Opt_acl:
 			mopt->mount_opt |= OCFS2_MOUNT_POSIX_ACL;
 			mopt->mount_opt &= ~OCFS2_MOUNT_NO_POSIX_ACL;
@@ -1573,6 +1583,11 @@ static int ocfs2_show_options(struct seq_file *s, struct vfsmount *mnt)
 		seq_printf(s, ",usrquota");
 	if (opts & OCFS2_MOUNT_GRPQUOTA)
 		seq_printf(s, ",grpquota");
+
+	if (opts & OCFS2_MOUNT_COHERENCY_BUFFERED)
+		seq_printf(s, ",coherency=buffered");
+	else
+		seq_printf(s, ",coherency=full");
 
 	if (opts & OCFS2_MOUNT_NOUSERXATTR)
 		seq_printf(s, ",nouser_xattr");
