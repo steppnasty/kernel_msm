@@ -404,7 +404,7 @@ static noinline_for_stack int ethtool_get_rxfh_indir(struct net_device *dev,
 	    (KMALLOC_MAX_SIZE - sizeof(*indir)) / sizeof(*indir->ring_index))
 		return -ENOMEM;
 	full_size = sizeof(*indir) + sizeof(*indir->ring_index) * table_size;
-	indir = kmalloc(full_size, GFP_USER);
+	indir = kzalloc(full_size, GFP_USER);
 	if (!indir)
 		return -ENOMEM;
 
@@ -816,7 +816,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
 	if (regs.len > reglen)
 		regs.len = reglen;
 
-	regbuf = vmalloc(reglen);
+	regbuf = kzalloc(reglen, GFP_USER);
 	if (!regbuf)
 		return -ENOMEM;
 
@@ -1286,7 +1286,7 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
 
 	gstrings.len = ret;
 
-	data = kmalloc(gstrings.len * ETH_GSTRING_LEN, GFP_USER);
+	data = kzalloc(gstrings.len * ETH_GSTRING_LEN, GFP_USER);
 	if (!data)
 		return -ENOMEM;
 
