@@ -1,7 +1,7 @@
 /* arch/arm/mach-msm/clock.h
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007-2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2007-2011, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -17,11 +17,8 @@
 #ifndef __ARCH_ARM_MACH_MSM_CLOCK_H
 #define __ARCH_ARM_MACH_MSM_CLOCK_H
 
-#if defined (CONFIG_ARCH_MSM8X60)
 #include <linux/init.h>
 #include <linux/types.h>
-#endif
-#include <linux/list.h>
 #include <mach/clk.h>
 #include <linux/timer.h>
 #include "clock-pcom.h"
@@ -73,11 +70,9 @@ struct clk {
 	uint32_t remote_id;
 	uint32_t count;
 	uint32_t flags;
-	const char *name;
 	struct clk_ops *ops;
 	const char *dbg_name;
 	struct list_head list;
-	struct device *dev;
 	struct hlist_head voters;
 	const char *aggregator;
 };
@@ -203,13 +198,6 @@ struct clk {
 
 void clk_enter_sleep(int from_idle);
 void clk_exit_sleep(void);
-
-#define CLOCK(clk_name, clk_id, clk_dev, clk_flags, clk_arch) {	\
-	.name = clk_name, \
-	.id = clk_id, \
-	.flags = (clk_flags) | ((clk_arch) & CLKFLAG_ARCH_ALL), \
-	.dev = clk_dev, \
-	}
 
 #define OFF CLKFLAG_AUTO_OFF
 #define MINMAX (CLKFLAG_USE_MIN_TO_SET | CLKFLAG_USE_MAX_TO_SET)

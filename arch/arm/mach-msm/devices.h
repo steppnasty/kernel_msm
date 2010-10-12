@@ -1,7 +1,7 @@
 /* linux/arch/arm/mach-msm/devices.h
  *
  * Copyright (C) 2008 Google, Inc.
- * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
  * Modified 2014, Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -19,9 +19,7 @@
 #define __ARCH_ARM_MACH_MSM_DEVICES_H
 
 #include "clock.h"
-#ifdef CONFIG_ARCH_MSM8X60
 #include <asm/clkdev.h>
-#endif
 
 extern struct platform_device msm_ebi0_thermal;
 extern struct platform_device msm_ebi1_thermal;
@@ -110,25 +108,23 @@ extern struct platform_device qsdnew_device_spi;
 extern struct platform_device *msm_footswitch_devices[];
 extern unsigned msm_num_footswitch_devices;
 
-extern struct clk msm_clocks_7x01a[];
+extern struct clk_lookup msm_clocks_7x01a[];
 extern unsigned msm_num_clocks_7x01a;
 
-extern struct clk msm_clocks_7x25[];
+extern struct clk_lookup msm_clocks_7x25[];
 extern unsigned msm_num_clocks_7x25;
 
-extern struct clk msm_clocks_7x27[];
+extern struct clk_lookup msm_clocks_7x27[];
 extern unsigned msm_num_clocks_7x27;
 
-extern struct clk msm_clocks_7x30[];
+extern struct clk_lookup msm_clocks_7x30[];
 extern unsigned msm_num_clocks_7x30;
 
-extern struct clk msm_clocks_8x50[];
+extern struct clk_lookup msm_clocks_8x50[];
 extern unsigned msm_num_clocks_8x50;
 
-#ifdef CONFIG_ARCH_MSM8X60
 extern struct clk_lookup msm_clocks_8x60[];
 extern unsigned msm_num_clocks_8x60;
-#endif
 
 void __init msm_fb_register_device(char *name, void *data);
 void __init msm_camera_register_device(void *, uint32_t, void *);

@@ -1,7 +1,7 @@
 /* arch/arm/mach-msm/clock.c
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007 QUALCOMM Incorporated
+ * Copyright (c) 2007-2011, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -28,6 +28,9 @@
 #include <linux/device.h>
 #include <linux/seq_file.h>
 #include <linux/pm_qos.h>
+
+#include <asm/clkdev.h>
+
 #include "mach/socinfo.h"
 
 #include "clock.h"
@@ -55,32 +58,6 @@ static inline int pc_pll_request(unsigned id, unsigned on)
 /*
  * Standard clock functions defined in include/linux/clk.h
  */
-struct clk *clk_get(struct device *dev, const char *id)
-{
-	struct clk *clk;
-
-	mutex_lock(&clocks_mutex);
-
-	list_for_each_entry(clk, &clocks, list)
-		if (!strcmp(id, clk->name) && clk->dev == dev)
-			goto found_it;
-
-	list_for_each_entry(clk, &clocks, list)
-		if (!strcmp(id, clk->name) && clk->dev == NULL)
-			goto found_it;
-
-	clk = ERR_PTR(-ENOENT);
-found_it:
-	mutex_unlock(&clocks_mutex);
-	return clk;
-}
-EXPORT_SYMBOL(clk_get);
-
-void clk_put(struct clk *clk)
-{
-}
-EXPORT_SYMBOL(clk_put);
-
 int clk_enable(struct clk *clk)
 {
 	unsigned long flags;
@@ -211,7 +188,7 @@ static int axi_freq_notifier_handler(struct notifier_block *block,
 	return 0;
 }
 
-void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks)
+void __init msm_clock_init(struct clk_lookup *clock_tbl, unsigned num_clocks)
 {
 	unsigned n;
 	struct clk *clk;
@@ -221,16 +198,15 @@ void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks)
 
 	spin_lock_init(&clocks_lock);
 	mutex_lock(&clocks_mutex);
-	msm_clocks = clock_tbl;
-	msm_num_clocks = num_clocks;
-	for (n = 0; n < msm_num_clocks; n++) {
-		msm_clk_soc_set_ops(&msm_clocks[n]);
-		list_add_tail(&msm_clocks[n].list, &clocks);
+	for (n = 0; n < num_clocks; n++) {
+		msm_clk_soc_set_ops(clock_tbl[n].clk);
+		clkdev_add(&clock_tbl[n]);
+		list_add_tail(&clock_tbl[n].clk->list, &clocks);
 	}
 	mutex_unlock(&clocks_mutex);
 
 	for (n = 0; n < num_clocks; n++) {
-		clk = &clock_tbl[n];
+		clk = clock_tbl[n].clk;
 		if (clk->flags & CLKFLAG_VOTER) {
 			struct clk *agg_clk = clk_get(NULL, clk->aggregator);
 			BUG_ON(IS_ERR(agg_clk));

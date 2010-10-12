@@ -1,7 +1,7 @@
 /* arch/arm/mach-msm/include/mach/board.h
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2011, Code Aurora Forum. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -25,6 +25,8 @@
 #include <linux/leds-pmic8058.h>
 #include <mach/msm_bus.h>
 #include "msm_ssbi.h"
+
+#include <asm/clkdev.h>
 
 #define BIT0                    0x00000001
 #define BIT1                    0x00000002
@@ -564,7 +566,7 @@ void __init msm_map_msm7x30_io(void);
 void __init msm_map_comet_io(void);
 void __init msm_init_irq(void);
 
-void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks);
+void __init msm_clock_init(struct clk_lookup *clock_tbl, unsigned num_clocks);
 #ifdef CONFIG_ARCH_MSM8X60
 struct mmc_platform_data;
 int __init msm_add_sdcc(unsigned int controller,

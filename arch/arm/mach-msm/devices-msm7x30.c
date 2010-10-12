@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 Google, Inc.
- * Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2011, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -17,6 +17,7 @@
 #include <mach/kgsl.h>
 #include <mach/irqs.h>
 #include <mach/msm_iomap.h>
+#include <asm/clkdev.h>
 
 #include "devices.h"
 #include "clock-7x30.h"
@@ -137,8 +138,8 @@ struct platform_device msm_kgsl_2d0 = {
 	},
 };
 
-struct clk msm_clocks_7x30[] = {
-	CLK_PCOM("core_clk", ADM_CLK, &msm_device_dmov.dev, 0),
+struct clk_lookup msm_clocks_7x30[] = {
+	CLK_PCOM("core_clk", ADM_CLK, "msm_dmov", 0),
 	CLK_PCOM("adsp_clk", ADSP_CLK, NULL, 0),
 	CLK_PCOM("cam_m_clk", CAM_M_CLK, NULL, 0),
 	CLK_PCOM("camif_pad_pclk", CAMIF_PAD_P_CLK, NULL, OFF),
@@ -154,8 +155,8 @@ struct clk msm_clocks_7x30[] = {
 	CLK_PCOM("grp_pclk", GRP_3D_P_CLK, NULL, 0),
 	CLK_7X30S("grp_src_clk", GRP_3D_SRC_CLK, GRP_3D_CLK, NULL, 0),
 	CLK_PCOM("hdmi_clk", HDMI_CLK, NULL, 0),
-	CLK_PCOM("i2c_clk", I2C_CLK, &msm_device_i2c.dev, 0),
-	CLK_PCOM("i2c_clk", I2C_2_CLK, &msm_device_i2c_2.dev, 0),
+	CLK_PCOM("i2c_clk", I2C_CLK, "msm_i2c.0", 0),
+	CLK_PCOM("i2c_clk", I2C_2_CLK, "msm_i2c.2", 0),
 	CLK_PCOM("imem_clk", IMEM_CLK, NULL, OFF),
 	CLK_PCOM("jpeg_clk", JPEG_CLK, NULL, OFF),
 	CLK_PCOM("jpeg_pclk", JPEG_P_CLK, NULL, OFF),
@@ -182,29 +183,29 @@ struct clk msm_clocks_7x30[] = {
         CLK_PCOM("mi2s_s_clk", MI2S_S_CLK, NULL, 0),
 	CLK_PCOM("pbus_clk", PBUS_CLK, NULL, USE_MIN),
 	CLK_PCOM("pcm_clk", PCM_CLK, NULL, 0),
-	CLK_PCOM("qup_clk", QUP_I2C_CLK, &qup_device_i2c.dev, 0),
+	CLK_PCOM("qup_clk", QUP_I2C_CLK, "qup_i2c.4", 0),
 	CLK_PCOM("rotator_clk", AXI_ROTATOR_CLK, NULL, 0),
 	CLK_PCOM("rotator_imem_clk", ROTATOR_IMEM_CLK, NULL, OFF),
 	CLK_PCOM("rotator_pclk", ROTATOR_P_CLK, NULL, OFF),
 	CLK_PCOM("sdac_clk", SDAC_CLK, NULL, OFF),
-	CLK_PCOM("sdc_clk", SDC1_CLK, &msm_device_sdc1.dev, OFF),
-	CLK_PCOM("sdc_pclk", SDC1_P_CLK, &msm_device_sdc1.dev, OFF),
-	CLK_PCOM("sdc_clk", SDC2_CLK, &msm_device_sdc2.dev, OFF),
-	CLK_PCOM("sdc_pclk", SDC2_P_CLK, &msm_device_sdc2.dev, OFF),
-	CLK_PCOM("sdc_clk", SDC3_CLK, &msm_device_sdc3.dev, OFF),
-	CLK_PCOM("sdc_pclk", SDC3_P_CLK, &msm_device_sdc3.dev, OFF),
-	CLK_PCOM("sdc_clk", SDC4_CLK, &msm_device_sdc4.dev, OFF),
-	CLK_PCOM("sdc_pclk", SDC4_P_CLK, &msm_device_sdc4.dev, OFF),
+	CLK_PCOM("sdc_clk", SDC1_CLK, "msm_sdcc.1", OFF),
+	CLK_PCOM("sdc_pclk", SDC1_P_CLK, "msm_sdcc.1", OFF),
+	CLK_PCOM("sdc_clk", SDC2_CLK, "msm_sdcc.2", OFF),
+	CLK_PCOM("sdc_pclk", SDC2_P_CLK, "msm_sdcc.2", OFF),
+	CLK_PCOM("sdc_clk", SDC3_CLK, "msm_sdcc.3", OFF),
+	CLK_PCOM("sdc_pclk", SDC3_P_CLK, "msm_sdcc.3", OFF),
+	CLK_PCOM("sdc_clk", SDC4_CLK, "msm_sdcc.4", OFF),
+	CLK_PCOM("sdc_pclk", SDC4_P_CLK, "msm_sdcc.4", OFF),
 	CLK_PCOM("spi_clk", SPI_CLK, NULL, 0),
 	CLK_PCOM("spi_pclk", SPI_P_CLK, NULL, OFF),
 	CLK_7X30S("tv_src_clk", TV_CLK, TV_ENC_CLK, NULL, 0),
 	CLK_PCOM("tv_dac_clk", TV_DAC_CLK, NULL, 0),
 	CLK_PCOM("tv_enc_clk", TV_ENC_CLK, NULL, 0),
-	CLK_PCOM("uart_clk", UART1_CLK, &msm_device_uart1.dev, OFF),
-	CLK_PCOM("uart_clk", UART2_CLK, &msm_device_uart2.dev, 0),
-	CLK_PCOM("uart_clk", UART3_CLK, &msm_device_uart3.dev, OFF),
-	CLK_PCOM("uartdm_clk", UART1DM_CLK, &msm_device_uart_dm1.dev, OFF),
-	CLK_PCOM("uartdm_clk", UART2DM_CLK, &msm_device_uart_dm2.dev, 0),
+	CLK_PCOM("uart_clk", UART1_CLK, "msm_serial.0", OFF),
+	CLK_PCOM("uart_clk", UART2_CLK, "msm_serial.1", 0),
+	CLK_PCOM("uart_clk", UART3_CLK, "msm_serial.2", OFF),
+	CLK_PCOM("uartdm_clk", UART1DM_CLK, "msm_serial_hs.0", OFF),
+	CLK_PCOM("uartdm_clk", UART2DM_CLK, "msm_serial_hs.1", 0),
 	CLK_PCOM("usb_hs_clk", USB_HS_CLK, NULL, OFF),
 	CLK_PCOM("usb_hs_pclk", USB_HS_P_CLK, NULL, OFF),
 	/* Now we can't close these usb clocks at the beginning change OFF to 0 temporarily */
