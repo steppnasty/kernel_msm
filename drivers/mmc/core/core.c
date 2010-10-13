@@ -1786,6 +1786,19 @@ int mmc_suspend_host(struct mmc_host *host)
 			if (!(host->card && mmc_card_sdio(host->card)))
 				mmc_do_release_host(host);
 
+			if (err == -ENOSYS || !host->bus_ops->resume) {
+				/*
+				 * We simply "remove" the card in this case.
+				 * It will be redetected on resume.
+				 */
+				if (host->bus_ops->remove)
+					host->bus_ops->remove(host);
+				mmc_claim_host(host);
+				mmc_detach_bus(host);
+				mmc_release_host(host);
+				host->pm_flags = 0;
+				err = 0;
+			}
 		}
 		flush_delayed_work(&host->disable);
 	}
