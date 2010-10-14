@@ -34,7 +34,7 @@
 
 #include <asm/irq_regs.h>
 
-static atomic_t nr_events __read_mostly;
+atomic_t perf_task_events __read_mostly;
 static atomic_t nr_mmap_events __read_mostly;
 static atomic_t nr_comm_events __read_mostly;
 static atomic_t nr_task_events __read_mostly;
@@ -1312,8 +1312,8 @@ void perf_event_context_sched_out(struct task_struct *task, int ctxn,
  * accessing the event control register. If a NMI hits, then it will
  * not restart the event.
  */
-void perf_event_task_sched_out(struct task_struct *task,
-			       struct task_struct *next)
+void __perf_event_task_sched_out(struct task_struct *task,
+				 struct task_struct *next)
 {
 	int ctxn;
 
@@ -1336,14 +1336,6 @@ static void task_ctx_sched_out(struct perf_event_context *ctx,
 
 	ctx_sched_out(ctx, cpuctx, event_type);
 	cpuctx->task_ctx = NULL;
-}
-
-/*
- * Called with IRQs disabled
- */
-static void __perf_event_task_sched_out(struct perf_event_context *ctx)
-{
-	task_ctx_sched_out(ctx, EVENT_ALL);
 }
 
 /*
@@ -1495,7 +1487,7 @@ void perf_event_context_sched_in(struct perf_event_context *ctx)
  * accessing the event control register. If a NMI hits, then it will
  * keep the event running.
  */
-void perf_event_task_sched_in(struct task_struct *task)
+void __perf_event_task_sched_in(struct task_struct *task)
 {
 	struct perf_event_context *ctx;
 	int ctxn;
@@ -2217,7 +2209,8 @@ static void free_event(struct perf_event *event)
 	irq_work_sync(&event->pending);
 
 	if (!event->parent) {
-		atomic_dec(&nr_events);
+		if (event->attach_state & PERF_ATTACH_TASK)
+			jump_label_dec(&perf_task_events);
 		if (event->attr.mmap || event->attr.mmap_data)
 			atomic_dec(&nr_mmap_events);
 		if (event->attr.comm)
@@ -5353,7 +5346,8 @@ done:
 	event->pmu = pmu;
 
 	if (!event->parent) {
-		atomic_inc(&nr_events);
+		if (event->attach_state & PERF_ATTACH_TASK)
+			jump_label_inc(&perf_task_events);
 		if (event->attr.mmap || event->attr.mmap_data)
 			atomic_inc(&nr_mmap_events);
 		if (event->attr.comm)
@@ -5851,7 +5845,7 @@ static void perf_event_exit_task_context(struct task_struct *child, int ctxn)
 	 * our context.
 	 */
 	child_ctx = child->perf_event_ctxp[ctxn];
-	__perf_event_task_sched_out(child_ctx);
+	task_ctx_sched_out(child_ctx, EVENT_ALL);
 
 	/*
 	 * Take the context lock here so that if find_get_context is
