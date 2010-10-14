@@ -5254,9 +5254,10 @@ unlock:
  */
 static struct perf_event *
 perf_event_alloc(struct perf_event_attr *attr, int cpu,
-		   struct perf_event *group_leader,
-		   struct perf_event *parent_event,
-		   perf_overflow_handler_t overflow_handler)
+		 struct task_struct *task,
+		 struct perf_event *group_leader,
+		 struct perf_event *parent_event,
+		 perf_overflow_handler_t overflow_handler)
 {
 	struct pmu *pmu;
 	struct perf_event *event;
@@ -5297,6 +5298,17 @@ perf_event_alloc(struct perf_event_attr *attr, int cpu,
 	event->id		= atomic64_inc_return(&perf_event_id);
 
 	event->state		= PERF_EVENT_STATE_INACTIVE;
+
+	if (task) {
+		event->attach_state = PERF_ATTACH_TASK;
+#ifdef CONFIG_HAVE_HW_BREAKPOINT
+		/*
+		 * hw_breakpoint is a bit difficult here..
+		 */
+		if (attr->type == PERF_TYPE_BREAKPOINT)
+			event->hw.bp_target = task;
+#endif
+	}
 
 	if (!overflow_handler && parent_event)
 		overflow_handler = parent_event->overflow_handler;
@@ -5558,7 +5570,7 @@ SYSCALL_DEFINE5(perf_event_open,
 		}
 	}
 
-	event = perf_event_alloc(&attr, cpu, group_leader, NULL, NULL);
+	event = perf_event_alloc(&attr, cpu, task, group_leader, NULL, NULL);
 	if (IS_ERR(event)) {
 		err = PTR_ERR(event);
 		goto err_task;
@@ -5727,7 +5739,7 @@ perf_event_create_kernel_counter(struct perf_event_attr *attr, int cpu,
 	 * Get the target context (task or percpu):
 	 */
 
-	event = perf_event_alloc(attr, cpu, NULL, NULL, overflow_handler);
+	event = perf_event_alloc(attr, cpu, task, NULL, NULL, overflow_handler);
 	if (IS_ERR(event)) {
 		err = PTR_ERR(event);
 		goto err;
@@ -5998,6 +6010,7 @@ inherit_event(struct perf_event *parent_event,
 
 	child_event = perf_event_alloc(&parent_event->attr,
 					   parent_event->cpu,
+					   child,
 					   group_leader, parent_event,
 					   NULL);
 	if (IS_ERR(child_event))
