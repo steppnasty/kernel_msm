@@ -234,12 +234,6 @@ void __init mrst_rtc_init(void)
 	sfi_table_parse(SFI_SIG_MRTC, NULL, NULL, sfi_parse_mrtc);
 }
 
-/* MID systems don't have i8042 controller */
-static int mrst_i8042_detect(void)
-{
-	return 0;
-}
-
 void __cpuinit mrst_arch_setup(void)
 {
 	if (boot_cpu_data.x86 == 6 && boot_cpu_data.x86_model == 0x27)
@@ -254,6 +248,12 @@ void __cpuinit mrst_arch_setup(void)
 	pr_debug("Moorestown CPU %s identified\n",
 		(__mrst_cpu_chip == MRST_CPU_CHIP_LINCROFT) ?
 		"Lincroft" : "Penwell");
+}
+
+/* MID systems don't have i8042 controller */
+static int mrst_i8042_detect(void)
+{
+	return 0;
 }
 
 /*
