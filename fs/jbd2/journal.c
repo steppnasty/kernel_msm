@@ -484,7 +484,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
 	if (journal->j_running_transaction &&
 	    journal->j_running_transaction->t_tid == target) {
 		/*
-		 * We want a new commit: OK, mark the request and wakup the
+		 * We want a new commit: OK, mark the request and wakeup the
 		 * commit thread.  We do _not_ do the commit ourselves.
 		 */
 
