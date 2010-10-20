@@ -2803,33 +2803,6 @@ out:
 }
 #endif
 
-/*
- * 	netif_nit_deliver - deliver received packets to network taps
- * 	@skb: buffer
- *
- * 	This function is used to deliver incoming packets to network
- * 	taps. It should be used when the normal netif_receive_skb path
- * 	is bypassed, for example because of VLAN acceleration.
- */
-void netif_nit_deliver(struct sk_buff *skb)
-{
-	struct packet_type *ptype;
-
-	if (list_empty(&ptype_all))
-		return;
-
-	skb_reset_network_header(skb);
-	skb_reset_transport_header(skb);
-	skb->mac_len = skb->network_header - skb->mac_header;
-
-	rcu_read_lock();
-	list_for_each_entry_rcu(ptype, &ptype_all, list) {
-		if (!ptype->dev || ptype->dev == skb->dev)
-			deliver_skb(skb, ptype, skb->dev);
-	}
-	rcu_read_unlock();
-}
-
 /**
  *	netdev_rx_handler_register - register receive handler
  *	@dev: device to register a handler for
@@ -2940,9 +2913,6 @@ static int __netif_receive_skb(struct sk_buff *skb)
 		net_timestamp_check(skb);
 
 	trace_netif_receive_skb(skb);
-	if (vlan_tx_tag_present(skb))
-		vlan_hwaccel_do_receive(skb);
-
 	/* if we've gotten here through NAPI, check netpoll */
 	if (netpoll_receive_skb(skb))
 		return NET_RX_DROP;
@@ -2955,8 +2925,7 @@ static int __netif_receive_skb(struct sk_buff *skb)
 	 * be delivered to pkt handlers that are exact matches.  Also
 	 * the deliver_no_wcard flag will be set.  If packet handlers
 	 * are sensitive to duplicate packets these skbs will need to
-	 * be dropped at the handler.  The vlan accel path may have
-	 * already set the deliver_no_wcard flag.
+	 * be dropped at the handler.
 	 */
 	null_or_orig = NULL;
 	orig_dev = skb->dev;
@@ -3012,6 +2981,18 @@ ncls:
 		}
 		skb = rx_handler(skb);
 		if (!skb)
+			goto out;
+	}
+
+	if (vlan_tx_tag_present(skb)) {
+		if (pt_prev) {
+			ret = deliver_skb(skb, pt_prev, orig_dev);
+			pt_prev = NULL;
+		}
+		if (vlan_hwaccel_do_receive(&skb)) {
+			ret = __netif_receive_skb(skb);
+			goto out;
+		} else if (unlikely(!skb))
 			goto out;
 	}
 
@@ -3279,6 +3260,7 @@ __napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
 		unsigned long diffs;
 
 		diffs = (unsigned long)p->dev ^ (unsigned long)skb->dev;
+		diffs |= p->vlan_tci ^ skb->vlan_tci;
 		diffs |= compare_ether_header(skb_mac_header(p),
 					      skb_gro_mac_header(skb));
 		NAPI_GRO_CB(p)->same_flow = !diffs;
@@ -3338,6 +3320,7 @@ void napi_reuse_skb(struct napi_struct *napi, struct sk_buff *skb)
 {
 	__skb_pull(skb, skb_headlen(skb));
 	skb_reserve(skb, NET_IP_ALIGN - skb_headroom(skb));
+	skb->vlan_tci = 0;
 	skb->dev = napi->dev;
 	skb->skb_iif = 0;
 
