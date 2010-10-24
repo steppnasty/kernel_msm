@@ -37,7 +37,6 @@
 #include <drm_fixed.h>
 #include <drm_crtc_helper.h>
 #include <linux/i2c.h>
-#include <linux/i2c-id.h>
 #include <linux/i2c-algo-bit.h>
 
 struct radeon_bo;
