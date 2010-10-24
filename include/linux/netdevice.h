@@ -1074,7 +1074,7 @@ struct net_device {
 	/* bridge stuff */
 	struct net_bridge_port	*br_port;
 	/* GARP */
-	struct garp_port	*garp_port;
+	struct garp_port __rcu	*garp_port;
 
 	/* class/net/name entry */
 	struct device		dev;
