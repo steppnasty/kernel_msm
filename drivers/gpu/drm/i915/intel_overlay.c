@@ -1475,8 +1475,7 @@ intel_overlay_map_regs_atomic(struct intel_overlay *overlay,
 		regs = overlay->reg_bo->phys_obj->handle->vaddr;
 	else
 		regs = io_mapping_map_atomic_wc(dev_priv->mm.gtt_mapping,
-						overlay->reg_bo->gtt_offset,
-						slot);
+						overlay->reg_bo->gtt_offset);
 
 	return regs;
 }
@@ -1486,7 +1485,7 @@ static void intel_overlay_unmap_regs_atomic(struct intel_overlay *overlay,
 					    struct overlay_registers *regs)
 {
 	if (!OVERLAY_NEEDS_PHYSICAL(overlay->dev))
-		io_mapping_unmap_atomic(regs, slot);
+		io_mapping_unmap_atomic(regs);
 }
 
 
