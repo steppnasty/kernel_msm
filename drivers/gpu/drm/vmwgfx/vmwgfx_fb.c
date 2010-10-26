@@ -626,7 +626,8 @@ int vmw_dmabuf_to_start_of_vram(struct vmw_private *vmw_priv,
 		goto err_unlock;
 
 	if (bo->mem.mem_type == TTM_PL_VRAM &&
-	    bo->mem.mm_node->start < bo->num_pages)
+	    bo->mem.start < bo->num_pages &&
+	    bo->mem.start > 0)
 		(void) ttm_bo_validate(bo, &vmw_sys_placement, false,
 				       false, false);
 
