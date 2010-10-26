@@ -113,13 +113,13 @@ static int adjust_pte(struct vm_area_struct *vma, unsigned long address,
 	 * open-code the spin-locking.
 	 */
 	ptl = pte_lockptr(vma->vm_mm, pmd);
-	pte = pte_offset_map_nested(pmd, address);
+	pte = pte_offset_map(pmd, address);
 	do_pte_lock(ptl);
 
 	ret = do_adjust_pte(vma, address, pfn, pte);
 
 	do_pte_unlock(ptl);
-	pte_unmap_nested(pte);
+	pte_unmap(pte);
 
 	return ret;
 }
