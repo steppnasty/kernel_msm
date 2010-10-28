@@ -1642,6 +1642,10 @@ int regulator_set_voltage(struct regulator *regulator, int min_uV, int max_uV)
 	ret = regulator_check_voltage(rdev, &min_uV, &max_uV);
 	if (ret < 0)
 		goto out;
+
+	if (min_uV == regulator->min_uV && max_uV == regulator->max_uV)
+		goto out;
+
 	regulator->min_uV = min_uV;
 	regulator->max_uV = max_uV;
 
