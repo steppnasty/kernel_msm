@@ -146,8 +146,11 @@ static ssize_t pmdown_time_set(struct device *dev,
 {
 	struct snd_soc_device *socdev = dev_get_drvdata(dev);
 	struct snd_soc_card *card = socdev->card;
+	int ret;
 
-	strict_strtol(buf, 10, &card->pmdown_time);
+	ret = strict_strtol(buf, 10, &card->pmdown_time);
+	if (ret)
+		return ret;
 
 	return count;
 }
