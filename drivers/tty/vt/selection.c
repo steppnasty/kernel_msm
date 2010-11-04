@@ -317,7 +317,7 @@ int paste_selection(struct tty_struct *tty)
 	release_console_sem();
 
 	ld = tty_ldisc_ref_wait(tty);
-	
+
 	add_wait_queue(&vc->paste_wait, &wait);
 	while (sel_buffer && sel_buffer_lth > pasted) {
 		set_current_state(TASK_INTERRUPTIBLE);
