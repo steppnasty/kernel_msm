@@ -1,7 +1,7 @@
 /* r3964 linediscipline for linux
  *
  * -----------------------------------------------------------
- * Copyright by 
+ * Copyright by
  * Philips Automation Projects
  * Kassel (Germany)
  * http://www.pap-philips.de
@@ -1122,8 +1122,8 @@ static ssize_t r3964_write(struct tty_struct *tty, struct file *file,
 	unsigned char *new_data;
 
 	TRACE_L("write request, %d characters", count);
-/* 
- * Verify the pointers 
+/*
+ * Verify the pointers
  */
 
 	if (!pInfo)

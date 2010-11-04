@@ -551,4 +551,3 @@ void tty_buffer_init(struct tty_struct *tty)
 	tty->buf.memory_used = 0;
 	INIT_DELAYED_WORK(&tty->buf.work, flush_to_ldisc);
 }
-

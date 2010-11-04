@@ -3157,4 +3157,3 @@ int __init tty_init(void)
 #endif
 	return 0;
 }
-
