@@ -3,7 +3,7 @@ obj-y += io.o dma.o memory.o
 ifdef CONFIG_ARCH_MSM8X60
 obj-y += timer-8x60.o clock-core.o clock-voter.o
 else
-obj-y += timer.o clock.o
+obj-y += timer.o clock.o clock-voter.o
 endif
 obj-y += subsystem_map.o
 

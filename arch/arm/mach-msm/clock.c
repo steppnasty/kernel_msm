@@ -283,6 +283,7 @@ static int axi_freq_notifier_handler(struct notifier_block *block,
 void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks)
 {
 	unsigned n;
+	struct clk *clk;
 
 	/* Do SoC-speficic clock init operations. */
 	msm_clk_soc_init();
@@ -296,6 +297,16 @@ void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks)
 		hlist_add_head(&msm_clocks[n].list, &clocks);
 	}
 	mutex_unlock(&clocks_mutex);
+
+	for (n = 0; n < num_clocks; n++) {
+		clk = &clock_tbl[n];
+		if (clk->flags & CLKFLAG_VOTER) {
+			struct clk *agg_clk = clk_get(NULL, clk->aggregator);
+			BUG_ON(IS_ERR(agg_clk));
+
+			clk_set_parent(clk, agg_clk);
+		}
+	}
 
 	if (cpu_is_msm7x30() || cpu_is_msm8x55()) {
 		pbus_clk = clk_get(NULL, "pbus_clk");
