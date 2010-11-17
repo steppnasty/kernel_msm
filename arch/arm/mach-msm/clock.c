@@ -28,9 +28,7 @@
 #include <linux/device.h>
 #include <linux/seq_file.h>
 #include <linux/pm_qos.h>
-
-#include <asm/clkdev.h>
-
+#include <linux/clkdev.h>
 #include "mach/socinfo.h"
 
 #include "clock.h"

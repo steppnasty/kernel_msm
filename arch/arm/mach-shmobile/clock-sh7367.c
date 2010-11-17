@@ -21,13 +21,13 @@
 #include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/clk.h>
+#include <linux/clkdev.h>
 
 struct clk {
 	const char *name;
 	unsigned long rate;
 };
 
-#include <asm/clkdev.h>
 
 int __clk_get(struct clk *clk)
 {

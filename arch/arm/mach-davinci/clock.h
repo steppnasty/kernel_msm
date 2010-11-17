@@ -68,7 +68,7 @@
 #ifndef __ASSEMBLER__
 
 #include <linux/list.h>
-#include <asm/clkdev.h>
+#include <linux/clkdev.h>
 
 struct pll_data {
 	u32 phys_base;

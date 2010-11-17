@@ -18,8 +18,8 @@
 #ifndef __ARCH_ARM_MACH_MSM_DEVICES_H
 #define __ARCH_ARM_MACH_MSM_DEVICES_H
 
+#include <linux/clkdev.h>
 #include "clock.h"
-#include <asm/clkdev.h>
 
 extern struct platform_device msm_ebi0_thermal;
 extern struct platform_device msm_ebi1_thermal;

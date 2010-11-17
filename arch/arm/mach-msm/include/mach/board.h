@@ -26,7 +26,7 @@
 #include <mach/msm_bus.h>
 #include "msm_ssbi.h"
 
-#include <asm/clkdev.h>
+#include <linux/clkdev.h>
 
 #define BIT0                    0x00000001
 #define BIT1                    0x00000002

@@ -38,10 +38,6 @@ config SHARP_PARAM
 config SHARP_SCOOP
 	bool
 
-config COMMON_CLKDEV
-	bool
-	select HAVE_CLK
-
 config FIQ_GLUE
 	bool
 	select FIQ
