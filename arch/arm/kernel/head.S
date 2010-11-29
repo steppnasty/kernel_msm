@@ -267,6 +267,7 @@ __create_page_tables:
 	mov	pc, lr
 ENDPROC(__create_page_tables)
 	.ltorg
+	.align
 __enable_mmu_loc:
 	.long	.
 	.long	__enable_mmu
@@ -312,6 +313,8 @@ ENTRY(__secondary_switched)
 	mov	fp, #0
 	b	secondary_start_kernel
 ENDPROC(__secondary_switched)
+
+	.align
 
 	.type	__secondary_data, %object
 __secondary_data:
@@ -418,6 +421,7 @@ __fixup_smp_on_up:
 	mov	pc, lr
 ENDPROC(__fixup_smp)
 
+	.align
 1:	.word	.
 	.word	__smpalt_begin
 	.word	__smpalt_end
