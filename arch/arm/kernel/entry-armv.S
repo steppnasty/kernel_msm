@@ -843,7 +843,7 @@ __kuser_helper_start:
  */
 
 __kuser_memory_barrier:				@ 0xffff0fa0
-	smp_dmb
+	smp_dmb	arm
 	usr_ret	lr
 
 	.align	5
@@ -960,7 +960,7 @@ kuser_cmpxchg_fixup:
 
 #else
 
-	smp_dmb
+	smp_dmb	arm
 1:	ldrex	r3, [r2]
 	subs	r3, r3, r0
 	strexeq	r3, r1, [r2]
