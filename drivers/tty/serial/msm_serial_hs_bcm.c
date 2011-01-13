@@ -66,7 +66,7 @@
 #include <mach/dma.h>
 #include <mach/msm_serial_hs.h>
 /* for bcm */
-#include "../../arch/arm/mach-msm/gpio_chip.h"
+#include "../../../arch/arm/mach-msm/gpio_chip.h"
 #include <linux/uaccess.h>
 
 #include "msm_serial_hs_hwreg.h"
