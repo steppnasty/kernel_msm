@@ -102,7 +102,7 @@ extern void l2x0_cache_flush_all(void);
 #endif
 #endif
 
-#if defined CONFIG_ARCH_MSM_SCORPION || defined CONFIG_ARCH_MSM_SCORPIONMP
+#if defined CONFIG_ARCH_MSM_SCORPION || defined CONFIG_ARCH_MSM_KRAIT
 #define arch_has_speculative_dfetch()  1
 #else
 #define arch_has_speculative_dfetch()  0

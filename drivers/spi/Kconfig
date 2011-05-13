@@ -195,7 +195,7 @@ config SPI_MPC8xxx
 config SPI_QSD
 	tristate "Qualcomm MSM SPI support"
 	default n
-	depends on ARCH_MSM_SCORPION
+	depends on ARCH_MSM_SCORPION && !MSM_SMP
 	help
 	  Support for Serial Peripheral Interface for Qualcomm MSM
 
