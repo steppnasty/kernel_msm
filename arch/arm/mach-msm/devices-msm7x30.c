@@ -15,12 +15,14 @@
 
 #include <linux/platform_device.h>
 #include <mach/kgsl.h>
+#include <linux/regulator/machine.h>
 #include <mach/irqs.h>
 #include <mach/msm_iomap.h>
 #include <asm/clkdev.h>
 
 #include "devices.h"
 #include "clock-7x30.h"
+#include "footswitch.h"
 
 #include <mach/dal_axi.h>
 
@@ -230,3 +232,30 @@ struct clk_lookup msm_clocks_7x30[] = {
 };
 
 unsigned msm_num_clocks_7x30 = ARRAY_SIZE(msm_clocks_7x30);
+
+#define FS(_id, _name) (&(struct platform_device){ \
+	.name   = "footswitch-pcom", \
+	.id     = (_id), \
+	.dev    = { \
+		.platform_data = &(struct regulator_init_data){ \
+			.constraints = { \
+				.valid_modes_mask = REGULATOR_MODE_NORMAL, \
+				.valid_ops_mask   = REGULATOR_CHANGE_STATUS, \
+			}, \
+			.num_consumer_supplies = 1, \
+			.consumer_supplies = \
+				&(struct regulator_consumer_supply) \
+				REGULATOR_SUPPLY((_name), NULL), \
+		} \
+	}, \
+})
+struct platform_device *msm_footswitch_devices[] = {
+	FS_PCOM(FS_GFX2D0, "fs_gfx2d0"),
+	FS_PCOM(FS_GFX3D,  "fs_gfx3d"),
+	FS_PCOM(FS_MDP,    "fs_mdp"),
+	FS_PCOM(FS_MFC,    "fs_mfc"),
+	FS_PCOM(FS_ROT,    "fs_rot"),
+	FS_PCOM(FS_VFE,    "fs_vfe"),
+	FS_PCOM(FS_VPE,    "fs_vpe"),
+};
+unsigned msm_num_footswitch_devices = ARRAY_SIZE(msm_footswitch_devices);

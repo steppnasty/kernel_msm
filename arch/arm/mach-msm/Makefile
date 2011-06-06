@@ -7,13 +7,15 @@ obj-y += timer.o clock.o clock-voter.o
 endif
 obj-y += subsystem_map.o
 
+obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o
 ifndef CONFIG_ARCH_MSM8X60
-	obj-$(CONFIG_MSM_PROC_COMM) += clock-pcom.o
+	obj-$(CONFIG_MSM_PROC_COMM) += clock-pcom.o internal_power_rail.o
+	obj-$(CONFIG_MSM_PROC_COMM) += vreg.o
+	ifdef CONFIG_MSM_PROC_COMM
+		obj-$(CONFIG_REGULATOR) += footswitch-pcom.o
+	endif
 	obj-y += devices.o pmic.o pwrtest.o
 endif
-
-obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o internal_power_rail.o
-obj-$(CONFIG_MSM_PROC_COMM) += vreg.o
 
 obj-$(CONFIG_MSM_VIC) += irq-vic.o
 

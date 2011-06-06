@@ -911,6 +911,16 @@ static int msm_vfe31_get_platform_data(struct vfe_device *vfe_dev)
 		rc = -ENODEV;
 		goto vfe_no_resource;
 	}
+
+	vfe_dev->fs_vfe = regulator_get(&vfe_dev->pdev->dev, "fs_vfe");
+	if (IS_ERR(vfe_dev->fs_vfe)) {
+		pr_err("%s: Regulator get failed %ld\n", __func__,
+			PTR_ERR(vfe_dev->fs_vfe));
+		vfe_dev->fs_vfe = NULL;
+		rc = -ENODEV;
+		goto vfe_no_resource;
+	}
+
 	vfe_dev->camif_mem = platform_get_resource_byname(vfe_dev->pdev,
 		IORESOURCE_MEM, "msm_camif");
 	if (!vfe_dev->camif_mem)

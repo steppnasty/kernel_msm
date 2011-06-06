@@ -2448,6 +2448,9 @@ static void __init glacier_init(void)
 	glacier_microp_init();
 #endif
 	qup_device_i2c_init();
+
+	platform_add_devices(msm_footswitch_devices,
+			     msm_num_footswitch_devices);
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 #ifdef CONFIG_MSMB_CAMERA
 	glacier_init_cam();

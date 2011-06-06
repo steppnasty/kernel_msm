@@ -943,7 +943,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 		clk_set_rate(pwr->grp_clks[0], pwr->
 				pwrlevels[pwr->num_pwrlevels - 1].gpu_freq);
 
-	pwr->gpu_reg = regulator_get(&pdev->dev, "vdd");
+	pwr->gpu_reg = regulator_get(&pdev->dev, pwr->regulator_name);
 	if (IS_ERR(pwr->gpu_reg))
 		pwr->gpu_reg = NULL;
 
@@ -960,7 +960,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	pwr->idle_needed = pdata->idle_needed;
 	pwr->interval_timeout = pdata->idle_timeout;
 	pwr->strtstp_sleepwake = pdata->strtstp_sleepwake;
-	pwr->ebi1_clk = clk_get(&pdev->dev, "ebi1_kgsl_clk");
+	pwr->ebi1_clk = clk_get(&pdev->dev, "bus_clk");
 	if (IS_ERR(pwr->ebi1_clk))
 		pwr->ebi1_clk = NULL;
 	else
