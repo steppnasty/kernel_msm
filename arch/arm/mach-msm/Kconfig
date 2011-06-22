@@ -1417,6 +1417,13 @@ config MSM8X60_AUDIO
 	help
 	  Enable support for qdsp6v2. This provides audio functionality.
 
+config MSM_PROC_COMM_REGULATOR
+	bool
+	depends on MSM_PROC_COMM && REGULATOR
+	help
+	  Enable regulator framework support for regulators managed by PMLIB
+	  on the modem, and controlled through proccomm calls.
+
 config MSM_CLOCK_CTRL_DEBUG
 	bool "Enable debugfs interface for clock control"
 	default n
