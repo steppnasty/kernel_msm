@@ -413,3 +413,6 @@ obj-$(CONFIG_MSM_SSBI) += ssbi.o
 endif
 
 obj-$(CONFIG_MSM_PROC_COMM_REGULATOR) += proccomm-regulator.o
+ifdef CONFIG_MSM_PROC_COMM_REGULATOR
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-regulator.o
+endif

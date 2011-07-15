@@ -91,6 +91,8 @@
 #include <mach/msm_ssbi.h>
 #endif
 
+#include "board-glacier-regulator.h"
+
 #ifdef CONFIG_MICROP_COMMON
 void __init glacier_microp_init(void);
 #endif
@@ -242,6 +244,18 @@ int glacier_pm8058_gpios_init(struct pm8058_chip *pm_chip)
 
 	return 0;
 }
+
+/* Regulator API support */
+
+#ifdef CONFIG_MSM_PROC_COMM_REGULATOR
+static struct platform_device msm_proccomm_regulator_dev = {
+	.name = PROCCOMM_REGULATOR_DEV_NAME,
+	.id   = -1,
+	.dev  = {
+		.platform_data = &glacier_proccomm_regulator_data
+	}
+};
+#endif
 
 /* HTC_HEADSET_GPIO Driver */
 static struct htc_headset_gpio_platform_data htc_headset_gpio_data = {
@@ -1761,6 +1775,9 @@ static struct platform_device ram_console_device = {
 static struct platform_device *devices[] __initdata = {
 	&ram_console_device,
 	&msm_device_uart2,
+#ifdef CONFIG_MSM_PROC_COMM_REGULATOR
+	&msm_proccomm_regulator_dev,
+#endif
 #ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
 	&glacier_bcm_bt_lpm_device,
 #endif
