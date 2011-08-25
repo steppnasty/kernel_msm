@@ -368,7 +368,7 @@ struct snd_pcm_substream {
 	int stream;			/* stream (direction) */
 	char latency_id[20];		/* latency identifier */
 	
-	struct pm_qos_request_list latency_pm_qos_req; /* pm_qos request */
+	struct pm_qos_request latency_pm_qos_req; /* pm_qos request */
 	size_t buffer_bytes_max;	/* limit ring buffer size */
 	struct snd_dma_buffer dma_buffer;
 	unsigned int dma_buf_id;
