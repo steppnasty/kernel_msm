@@ -65,6 +65,20 @@ struct device_node {
 #endif
 };
 
+#if defined(CONFIG_SPARC) || !defined(CONFIG_OF)
+/* Dummy ref counting routines - to be implemented later */
+static inline struct device_node *of_node_get(struct device_node *node)
+{
+	return node;
+}
+static inline void of_node_put(struct device_node *node)
+{
+}
+#else
+extern struct device_node *of_node_get(struct device_node *node);
+extern void of_node_put(struct device_node *node);
+#endif
+
 #define MAX_PHANDLE_ARGS 8
 struct of_phandle_args {
 	struct device_node *np;
@@ -101,21 +115,6 @@ static inline void of_node_set_flag(struct device_node *n, unsigned long flag)
 }
 
 extern struct device_node *of_find_all_nodes(struct device_node *prev);
-
-#if defined(CONFIG_SPARC)
-/* Dummy ref counting routines - to be implemented later */
-static inline struct device_node *of_node_get(struct device_node *node)
-{
-	return node;
-}
-static inline void of_node_put(struct device_node *node)
-{
-}
-
-#else
-extern struct device_node *of_node_get(struct device_node *node);
-extern void of_node_put(struct device_node *node);
-#endif
 
 /*
  * OF address retrieval & translation
