@@ -65,26 +65,24 @@ struct device_node {
 #endif
 };
 
-#if defined(CONFIG_SPARC) || !defined(CONFIG_OF)
-/* Dummy ref counting routines - to be implemented later */
-static inline struct device_node *of_node_get(struct device_node *node)
-{
-	return node;
-}
-static inline void of_node_put(struct device_node *node)
-{
-}
-#else
-extern struct device_node *of_node_get(struct device_node *node);
-extern void of_node_put(struct device_node *node);
-#endif
-
-#define MAX_PHANDLE_ARGS 8
+define MAX_PHANDLE_ARGS 8
 struct of_phandle_args {
 	struct device_node *np;
 	int args_count;
 	uint32_t args[MAX_PHANDLE_ARGS];
 };
+
+#ifdef CONFIG_OF_DYNAMIC
+extern struct device_node *of_node_get(struct device_node *node);
+extern void of_node_put(struct device_node *node);
+#else /* CONFIG_OF_DYNAMIC */
+/* Dummy ref counting routines - to be implemented later */
+static inline struct device_node *of_node_get(struct device_node *node)
+{
+	return node;
+}
+static inline void of_node_put(struct device_node *node) { }
+#endif /* !CONFIG_OF_DYNAMIC */
 
 #ifdef CONFIG_OF
 
