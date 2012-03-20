@@ -495,7 +495,7 @@ struct acpuclk_soc_data acpuclk_7x30_soc_data __initdata = {
 	.init = acpuclk_7x30_init,
 };
 
-#ifdef CONFIG_VDD_USERSPACE
+#ifdef CONFIG_CPU_VOLTAGE_TABLE
 ssize_t acpuclk_get_vdd_levels_str(char *buf)
 {
 	int i, len = 0;
