@@ -5063,8 +5063,8 @@ static void __init doubleshot_init(void)
 		mipi_dsi_cmd_wvga_panel_device.name = "mipi_renesas";
 	pr_info("%s: %s\n", __func__, mipi_dsi_cmd_wvga_panel_device.name);
 
-	platform_add_devices(msm_footswitch_devices,
-					     msm_num_footswitch_devices);
+	platform_add_devices(msm8660_footswitch,
+			     msm8660_num_footswitch);
 
 	msm8x60_init_camera();
 
