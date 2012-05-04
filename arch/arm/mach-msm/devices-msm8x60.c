@@ -1489,7 +1489,6 @@ static struct msm_rotator_platform_data rotator_pdata = {
 	.number_of_clocks = ARRAY_SIZE(rotator_clocks),
 	.hardware_version_number = 0x01010307,
 	.rotator_clks = rotator_clocks,
-	.regulator_name = "fs_rot",
 };
 
 struct platform_device msm_rotator_device = {
@@ -2116,7 +2115,7 @@ static struct fs_driver_data vpe_fs_data = {
 struct platform_device *msm8660_footswitch[] __initdata = {
 	FS_8X60(FS_IJPEG,  "fs_ijpeg",	NULL,	&ijpeg_fs_data),
 	/*FS_8X60(FS_MDP,  "fs_mdp",	NULL,	&mdp_fs_data),*//*re-enable when find out why mdp_p can't turn off*/
-	FS_8X60(FS_ROT,    "fs_rot",	NULL,	&rot_fs_data),
+	FS_8X60(FS_ROT,    "vdd",	"msm_rotator.0", &rot_fs_data),
 	FS_8X60(FS_VED,    "fs_ved",	NULL,	&ved_fs_data),
 	FS_8X60(FS_VFE,    "fs_vfe",	NULL,	&vfe_fs_data),
 	FS_8X60(FS_VPE,    "fs_vpe",	NULL,	&vpe_fs_data),
