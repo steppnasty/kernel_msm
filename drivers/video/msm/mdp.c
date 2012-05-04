@@ -2505,7 +2505,7 @@ static int mdp_irq_clk_setup(struct platform_device *pdev,
 		}
 	}
 
-	footswitch = regulator_get(&pdev->dev, "fs_mdp");
+	footswitch = regulator_get(&pdev->dev, "vdd");
 	if (IS_ERR(footswitch)) {
 		footswitch = NULL;
 	} else {
