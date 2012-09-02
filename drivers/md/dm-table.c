@@ -1059,6 +1059,7 @@ static void dm_table_set_integrity(struct dm_table *t)
 {
 	struct list_head *devices = dm_table_get_devices(t);
 	struct dm_dev_internal *prev = NULL, *dd = NULL;
+	int rc;
 
 	if (!blk_get_integrity(dm_disk(t->md)))
 		return;
@@ -1079,14 +1080,14 @@ static void dm_table_set_integrity(struct dm_table *t)
 	if (!prev || !bdev_get_integrity(prev->dm_dev.bdev))
 		goto no_integrity;
 #if defined(CONFIG_BLK_DEV_INTEGRITY)
-	blk_integrity_register(dm_disk(t->md),
-			       bdev_get_integrity(prev->dm_dev.bdev));
+	rc = blk_integrity_register(dm_disk(t->md),
+				    bdev_get_integrity(prev->dm_dev.bdev));
 #endif
 	return;
 
 no_integrity:
 #if defined(CONFIG_BLK_DEV_INTEGRITY)
-	blk_integrity_register(dm_disk(t->md), NULL);
+	rc = blk_integrity_register(dm_disk(t->md), NULL);
 
 #endif
 	return;

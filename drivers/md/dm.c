@@ -1100,6 +1100,7 @@ static struct bio *split_bvec(struct bio *bio, sector_t sector,
 {
 	struct bio *clone;
 	struct bio_vec *bv = bio->bi_io_vec + idx;
+	int rc;
 
 	clone = bio_alloc_bioset(GFP_NOIO, 1, bs);
 	clone->bi_destructor = dm_bio_destructor;
@@ -1116,7 +1117,7 @@ static struct bio *split_bvec(struct bio *bio, sector_t sector,
 
 	if (bio_integrity(bio)) {
 #if defined(CONFIG_BLK_DEV_INTEGRITY)
-		bio_integrity_clone(clone, bio, GFP_NOIO, bs);
+		rc = bio_integrity_clone(clone, bio, GFP_NOIO, bs);
 #endif
 		bio_integrity_trim(clone,
 				   bio_sector_offset(bio, idx, offset), len);
@@ -1133,6 +1134,7 @@ static struct bio *clone_bio(struct bio *bio, sector_t sector,
 			     unsigned int len, struct bio_set *bs)
 {
 	struct bio *clone;
+	int rc;
 
 	clone = bio_alloc_bioset(GFP_NOIO, bio->bi_max_vecs, bs);
 	__bio_clone(clone, bio);
@@ -1146,7 +1148,7 @@ static struct bio *clone_bio(struct bio *bio, sector_t sector,
 
 	if (bio_integrity(bio)) {
 #if defined(CONFIG_BLK_DEV_INTEGRITY)
-		bio_integrity_clone(clone, bio, GFP_NOIO, bs);
+		rc = bio_integrity_clone(clone, bio, GFP_NOIO, bs);
 
 #endif
 		if (idx != bio->bi_idx || clone->bi_size < bio->bi_size)
