@@ -416,6 +416,8 @@ endif
 obj-$(CONFIG_SMMU)		+= iommu.o iommu_dev.o
 obj-$(CONFIG_SMMU_8X60)		+= devices-msm8x60-iommu.o
 
+obj-$(CONFIG_MSM_EVENT_TIMER)		+= event_timer.o
+
 ifdef CONFIG_VCM
 obj-$(CONFIG_ARCH_MSM8X60) += board-msm8x60-vcm.o
 endif
