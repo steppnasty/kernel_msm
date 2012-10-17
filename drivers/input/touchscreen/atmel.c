@@ -146,21 +146,21 @@ return;
 EXPORT_SYMBOL(sweep2wake_setleddev);
 
 static void sweep2wake_presspwr(struct work_struct * sweep2wake_presspwr_work) {
+if (!mutex_trylock(&pwrlock))
+        return;
 input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
 input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
 msleep(100);
 input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
 input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
 msleep(100);
-mutex_unlock(&pwrlock);
+        mutex_unlock(&pwrlock);
 return;
 }
 static DECLARE_WORK(sweep2wake_presspwr_work, sweep2wake_presspwr);
 
 void sweep2wake_pwrtrigger(void) {
-if (mutex_trylock(&pwrlock)) {
 schedule_work(&sweep2wake_presspwr_work);
-}
 return;
 }
 #endif
