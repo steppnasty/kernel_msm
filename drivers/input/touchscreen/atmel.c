@@ -1275,7 +1275,7 @@ static void atmel_ts_work_func(struct work_struct *work)
 #ifdef CONFIG_TOUCHSCREEN_ATMEL_SWEEP2WAKE
        /* if finger released, reset count & barriers */
       if ((((ts->finger_count > 0)?1:0) == 0) && (s2w_switch > 0)) {
-        if ((scr_suspended == 2) &&
+        if ((s2w_switch == 2) &&
 	    (scr_suspended == true) &&
             (led_exec_count == false) &&
             (scr_on_touch == false) &&
