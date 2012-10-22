@@ -2101,12 +2101,6 @@ static int atmel_ts_resume(struct i2c_client *client)
 #ifdef CONFIG_TOUCHSCREEN_ATMEL_SWEEP2WAKE
 	if (s2w_switch == 0) {
 #endif
-		if (!ts->status && ts->wlc_status && ts->wlc_config[0])
-			i2c_atmel_write(ts->client,
-				get_object_address(ts, GEN_POWERCONFIG_T7),
-				ts->wlc_config,
-				get_object_size(ts, GEN_POWERCONFIG_T7));
-		else
 			i2c_atmel_write(ts->client,
 				get_object_address(ts, GEN_POWERCONFIG_T7),
 				ts->config_setting[ts->status].config_T7,
