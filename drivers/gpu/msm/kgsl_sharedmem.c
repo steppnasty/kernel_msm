@@ -541,8 +541,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	 * increase in speed for small buffers, but only on the order of a few
 	 * microseconds at best.  The only downside is that there needs to be
 	 * enough temporary space in vmalloc to accomodate the map. This
-	 * shouldn't be a problem, but if it happens, fall back to a much slower
-	 * path
+	 * shouldn't be a problem.
 	 */
 
 	ptr = vmap(pages, i, VM_IOREMAP, page_prot);
@@ -551,17 +550,6 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 		memset(ptr, 0, memdesc->size);
 		dmac_flush_range(ptr, ptr + memdesc->size);
 		vunmap(ptr);
-	} else {
-		int j;
-
-		/* Very, very, very slow path */
-
-		for (j = 0; j < i; j++) {
-			ptr = kmap_atomic(pages[j]);
-			memset(ptr, 0, PAGE_SIZE);
-			dmac_flush_range(ptr, ptr + PAGE_SIZE);
-			kunmap_atomic(ptr);
-		}
 	}
 
 	outer_cache_range_op_sg(memdesc->sg, memdesc->sglen,
