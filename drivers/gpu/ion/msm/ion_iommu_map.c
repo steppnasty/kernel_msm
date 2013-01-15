@@ -248,8 +248,8 @@ static int ion_iommu_map_iommu(struct ion_iommu_meta *meta,
 	if (extra) {
 		unsigned long extra_iova_addr = data->iova_addr + size;
 		unsigned long phys_addr = sg_phys(table->sgl);
-		ret = msm_iommu_map_extra(domain, extra_iova_addr, extra,
-					SZ_4K, prot);
+		ret = msm_iommu_map_extra(domain, extra_iova_addr, phys_addr,
+					extra, SZ_4K, prot);
 		if (ret)
 			goto out2;
 	}
