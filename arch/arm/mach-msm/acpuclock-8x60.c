@@ -51,7 +51,7 @@ extern unsigned int max_capped;
 #define L_VAL_SCPLL_CAL_MAX	0x1C /* = 1512 MHz with 27MHz source */
 
 #define MAX_VDD_SC		1350000 /* uV */
-#define MIN_VDD_SC		 800000 /* uV */
+#define MIN_VDD_SC		 300000 /* uV */
 #define MAX_VDD_MEM		1350000 /* uV */
 #define MAX_VDD_DIG		1300000 /* uV */
 #define MAX_AXI			 310500 /* KHz */
@@ -164,8 +164,8 @@ static struct msm_bus_paths bw_level_tbl[] = {
 	[0] =  BW_MBPS(824), /* At least 103 MHz on bus. */
 	[1] = BW_MBPS(1336), /* At least 167 MHz on bus. */
 	[2] = BW_MBPS(2008), /* At least 251 MHz on bus. */
-	[3] = BW_MBPS(2480), /* At least 310 MHz on bus. */
-	[4] = BW_MBPS(3200), /* At least 360 MHz on bus. */
+	[3] = BW_MBPS(2720), /* At least 340 MHz on bus. */
+	[4] = BW_MBPS(3600), /* At least 450 MHz on bus. */
 };
 
 static struct msm_bus_scale_pdata bus_client_pdata = {
@@ -199,9 +199,9 @@ static struct clkctl_l2_speed l2_freq_tbl_v2[] = {
 	[17] = {1296000,  1, 0x18, 1200000, 1225000, 3},
 	[18] = {1350000,  1, 0x19, 1200000, 1225000, 3},
 	[19] = {1404000,  1, 0x1A, 1200000, 1250000, 3},
-	[20] = {1458000,  1, 0x1B, 1212500, 1250000, 4},
-	[21] = {1512000,  1, 0x1C, 1212500, 1250000, 4},
-	[22] = {1566000,  1, 0x1D, 1212500, 1250000, 4},
+	[20] = {1458000,  1, 0x1B, 1200000, 1250000, 4},
+	[21] = {1512000,  1, 0x1C, 1200000, 1250000, 4},
+	[22] = {1566000,  1, 0x1D, 1200000, 1250000, 4},
 };
 
 #define L2(x) (&l2_freq_tbl_v2[(x)])
@@ -294,10 +294,10 @@ static struct clkctl_acpu_speed acpu_freq_tbl_nom[] = {
 
 /* SCPLL frequencies = 2 * 27 MHz * L_VAL */
 static struct clkctl_acpu_speed acpu_freq_tbl_fast[] = {
-  { {1, 1},  192000,  ACPU_PLL_8, 3, 1, 0, 0,    L2(1),   812500, 0x03006000},
+  { {1, 1},  96000,  ACPU_PLL_8, 3, 1, 0, 0,    L2(1),   400000, 0x03006000},
   /* MAX_AXI row is used to source CPU cores and L2 from the AFAB clock. */
   { {0, 0},  MAX_AXI, ACPU_AFAB,  1, 0, 0, 0,    L2(0),   875000, 0x03006000},
-  { {1, 1},  384000,  ACPU_PLL_8, 3, 0, 0, 0,    L2(1),   875000, 0x03006000},
+  { {1, 1},  196000,  ACPU_PLL_8, 3, 0, 0, 0,    L2(1),   875000, 0x03006000},
   { {1, 1},  432000,  ACPU_SCPLL, 0, 0, 1, 0x08, L2(1),   887500, 0x03006000},
   { {1, 1},  486000,  ACPU_SCPLL, 0, 0, 1, 0x09, L2(2),   912500, 0x03006000},
   { {1, 1},  540000,  ACPU_SCPLL, 0, 0, 1, 0x0A, L2(3),   925000, 0x03006000},
