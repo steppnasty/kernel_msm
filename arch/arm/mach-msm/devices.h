@@ -138,5 +138,7 @@ extern int ps_type;
 #ifdef CONFIG_MSM_SSBI
 extern struct platform_device msm_device_ssbi_pmic;
 #endif
+extern struct platform_device msm_kgsl_3d0;
+extern struct platform_device msm_kgsl_2d0;
 
 #endif
