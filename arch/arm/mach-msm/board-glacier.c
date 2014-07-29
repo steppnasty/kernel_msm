@@ -37,6 +37,7 @@
 #include <linux/curcial_oj.h>
 #include <linux/input/pmic8058-keypad.h>
 #include <linux/proc_fs.h>
+#include <linux/ion.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -1852,6 +1853,75 @@ static struct platform_device android_pmem_kernel_ebi1_devices = {
 	.dev = {.platform_data = &android_pmem_kernel_ebi1_pdata },
 };
 
+#ifdef CONFIG_ION_MSM
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+static struct ion_co_heap_pdata co_ion_pdata = {
+	.adjacent_mem_id = INVALID_HEAP_ID,
+	.align = PAGE_SIZE,
+};
+#endif
+
+/**
+ * These heaps are listed in the order they will be allocated.
+ * Don't swap the order unless you know what you are doing!
+ */
+struct ion_platform_data ion_pdata = {
+	.nr = MSM_ION_HEAP_NUM,
+        .heaps = {
+		{
+			.id	= ION_SYSTEM_HEAP_ID,
+			.type	= ION_HEAP_TYPE_SYSTEM,
+			.name	= ION_VMALLOC_HEAP_NAME,
+		},
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+		/* PMEM_ADSP = CAMERA */
+		{
+			.id	= ION_CAMERA_HEAP_ID,
+			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.name	= ION_CAMERA_HEAP_NAME,
+			.memory_type = ION_EBI_TYPE,
+			.extra_data = (void *)&co_ion_pdata,
+			.base = MSM_PMEM_ADSP_BASE,
+			.size = MSM_PMEM_ADSP_SIZE,
+		},
+		/* PMEM_AUDIO */
+		{
+			.id	= ION_AUDIO_HEAP_ID,
+			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.name	= ION_AUDIO_HEAP_NAME,
+			.memory_type = ION_EBI_TYPE,
+			.extra_data = (void *)&co_ion_pdata,
+			.base = PMEM_KERNEL_EBI1_BASE,
+			.size = PMEM_KERNEL_EBI1_SIZE,
+		},
+		/* PMEM_MDP = SF */
+		{
+			.id	= ION_SF_HEAP_ID,
+			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.name	= ION_SF_HEAP_NAME,
+			.memory_type = ION_EBI_TYPE,
+			.extra_data = (void *)&co_ion_pdata,
+			.base = MSM_PMEM_MDP_BASE,
+			.size = MSM_ION_SF_SIZE,
+		},
+#endif
+	}
+};
+
+#if 0
+static struct ion_platform_data ion_pdata = {
+	.nr = MSM_ION_HEAP_NUM,
+	.heaps = glacier_heaps,
+};
+#endif
+
+static struct platform_device ion_dev = {
+	.name = "ion-msm",
+	.id = 1,
+	.dev = { .platform_data = &ion_pdata },
+};
+#endif
+
 static uint32_t fl_gpio_table[] = {
 	PCOM_GPIO_CFG(GLACIER_GPIO_FLASHLIGHT_TORCH, 0,
 					GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA),
@@ -1996,10 +2066,23 @@ static struct platform_device *devices[] __initdata = {
 	&msm_lpa_device,
 	&msm_device_adspdec,
 #endif
+#ifdef CONFIG_ANDROID_PMEM
+#ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 	&android_pmem_kernel_ebi1_devices,
+#endif
+#endif
+#ifdef CONFIG_MSM_KGSL
+	&msm_kgsl_3d0,
+#ifdef CONFIG_MSM_KGSL_2D
+	&msm_kgsl_2d0,
+#endif
+#endif
 	&msm_device_vidc_720p,
 #ifdef CONFIG_MSM_GEMINI
 	&msm_gemini_device,
+#endif
+#ifdef CONFIG_MSM_CAMERA_7X30
+	//&msm_vpe_device,
 #endif
 #ifdef CONFIG_MSM7KV2_1X_AUDIO
 	&msm_aux_pcm_device,
@@ -2010,6 +2093,9 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&msm_camera_sensor_mt9v113, /* 2nd CAM */
 	&glacier_flashlight_device,
+#ifdef CONFIG_ION_MSM
+	&ion_dev,
+#endif
 };
 
 static struct msm_i2c_device_platform_data msm_i2c_pdata = {
@@ -2060,20 +2146,20 @@ static void __init qup_device_i2c_init(void)
 
 
 static struct msm_pmem_setting pmem_setting = {
-	.pmem_start = MSM_PMEM_MDP_BASE,
-	.pmem_size = MSM_PMEM_MDP_SIZE,
-	.pmem_adsp_start = MSM_PMEM_ADSP_BASE,
-	.pmem_adsp_size = MSM_PMEM_ADSP_SIZE,
+//	.pmem_start = MSM_PMEM_MDP_BASE,
+//	.pmem_size = MSM_PMEM_MDP_SIZE,
+//	.pmem_adsp_start = MSM_PMEM_ADSP_BASE,
+//	.pmem_adsp_size = MSM_PMEM_ADSP_SIZE,
 //	.pmem_gpu0_start = MSM_PMEM_GPU0_BASE,
 //	.pmem_gpu0_size = MSM_PMEM_GPU0_SIZE,
 //	.pmem_gpu1_start = MSM_PMEM_GPU1_BASE,
 //	.pmem_gpu1_size = MSM_PMEM_GPU1_SIZE,
 	.pmem_camera_start = MSM_PMEM_CAMERA_BASE,
 	.pmem_camera_size = MSM_PMEM_CAMERA_SIZE,
-	.ram_console_start = MSM_RAM_CONSOLE_BASE,
-	.ram_console_size = MSM_RAM_CONSOLE_SIZE,
-	.kgsl_start = MSM_GPU_MEM_BASE,
-	.kgsl_size = MSM_GPU_MEM_SIZE,
+//	.ram_console_start = MSM_RAM_CONSOLE_BASE,
+//	.ram_console_size = MSM_RAM_CONSOLE_SIZE,
+//	.kgsl_start = MSM_GPU_MEM_BASE,
+//	.kgsl_size = MSM_GPU_MEM_SIZE,
 };
 
 static struct msm_acpu_clock_platform_data glacier_clock_data = {
@@ -2261,7 +2347,11 @@ static void __init glacier_init(void)
 #endif
 
 	qup_device_i2c_init();
+#ifdef CONFIG_ANDROID_PMEM
+#ifndef CONFIG_ION_MSM
 	msm_add_mem_devices(&pmem_setting);
+#endif
+#endif
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 
