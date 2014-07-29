@@ -164,6 +164,7 @@ struct kgsl_device_platform_data {
 	unsigned int idle_timeout;
 	bool strtstp_sleepwake;
 	unsigned int nap_allowed;
+	unsigned int clk_map;
 	struct kgsl_grp_clk_name clk;
 	struct kgsl_grp_clk_name imem_clk_name;
 	unsigned int idle_needed;
@@ -443,7 +444,8 @@ struct kgsl_cff_syncmem {
 
 /*
  * A timestamp event allows the user space to register an action following an
- * expired timestamp.
+ * expired timestamp. Note IOCTL_KGSL_TIMESTAMP_EVENT has been redefined to
+ * _IOWR to support fences which need to return a fd for the priv parameter.
  */
 
 struct kgsl_timestamp_event {
@@ -454,7 +456,7 @@ struct kgsl_timestamp_event {
 	size_t len;              /* Size of the event specific blob */
 };
 
-#define IOCTL_KGSL_TIMESTAMP_EVENT \
+#define IOCTL_KGSL_TIMESTAMP_EVENT_OLD \
 	_IOW(KGSL_IOC_TYPE, 0x31, struct kgsl_timestamp_event)
 
 /* A genlock timestamp event releases an existing lock on timestamp expire */
@@ -464,6 +466,17 @@ struct kgsl_timestamp_event {
 struct kgsl_timestamp_event_genlock {
 	int handle; /* Handle of the genlock lock to release */
 };
+
+/* A fence timestamp event releases an existing lock on timestamp expire */
+
+#define KGSL_TIMESTAMP_EVENT_FENCE 2
+
+struct kgsl_timestamp_event_fence {
+	int fence_fd; /* Fence to signal */
+};
+
+#define IOCTL_KGSL_TIMESTAMP_EVENT \
+	_IOWR(KGSL_IOC_TYPE, 0x33, struct kgsl_timestamp_event)
 
 #ifdef __KERNEL__
 #ifdef CONFIG_MSM_KGSL_DRM
