@@ -271,7 +271,7 @@ static int mddi_on(struct platform_device *pdev)
 			  __func__, clk_rate);
 
 	clk_rate = clk_round_rate(mddi_clk, clk_rate);
-	if (clk_set_rate(mddi_clk, clk_rate) < 0)
+	if (clk_set_rate(mddi_clk, 384000000) < 0)
 		printk(KERN_ERR "%s: clk_set_rate failed\n",
 			__func__);
 
@@ -304,7 +304,7 @@ static int mddi_probe(struct platform_device *pdev)
 		mddi_pdata = pdev->dev.platform_data;
 		pmdh_clk_status = 0;
 
-		mddi_clk = clk_get(&pdev->dev, "core_clk");
+		mddi_clk = clk_get(&pdev->dev, "mddi_clk");
 		if (IS_ERR(mddi_clk)) {
 			pr_err("can't find mddi_clk\n");
 			return PTR_ERR(mddi_clk);
@@ -312,18 +312,17 @@ static int mddi_probe(struct platform_device *pdev)
 		rate = clk_round_rate(mddi_clk, 49000000);
 		ret = clk_set_rate(mddi_clk, rate);
 		if (ret)
-			pr_err("Can't set mddi_clk min rate to %lu\n",
-									rate);
+			pr_err("Can't set mddi_clk min rate to %lu\n", rate);
 
 		pr_info("mddi_clk init rate is %lu\n",
 			clk_get_rate(mddi_clk));
-		mddi_pclk = clk_get(&pdev->dev, "iface_clk");
+		mddi_pclk = clk_get(&pdev->dev, "mddi_pclk");
 		if (IS_ERR(mddi_pclk))
 			mddi_pclk = NULL;
 		pmdh_clk_enable();
 
 #ifndef CONFIG_MSM_BUS_SCALING
-		ebi1_clk = clk_get(&pdev->dev, "mem_clk");
+		ebi1_clk = clk_get(&pdev->dev, "ebi1_clk");
 		if (IS_ERR(ebi1_clk))
 			return PTR_ERR(ebi1_clk);
 		clk_set_rate(ebi1_clk, 65000000);
