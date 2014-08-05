@@ -674,69 +674,10 @@ static int msm_fb_runtime_idle(struct device *dev)
 	return 0;
 }
 
-#if (defined(CONFIG_SUSPEND) && defined(CONFIG_FB_MSM_HDMI_MSM_PANEL))
-static int msm_fb_ext_suspend(struct device *dev)
-{
-	struct msm_fb_data_type *mfd = dev_get_drvdata(dev);
-	struct msm_fb_panel_data *pdata = NULL;
-	int ret = 0;
-
-	if ((!mfd) || (mfd->key != MFD_KEY))
-		return 0;
-	mutex_lock(&mfd->entry_mutex);
-	msm_fb_pan_idle(mfd);
-
-	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
-	if (mfd->panel_info.type == HDMI_PANEL ||
-		mfd->panel_info.type == DTV_PANEL) {
-		ret = msm_fb_suspend_sub(mfd);
-
-		/* Turn off the HPD circuitry */
-		if (pdata->power_ctrl) {
-			MSM_FB_INFO("%s: Turning off HPD circuitry\n",
-					__func__);
-			pdata->power_ctrl(FALSE);
-		}
-	}
-	mutex_unlock(&mfd->entry_mutex);
-	return ret;
-}
-
-static int msm_fb_ext_resume(struct device *dev)
-{
-	struct msm_fb_data_type *mfd = dev_get_drvdata(dev);
-	struct msm_fb_panel_data *pdata = NULL;
-	int ret = 0;
-
-	if ((!mfd) || (mfd->key != MFD_KEY))
-		return 0;
-
-	mutex_lock(&mfd->entry_mutex);
-	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
-	if (mfd->panel_info.type == HDMI_PANEL ||
-		mfd->panel_info.type == DTV_PANEL) {
-		/* Turn on the HPD circuitry */
-		if (pdata->power_ctrl) {
-			pdata->power_ctrl(TRUE);
-			MSM_FB_INFO("%s: Turning on HPD circuitry\n",
-					__func__);
-		}
-
-		ret = msm_fb_resume_sub(mfd);
-	}
-	mutex_unlock(&mfd->entry_mutex);
-	return ret;
-}
-#endif
-
 static struct dev_pm_ops msm_fb_dev_pm_ops = {
 	.runtime_suspend = msm_fb_runtime_suspend,
 	.runtime_resume = msm_fb_runtime_resume,
 	.runtime_idle = msm_fb_runtime_idle,
-#if (defined(CONFIG_SUSPEND) && defined(CONFIG_FB_MSM_HDMI_MSM_PANEL))
-	.suspend = msm_fb_ext_suspend,
-	.resume = msm_fb_ext_resume,
-#endif
 };
 
 static struct platform_driver msm_fb_driver = {
