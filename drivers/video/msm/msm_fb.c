@@ -520,7 +520,7 @@ static int msm_fb_suspend(struct platform_device *pdev, pm_message_t state)
 	mutex_lock(&mfd->entry_mutex);
 	msm_fb_pan_idle(mfd);
 
-	console_lock();
+	acquire_console_sem();
 	fb_set_suspend(mfd->fbi, FBINFO_STATE_SUSPENDED);
 
 	ret = msm_fb_suspend_sub(mfd);
@@ -644,7 +644,7 @@ static int msm_fb_resume(struct platform_device *pdev)
 	mutex_lock(&mfd->entry_mutex);
 	msm_fb_pan_idle(mfd);
 
-	console_lock();
+	acquire_console_sem();
 	ret = msm_fb_resume_sub(mfd);
 	pdev->dev.power.power_state = PMSG_ON;
 	fb_set_suspend(mfd->fbi, FBINFO_STATE_RUNNING);
@@ -1348,7 +1348,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	mfd->pan_waiting = FALSE;
 	init_completion(&mfd->pan_comp);
 	init_completion(&mfd->refresher_comp);
-	sema_init(&mfd->sem, 1);
+	init_MUTEX(&mfd->sem, 1);
 
 	init_timer(&mfd->msmfb_no_update_notify_timer);
 	mfd->msmfb_no_update_notify_timer.function =
@@ -1711,7 +1711,7 @@ void msm_fb_release_timeline(struct msm_fb_data_type *mfd)
 	mutex_unlock(&mfd->sync_mutex);
 }
 
-DEFINE_SEMAPHORE(msm_fb_pan_sem);
+DECLARE_MUTEX(msm_fb_pan_sem);
 static int msm_fb_pan_idle(struct msm_fb_data_type *mfd)
 {
 	int ret = 0;
@@ -3310,7 +3310,7 @@ static int msmfb_mixer_info(struct fb_info *info, unsigned long *argp)
 
 #endif
 
-DEFINE_SEMAPHORE(msm_fb_ioctl_ppp_sem);
+DECLARE_MUTEX(msm_fb_ioctl_ppp_sem);
 DEFINE_MUTEX(msm_fb_ioctl_lut_sem);
 
 /* Set color conversion matrix from user space */
