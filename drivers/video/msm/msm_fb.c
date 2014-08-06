@@ -531,7 +531,7 @@ static int msm_fb_suspend(struct platform_device *pdev, pm_message_t state)
 		pdev->dev.power.power_state = state;
 	}
 
-	console_unlock();
+	release_console_sem();
 	mutex_unlock(&mfd->entry_mutex);
 	return ret;
 }
@@ -613,10 +613,9 @@ static int msm_fb_resume_sub(struct msm_fb_data_type *mfd)
 	if (mfd->suspend.panel_power_on) {
 		if (mfd->panel_driver_on == FALSE)
 			msm_fb_blank_sub(FB_BLANK_POWERDOWN, mfd->fbi,
-				      mfd->op_enable);
-		ret =
-		     msm_fb_blank_sub(FB_BLANK_UNBLANK, mfd->fbi,
-				      mfd->op_enable);
+					mfd->op_enable);
+		ret = msm_fb_blank_sub(FB_BLANK_UNBLANK, mfd->fbi,
+				mfd->op_enable);
 		if (ret)
 			MSM_FB_INFO("msm_fb_resume: can't turn on display!\n");
 	}
@@ -648,7 +647,7 @@ static int msm_fb_resume(struct platform_device *pdev)
 	ret = msm_fb_resume_sub(mfd);
 	pdev->dev.power.power_state = PMSG_ON;
 	fb_set_suspend(mfd->fbi, FBINFO_STATE_RUNNING);
-	console_unlock();
+	release_console_sem();
 	mutex_unlock(&mfd->entry_mutex);
 	return ret;
 }
@@ -1348,7 +1347,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	mfd->pan_waiting = FALSE;
 	init_completion(&mfd->pan_comp);
 	init_completion(&mfd->refresher_comp);
-	init_MUTEX(&mfd->sem, 1);
+	init_MUTEX(&mfd->sem);
 
 	init_timer(&mfd->msmfb_no_update_notify_timer);
 	mfd->msmfb_no_update_notify_timer.function =
