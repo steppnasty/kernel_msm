@@ -2719,74 +2719,7 @@ static void msm_fb_ensure_memory_coherency_before_dma(struct fb_info *info,
 		struct mdp_blit_req *req_list,
 		int req_list_count)
 {
-#ifdef CONFIG_ARCH_QSD8X50
-	int i;
-
-	/*
-	 * Normally, do the requested barriers for each address
-	 * range that corresponds to a rectangle.
-	 *
-	 * But if at least one write barrier is requested for data
-	 * going to or from the device but no address range is
-	 * needed for that barrier, then do the barrier, but do it
-	 * only once, no matter how many requests there are.
-	 */
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
-	switch (mfd->mdp_fb_page_protection)	{
-	default:
-	case MDP_FB_PAGE_PROTECTION_NONCACHED:
-	case MDP_FB_PAGE_PROTECTION_WRITECOMBINE:
-		/*
-		 * The following barrier is only done at most once,
-		 * since further calls would be redundant.
-		 */
-		for (i = 0; i < req_list_count; i++) {
-			if (!(req_list[i].flags
-				& MDP_NO_DMA_BARRIER_START)) {
-				msm_dma_nc_pre();
-				break;
-			}
-		}
-		break;
-
-	case MDP_FB_PAGE_PROTECTION_WRITETHROUGHCACHE:
-		/*
-		 * The following barrier is only done at most once,
-		 * since further calls would be redundant.
-		 */
-		for (i = 0; i < req_list_count; i++) {
-			if (!(req_list[i].flags
-				& MDP_NO_DMA_BARRIER_START)) {
-				msm_dma_wt_pre();
-				break;
-			}
-		}
-		break;
-
-	case MDP_FB_PAGE_PROTECTION_WRITEBACKCACHE:
-	case MDP_FB_PAGE_PROTECTION_WRITEBACKWACACHE:
-		for (i = 0; i < req_list_count; i++) {
-			if (!(req_list[i].flags &
-					MDP_NO_DMA_BARRIER_START)) {
-
-				msm_fb_dma_barrier_for_rect(info,
-						&(req_list[i].src),
-						&(req_list[i].src_rect),
-						msm_dma_todevice_wb_pre
-						);
-
-				msm_fb_dma_barrier_for_rect(info,
-						&(req_list[i].dst),
-						&(req_list[i].dst_rect),
-						msm_dma_todevice_wb_pre
-						);
-			}
-		}
-		break;
-	}
-#else
 	dmb();
-#endif
 }
 
 
@@ -2802,58 +2735,7 @@ static void msm_fb_ensure_memory_coherency_after_dma(struct fb_info *info,
 		struct mdp_blit_req *req_list,
 		int req_list_count)
 {
-#ifdef CONFIG_ARCH_QSD8X50
-	int i;
-
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
-	switch (mfd->mdp_fb_page_protection)	{
-	default:
-	case MDP_FB_PAGE_PROTECTION_NONCACHED:
-	case MDP_FB_PAGE_PROTECTION_WRITECOMBINE:
-		/*
-		 * The following barrier is only done at most once,
-		 * since further calls would be redundant.
-		 */
-		for (i = 0; i < req_list_count; i++) {
-			if (!(req_list[i].flags
-				& MDP_NO_DMA_BARRIER_END)) {
-				msm_dma_nc_post();
-				break;
-			}
-		}
-		break;
-
-	case MDP_FB_PAGE_PROTECTION_WRITETHROUGHCACHE:
-		for (i = 0; i < req_list_count; i++) {
-			if (!(req_list[i].flags &
-					MDP_NO_DMA_BARRIER_END)) {
-
-				msm_fb_dma_barrier_for_rect(info,
-						&(req_list[i].dst),
-						&(req_list[i].dst_rect),
-						msm_dma_fromdevice_wt_post
-						);
-			}
-		}
-		break;
-	case MDP_FB_PAGE_PROTECTION_WRITEBACKCACHE:
-	case MDP_FB_PAGE_PROTECTION_WRITEBACKWACACHE:
-		for (i = 0; i < req_list_count; i++) {
-			if (!(req_list[i].flags &
-					MDP_NO_DMA_BARRIER_END)) {
-
-				msm_fb_dma_barrier_for_rect(info,
-						&(req_list[i].dst),
-						&(req_list[i].dst_rect),
-						msm_dma_fromdevice_wb_post
-						);
-			}
-		}
-		break;
-	}
-#else
 	dmb();
-#endif
 }
 
 /*
@@ -3862,35 +3744,11 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		break;
 
 	case MSMFB_SET_PAGE_PROTECTION:
-#if defined CONFIG_ARCH_QSD8X50 || defined CONFIG_ARCH_MSM8X60
-		ret = copy_from_user(&fb_page_protection, argp,
-				sizeof(fb_page_protection));
-		if (ret)
-				goto msm_fb_ioctl_exit;
-
-		/* Validate the proposed page protection settings. */
-		switch (fb_page_protection.page_protection)	{
-		case MDP_FB_PAGE_PROTECTION_NONCACHED:
-		case MDP_FB_PAGE_PROTECTION_WRITECOMBINE:
-		case MDP_FB_PAGE_PROTECTION_WRITETHROUGHCACHE:
-		/* Write-back cache (read allocate)  */
-		case MDP_FB_PAGE_PROTECTION_WRITEBACKCACHE:
-		/* Write-back cache (write allocate) */
-		case MDP_FB_PAGE_PROTECTION_WRITEBACKWACACHE:
-			mfd->mdp_fb_page_protection =
-				fb_page_protection.page_protection;
-			break;
-		default:
-			ret = -EINVAL;
-			break;
-		}
-#else
 		/*
 		 * Don't allow caching until 7k DMA cache operations are
 		 * available.
 		 */
 		ret = -EINVAL;
-#endif
 		break;
 
 	case MSMFB_MDP_PP:
