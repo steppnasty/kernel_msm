@@ -436,8 +436,6 @@ static int msm_fb_probe(struct platform_device *pdev)
 			mfd->timeline_value = 0;
 		}
 	}
-
-
 	return 0;
 }
 
@@ -718,6 +716,7 @@ static int mdp_bl_scale_config(struct msm_fb_data_type *mfd,
 {
 	int ret = 0;
 	int curr_bl;
+
 	down(&mfd->sem);
 	curr_bl = mfd->bl_level;
 	bl_scale = data->scale;
@@ -736,6 +735,7 @@ static int mdp_bl_scale_config(struct msm_fb_data_type *mfd,
 static void msm_fb_scale_bl(__u32 *bl_lvl)
 {
 	__u32 temp = *bl_lvl;
+
 	pr_debug("%s: input = %d, scale = %d", __func__, temp, bl_scale);
 	if (temp >= bl_min_lvl) {
 		/* bl_scale is the numerator of scaling fraction (x/1024)*/
@@ -884,6 +884,7 @@ static void msm_fb_fillrect(struct fb_info *info,
 			    const struct fb_fillrect *rect)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+
 	mutex_lock(&mfd->entry_mutex);
 	msm_fb_pan_idle(mfd);
 	cfb_fillrect(info, rect);
@@ -989,6 +990,7 @@ static int msm_fb_mmap(struct fb_info *info, struct vm_area_struct * vma)
 	unsigned long off = vma->vm_pgoff << PAGE_SHIFT;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	int ret = 0;
+
 	mutex_lock(&mfd->entry_mutex);
 	msm_fb_pan_idle(mfd);
 	if (off >= len) {
@@ -1216,7 +1218,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		break;
 
 	default:
-		MSM_FB_ERR("msm_fb_init: fb %d unkown image type!\n",
+		MSM_FB_ERR("msm_fb_init: fb %d unknown image type!\n",
 			   mfd->index);
 		return ret;
 	}
@@ -1746,8 +1748,7 @@ static int msm_fb_pan_display_ex(struct fb_info *info,
 	u32 wait_for_finish = disp_commit->wait_for_finish;
 	int ret = 0;
 
-	if (disp_commit->flags &
-		MDP_DISPLAY_COMMIT_OVERLAY) {
+	if (disp_commit->flags & MDP_DISPLAY_COMMIT_OVERLAY) {
 		if (!mfd->panel_power_on) /* suspended */
 			return -EPERM;
 	} else {
@@ -1755,7 +1756,7 @@ static int msm_fb_pan_display_ex(struct fb_info *info,
 		 * If framebuffer is 2, io pan display is not allowed.
 		 */
 		if (bf_supported && info->node == 2) {
-			pr_err("%s: no pan display for fb%d!",
+			pr_err("%s: no pan display for fb%d!\n",
 				   __func__, info->node);
 			return -EPERM;
 		}
@@ -1774,8 +1775,7 @@ static int msm_fb_pan_display_ex(struct fb_info *info,
 
 	mutex_lock(&mfd->sync_mutex);
 
-	if (!(disp_commit->flags &
-		MDP_DISPLAY_COMMIT_OVERLAY)) {
+	if (!(disp_commit->flags & MDP_DISPLAY_COMMIT_OVERLAY)) {
 		if (info->fix.xpanstep)
 			info->var.xoffset =
 				(var->xoffset / info->fix.xpanstep) *
@@ -1816,11 +1816,11 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 
 	/*
-	 * If framebuffer is 2, io pen display is not allowed.
+	 * If framebuffer is 2, io pan display is not allowed.
 	 */
 	if (bf_supported && info->node == 2) {
 		pr_err("%s: no pan display for fb%d!",
-		       __func__, info->node);
+			__func__, info->node);
 		return -EPERM;
 	}
 
@@ -1922,9 +1922,8 @@ static void msm_fb_commit_wq_handler(struct work_struct *work)
 	mfd = container_of(work, struct msm_fb_data_type, commit_work);
 	fb_backup = (struct msm_fb_backup_type *)mfd->msm_fb_backup;
 	info = &fb_backup->info;
-	if (fb_backup->disp_commit.flags &
-		MDP_DISPLAY_COMMIT_OVERLAY) {
-			mdp4_overlay_commit(info);
+	if (fb_backup->disp_commit.flags & MDP_DISPLAY_COMMIT_OVERLAY) {
+		mdp4_overlay_commit(info);
 	} else {
 		var = &fb_backup->disp_commit.var;
 		msm_fb_pan_display_sub(var, info);
@@ -2044,11 +2043,12 @@ static int msm_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	return 0;
 }
 
-int msm_fb_check_frame_rate(struct msm_fb_data_type *mfd
-						, struct fb_info *info)
+int msm_fb_check_frame_rate(struct msm_fb_data_type *mfd,
+			struct fb_info *info)
 {
 	int panel_height, panel_width, var_frame_rate, fps_mod;
 	struct fb_var_screeninfo *var = &info->var;
+
 	fps_mod = 0;
 	if ((mfd->panel_info.type == DTV_PANEL) ||
 		(mfd->panel_info.type == HDMI_PANEL)) {
@@ -2859,7 +2859,7 @@ static void msm_fb_ensure_memory_coherency_after_dma(struct fb_info *info,
 /*
  * NOTE: The userspace issues blit operations in a sequence, the sequence
  * start with a operation marked START and ends in an operation marked
- * END. It is guranteed by the userspace that all the blit operations
+ * END. It is guaranteed by the userspace that all the blit operations
  * between START and END are only within the regions of areas designated
  * by the START and END operations and that the userspace doesnt modify
  * those areas. Hence it would be enough to perform barrier/cache operations
@@ -3531,7 +3531,7 @@ static int msmfb_handle_buf_sync_ioctl(struct msm_fb_data_type *mfd,
 	mfd->cur_rel_fen_fd = get_unused_fd_flags(0);
 	if (mfd->cur_rel_fen_fd < 0) {
 		pr_err("%s: get_unused_fd_flags failed", __func__);
-		ret  = -EIO;
+		ret = -EIO;
 		goto buf_sync_err_2;
 	}
 	sync_fence_install(mfd->cur_rel_fence, mfd->cur_rel_fen_fd);
