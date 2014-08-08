@@ -1653,6 +1653,7 @@ msm_fb_release_exit:
 void msm_fb_wait_for_fence(struct msm_fb_data_type *mfd)
 {
 	int i, ret = 0;
+
 	/* buf sync */
 	for (i = 0; i < mfd->acq_fen_cnt; i++) {
 		ret = sync_fence_wait(mfd->acq_fen[i], WAIT_FENCE_TIMEOUT);
@@ -2643,8 +2644,7 @@ typedef void (*msm_dma_barrier_function_pointer) (void *, size_t);
 
 static inline void msm_fb_dma_barrier_for_rect(struct fb_info *info,
 			struct mdp_img *img, struct mdp_rect *rect,
-			msm_dma_barrier_function_pointer dma_barrier_fp
-			)
+			msm_dma_barrier_function_pointer dma_barrier_fp)
 {
 	/*
 	 * Compute the start and end addresses of the rectangles.
@@ -2758,12 +2758,12 @@ static int msmfb_blit(struct fb_info *info, void __user *p)
 	const int MAX_LIST_WINDOW = 16;
 	struct mdp_blit_req req_list[MAX_LIST_WINDOW];
 	struct mdp_blit_req_list req_list_header;
-
 	int count, i, req_list_count;
+
 	if (bf_supported &&
 		(info->node == 1 || info->node == 2)) {
-		pr_err("%s: no pan display for fb%d.",
-		       __func__, info->node);
+		pr_err("%s: no pan display for fb%d.\n",
+			__func__, info->node);
 		return -EPERM;
 	}
 	/* Get the count size for the total BLIT request. */
@@ -3335,6 +3335,7 @@ static int msmfb_handle_pp_ioctl(struct msm_fb_data_type *mfd,
 
 	return ret;
 }
+
 static int msmfb_handle_metadata_ioctl(struct msm_fb_data_type *mfd,
 				struct msmfb_metadata *metadata_ptr)
 {
@@ -3353,6 +3354,7 @@ static int msmfb_handle_metadata_ioctl(struct msm_fb_data_type *mfd,
 	}
 	return ret;
 }
+
 static int msmfb_handle_buf_sync_ioctl(struct msm_fb_data_type *mfd,
 						struct mdp_buf_sync *buf_sync)
 {
@@ -3476,6 +3478,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	struct msmfb_metadata mdp_metadata;
 	struct mdp_buf_sync buf_sync;
 	int ret = 0;
+
 	mutex_lock(&mfd->entry_mutex);
 	msm_fb_pan_idle(mfd);
 
@@ -3484,9 +3487,11 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	case MSMFB_OVERLAY_GET:
 		ret = msmfb_overlay_get(info, argp);
 		break;
+
 	case MSMFB_OVERLAY_SET:
 		ret = msmfb_overlay_set(info, argp);
 		break;
+
 	case MSMFB_OVERLAY_UNSET:
 		ret = msmfb_overlay_unset(info, argp);
 		break;
@@ -3496,43 +3501,55 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = msmfb_overlay_commit(info);
 		up(&msm_fb_ioctl_ppp_sem);
 		break;
+
 	case MSMFB_OVERLAY_PLAY:
 		ret = msmfb_overlay_play(info, argp);
 		break;
+
 	case MSMFB_OVERLAY_PLAY_ENABLE:
 		ret = msmfb_overlay_play_enable(info, argp);
 		break;
+
 	case MSMFB_OVERLAY_PLAY_WAIT:
 		ret = msmfb_overlay_play_wait(info, argp);
 		break;
+
 	case MSMFB_OVERLAY_BLT:
 		ret = msmfb_overlay_blt(info, argp);
 		break;
+
 	case MSMFB_OVERLAY_3D:
 		ret = msmfb_overlay_3d_sbys(info, argp);
 		break;
+
 	case MSMFB_MIXER_INFO:
 		ret = msmfb_mixer_info(info, argp);
 		break;
+
 	case MSMFB_WRITEBACK_INIT:
 		ret = msmfb_overlay_ioctl_writeback_init(info);
 		break;
+
 	case MSMFB_WRITEBACK_START:
 		ret = msmfb_overlay_ioctl_writeback_start(
 				info);
 		break;
+
 	case MSMFB_WRITEBACK_STOP:
 		ret = msmfb_overlay_ioctl_writeback_stop(
 				info);
 		break;
+
 	case MSMFB_WRITEBACK_QUEUE_BUFFER:
 		ret = msmfb_overlay_ioctl_writeback_queue_buffer(
 				info, argp);
 		break;
+
 	case MSMFB_WRITEBACK_DEQUEUE_BUFFER:
 		ret = msmfb_overlay_ioctl_writeback_dequeue_buffer(
 				info, argp);
 		break;
+
 	case MSMFB_WRITEBACK_TERMINATE:
 		ret = msmfb_overlay_ioctl_writeback_terminate(info);
 		break;
@@ -3546,6 +3563,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			ret = msmfb_vsync_ctrl(info, argp);
 		up(&msm_fb_ioctl_ppp_sem);
 		break;
+
 	case MSMFB_BLIT:
 		down(&msm_fb_ioctl_ppp_sem);
 		ret = msmfb_blit(info, argp);
@@ -3727,7 +3745,6 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = mfd->stop_histogram(info, block);
 		break;
 
-
 	case MSMFB_GET_PAGE_PROTECTION:
 		fb_page_protection.page_protection
 			= mfd->mdp_fb_page_protection;
@@ -3758,6 +3775,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 		ret = msmfb_handle_pp_ioctl(mfd, &mdp_pp);
 		break;
+
 	case MSMFB_BUFFER_SYNC:
 		ret = copy_from_user(&buf_sync, argp, sizeof(buf_sync));
 		if (ret)
@@ -3865,7 +3883,7 @@ struct platform_device *msm_fb_add_device(struct platform_device *pdev)
 
 #if defined MSM_FB_NUM
 	/*
-	 * over written fb_num which defined
+	 * overwrites fb_num defined
 	 * at panel_info
 	 *
 	 */
