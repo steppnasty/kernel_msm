@@ -527,7 +527,7 @@ void mdp4_overlay_dmap_cfg(struct msm_fb_data_type *mfd, int lcdc)
 }
 
 /*
- * mdp4_overlay_dmap_xy: called form baselayer only
+ * mdp4_overlay_dmap_xy: called from baselayer only
  */
 void mdp4_overlay_dmap_xy(struct mdp4_overlay_pipe *pipe)
 {
@@ -1444,7 +1444,7 @@ void mdp4_overlayproc_cfg(struct mdp4_overlay_pipe *pipe)
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
 	/*
-	 * BLT support both primary and external external
+	 * BLT support both primary and external display
 	 */
 	if (pipe->ov_blt_addr) {
 		int off, bpp;
@@ -3593,7 +3593,7 @@ void mdp4_iommu_detach(void)
 			if (!domain)
 				continue;
 
-			iommu_detach_device(domain,	ctx);
+			iommu_detach_device(domain, ctx);
 		}
 		pr_debug("Detached MDP IOMMU device\n");
 		iommu_enabled = 0;
