@@ -236,6 +236,7 @@ void mdp4_overlay_cfg(int overlayer, int blt_mode, int refresh, int direct_out)
 void mdp4_display_intf_sel(int output, ulong intf)
 {
 	ulong bits, mask, data;
+
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
@@ -291,6 +292,7 @@ void mdp4_display_intf_sel(int output, ulong intf)
 unsigned long mdp4_display_status(void)
 {
 	ulong status;
+
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
@@ -343,7 +345,6 @@ void mdp4_mddi_setup(int mddi, unsigned long id)
 
 int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req)
 {
-
 	/* not implemented yet */
 	return -1;
 }
@@ -353,6 +354,7 @@ void mdp4_fetch_cfg(uint32 core_clk)
 	uint32 dmap_data, vg_data;
 	char *base;
 	int i;
+
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
