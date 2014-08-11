@@ -1721,7 +1721,7 @@ void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 	pipe->alpha_enable = alpha_enable;
 	pipe->alpha = alpha;
 
-	/* free original base layer pipe to be sued as normal pipe */
+	/* free original base layer pipe to be used as normal pipe */
 	bspipe->pipe_used = 0;
 
 	if (ctrl->panel_mode & MDP4_PANEL_DSI_VIDEO)
@@ -1919,7 +1919,6 @@ void mdp4_mixer_blend_setup(int mixer)
 	unsigned char *overlay_base;
 	uint32 c0, c1, c2, base_premulti;
 
-
 	d_pipe = ctrl->stage[mixer][MDP4_MIXER_STAGE_BASE];
 	if (d_pipe == NULL) {
 		pr_err("%s: Error: no bg_pipe at mixer=%d\n", __func__, mixer);
@@ -2033,7 +2032,7 @@ void mdp4_mixer_blend_setup(int mixer)
 		blend++;
 	}
 
-	/* mixer numer, /dev/fb0, /dev/fb1, /dev/fb2 */
+	/* mixer number, /dev/fb0, /dev/fb1, /dev/fb2 */
 	if (mixer == MDP4_MIXER2)
 		overlay_base = MDP_BASE + MDP4_OVERLAYPROC2_BASE;/* 0x88000 */
 	else if (mixer == MDP4_MIXER1)
@@ -2461,7 +2460,7 @@ static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 	}
 
 	/*
-	 * Serveral special cases require the max mdp clk but cannot
+	 * Several special cases require the max mdp clk but cannot
 	 * be explained by mdp clk equation.
 	 */
 	if (pipe->flags & MDP_DEINTERLACE) {
@@ -3145,7 +3144,6 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 	else {
 		/* mixer 0 */
 		ctrl->mixer0_played = 0;
-
 	}
 	mdp4_overlay_reg_flush(pipe, 1);
 	mdp4_mixer_stage_down(pipe, 0);
@@ -3422,7 +3420,6 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req)
 	}
 
 	mdp4_overlay_mdp_perf_req(mfd, ctrl->plist);
-
 
 	if (pipe->mixer_num == MDP4_MIXER0) {
 		if (ctrl->panel_mode & MDP4_PANEL_DSI_CMD) {
@@ -3719,6 +3716,7 @@ int mdp4_update_base_blend(struct msm_fb_data_type *mfd,
 	int ret = 0;
 	u32 mixer_num;
 	struct blend_cfg *blend;
+
 	mixer_num = mdp4_get_mixer_num(mfd->panel_info.type);
 	if (!ctrl)
 		return -EPERM;
