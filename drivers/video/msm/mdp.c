@@ -30,7 +30,6 @@
 #include <linux/delay.h>
 #include <linux/mutex.h>
 #include <linux/pm_runtime.h>
-#include <linux/regulator/consumer.h>
 #include <asm/system.h>
 #include <asm/mach-types.h>
 #include <linux/semaphore.h>
@@ -41,7 +40,6 @@
 #ifdef CONFIG_FB_MSM_MDP40
 #include "mdp4.h"
 #endif
-#include "mipi_dsi.h"
 
 uint32 mdp4_extn_disp;
 
@@ -154,6 +152,7 @@ DEFINE_MUTEX(mdp_hist_lut_list_mutex);
 uint32_t mdp_block2base(uint32_t block)
 {
 	uint32_t base = 0x0;
+
 	switch (block) {
 	case MDP_BLOCK_DMA_P:
 		base = 0x90000;
@@ -191,6 +190,7 @@ uint32_t mdp_block2base(uint32_t block)
 static uint32_t mdp_pp_block2hist_lut(uint32_t block)
 {
 	uint32_t valid = 0;
+
 	switch (block) {
 	case MDP_BLOCK_DMA_P:
 		valid = (mdp_rev >= MDP_REV_40) ? 1 : 0;
@@ -310,7 +310,6 @@ static int mdp_hist_lut_write_off(struct mdp_hist_lut_data *data,
 	uint32_t element[MDP_HIST_LUT_SIZE];
 	uint32_t base = mdp_block2base(info->block);
 	uint32_t sel = info->bank_sel;
-
 
 	if (data->len != MDP_HIST_LUT_SIZE) {
 		pr_err("%s: data->len != %d", __func__, MDP_HIST_LUT_SIZE);
@@ -1602,13 +1601,11 @@ void mdp_clk_ctrl(int on)
 				mdp_clk_disable_unprepare();
 		} else
 			pr_err("%s: %d: mdp clk off is invalid\n",
-			       __func__, __LINE__);
+				__func__, __LINE__);
 	}
 	pr_debug("%s: on=%d cnt=%d\n", __func__, on, mdp_clk_cnt);
 	mutex_unlock(&mdp_suspend_mutex);
 }
-
-
 
 void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 		   boolean isr)
@@ -1761,7 +1758,7 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 					MDP4_REVISION_V2_1 &&
 					mdp_clk_rate > 122880000) {
 					clk_set_rate(mdp_clk,
-						 mdp_clk_rate);
+						mdp_clk_rate);
 				}
 				clk_prepare_enable(mdp_clk);
 				MSM_FB_DEBUG("MDP CLK ON\n");
@@ -1788,6 +1785,7 @@ void mdp_histogram_handle_isr(struct mdp_hist_mgmt *mgmt)
 {
 	uint32 isr, mask;
 	char *base_addr = MDP_BASE + mgmt->base;
+
 	isr = inpdw(base_addr + MDP_HIST_INTR_STATUS_OFF);
 	mask = inpdw(base_addr + MDP_HIST_INTR_ENABLE_OFF);
 	outpdw(base_addr + MDP_HIST_INTR_CLEAR_OFF, isr);
@@ -1806,6 +1804,7 @@ irqreturn_t mdp_isr(int irq, void *ptr)
 	struct mdp_dma_data *dma;
 	struct mdp_hist_mgmt *mgmt = NULL;
 	int i, ret;
+
 	/* Ensure all the register write are complete */
 	mb();
 
@@ -2061,7 +2060,6 @@ static struct dev_pm_ops mdp_dev_pm_ops = {
 	.runtime_resume = mdp_runtime_resume,
 };
 
-
 static struct platform_driver mdp_driver = {
 	.probe = mdp_probe,
 	.remove = mdp_remove,
@@ -2120,7 +2118,6 @@ void mdp4_hw_init(void)
 {
 	/* empty */
 }
-
 #endif
 
 static int mdp_on(struct platform_device *pdev)
@@ -2153,7 +2150,6 @@ static int mdp_on(struct platform_device *pdev)
 		mdp_clk_ctrl(0);
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	}
-
 
 	if ((mdp_rev == MDP_REV_303) &&
 			(mfd->panel.type == MIPI_CMD_PANEL))
@@ -2231,6 +2227,7 @@ DEFINE_MUTEX(mdp_clk_lock);
 int mdp_set_core_clk(u32 rate)
 {
 	int ret = -EINVAL;
+
 	if (mdp_clk)
 		ret = clk_set_rate(mdp_clk, rate);
 	if (ret)
@@ -2249,6 +2246,7 @@ int mdp_clk_round_rate(u32 rate)
 unsigned long mdp_get_core_clk(void)
 {
 	unsigned long clk_rate = 0;
+
 	if (mdp_clk) {
 		mutex_lock(&mdp_clk_lock);
 		clk_rate = clk_get_rate(mdp_clk);
@@ -2470,7 +2468,7 @@ static int mdp_probe(struct platform_device *pdev)
 			  mdp_vsync_resync_workqueue_handler);
 		mfd->hw_refresh = FALSE;
 
-		if(mfd->panel.type == MDDI_PANEL)
+		if (mfd->panel.type == MDDI_PANEL)
 			mdp4_mddi_rdptr_init(0);
 
 		if (mfd->panel.type == EXT_MDDI_PANEL) {
@@ -2791,7 +2789,7 @@ static int mdp_probe(struct platform_device *pdev)
 	}
 	return 0;
 
-      mdp_probe_err:
+mdp_probe_err:
 	platform_device_put(msm_fb_dev);
 #ifdef CONFIG_MSM_BUS_SCALING
 	if (mdp_pdata && mdp_pdata->mdp_bus_scale_table &&
@@ -2840,7 +2838,7 @@ static int mdp_suspend(struct platform_device *pdev, pm_message_t state)
 	if (pdev->id == 0) {
 		mdp_suspend_sub();
 		if (mdp_current_clk_on) {
-			printk(KERN_WARNING"MDP suspend failed\n");
+			printk(KERN_WARNING "MDP suspend failed\n");
 			return -EBUSY;
 		}
 	}
@@ -2869,7 +2867,7 @@ static void mdp_early_resume(struct early_suspend *h)
 
 static int mdp_remove(struct platform_device *pdev)
 {
-	/*free post processing memory*/
+	/* free post processing memory */
 	mdp_histogram_destroy();
 	mdp_hist_lut_destroy();
 	mdp_pp_initialized = FALSE;
