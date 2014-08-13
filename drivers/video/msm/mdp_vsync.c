@@ -30,6 +30,7 @@
 #include <linux/semaphore.h>
 #include <linux/uaccess.h>
 #include <mach/gpio.h>
+#include "../../../arch/arm/mach-msm/proc_comm.h"
 
 #include "mdp.h"
 #include "msm_fb.h"
@@ -380,10 +381,10 @@ void mdp_config_vsync(struct platform_device *pdev,
 			ret = gpio_tlmm_config(GPIO_CFG
 					(vsync_gpio,
 					(mfd->use_mdp_vsync) ? 1 : 0,
-					GPIO_CFG_INPUT,
-					GPIO_CFG_PULL_DOWN,
-					GPIO_CFG_2MA),
-					GPIO_CFG_ENABLE);
+					GPIO_INPUT,
+					GPIO_PULL_DOWN,
+					GPIO_2MA),
+					GPIO_ENABLE);
 			if (ret)
 				goto err_handle;
 
