@@ -74,7 +74,6 @@ static struct msm_fb_data_type *vsync_mfd;
 static unsigned char timer_shutdown_flag;
 static uint32 vsync_cnt_cfg;
 
-
 void vsync_clk_prepare_enable(void)
 {
 	if (mdp_vsync_clk)
@@ -254,7 +253,7 @@ void mdp_vsync_cfg_regs(struct msm_fb_data_type *mfd,
 {
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON,
-			  FALSE);
+			FALSE);
 	if (first_time)
 		mdp_hw_vsync_clk_enable(mfd);
 
@@ -273,11 +272,11 @@ void mdp_vsync_cfg_regs(struct msm_fb_data_type *mfd,
 
 	/* line counter init value at the next pulse */
 	MDP_OUTP(MDP_BASE + MDP_PRIM_VSYNC_INIT_VAL,
-		vsync_load_cnt);
+			vsync_load_cnt);
 #ifdef CONFIG_FB_MSM_MDP40
 	if (mdp_hw_revision < MDP4_REVISION_V2_1) {
-		MDP_OUTP(MDP_BASE +	MDP_SEC_VSYNC_INIT_VAL,
-			vsync_load_cnt);
+		MDP_OUTP(MDP_BASE + MDP_SEC_VSYNC_INIT_VAL,
+				vsync_load_cnt);
 	}
 #endif
 
@@ -288,14 +287,14 @@ void mdp_vsync_cfg_regs(struct msm_fb_data_type *mfd,
 	MDP_OUTP(MDP_BASE + MDP_PRIM_VSYNC_OUT_CTRL, BIT(0));
 #ifdef CONFIG_FB_MSM_MDP40
 	if (mdp_hw_revision < MDP4_REVISION_V2_1) {
-		MDP_OUTP(MDP_BASE +	MDP_SEC_VSYNC_OUT_CTRL, BIT(0));
-		MDP_OUTP(MDP_BASE +	MDP_VSYNC_SEL, 0x20);
+		MDP_OUTP(MDP_BASE + MDP_SEC_VSYNC_OUT_CTRL, BIT(0));
+		MDP_OUTP(MDP_BASE + MDP_VSYNC_SEL, 0x20);
 	}
 #endif
 
 	/* threshold */
 	MDP_OUTP(MDP_BASE + 0x200, (vsync_above_th << 16) |
-		 (vsync_start_th));
+			(vsync_start_th));
 
 	if (first_time)
 		mdp_hw_vsync_clk_disable(mfd);
@@ -329,7 +328,7 @@ void mdp_config_vsync(struct platform_device *pdev,
 
 #ifdef MDP_HW_VSYNC
 		if (mdp_vsync_clk == NULL)
-			mdp_vsync_clk = clk_get(&pdev->dev, "vsync_clk");
+			mdp_vsync_clk = clk_get(&pdev->dev, "mdp_vsync_clk");
 
 		if (IS_ERR(mdp_vsync_clk)) {
 			printk(KERN_ERR "error: can't get mdp_vsync_clk!\n");
@@ -356,6 +355,7 @@ void mdp_config_vsync(struct platform_device *pdev,
 				vsync_cnt_cfg =
 				    (mdp_vsync_clk_speed_hz) /
 				    vsync_cnt_cfg_dem;
+
 				mdp_vsync_cfg_regs(mfd, TRUE);
 			}
 		}
@@ -389,10 +389,10 @@ void mdp_config_vsync(struct platform_device *pdev,
 				goto err_handle;
 
 			/*
-			 * if use_mdp_vsync, then no interrupt need since
-			 * mdp_vsync is feed directly to mdp to reset the
-			 * write pointer counter. therefore no irq_handler
-			 * need to reset write pointer counter.
+			 * If use_mdp_vsync, then no interrupt needed since
+			 * mdp_vsync is fed directly to mdp to reset the
+			 * write pointer counter. Therefore no irq_handler
+			 * needed to reset write pointer counter.
 			 */
 			if (!mfd->use_mdp_vsync) {
 				mfd->channel_irq = MSM_GPIO_TO_INT(vsync_gpio);
