@@ -2274,7 +2274,7 @@ static int mdp_irq_clk_setup(struct platform_device *pdev,
 	}
 	disable_irq(mdp_irq);
 
-	mdp_clk = clk_get(&pdev->dev, "core_clk");
+	mdp_clk = clk_get(&pdev->dev, "mdp_clk");
 	if (IS_ERR(mdp_clk)) {
 		ret = PTR_ERR(mdp_clk);
 		printk(KERN_ERR "can't get mdp_clk error:%d!\n", ret);
@@ -2282,7 +2282,7 @@ static int mdp_irq_clk_setup(struct platform_device *pdev,
 		return ret;
 	}
 
-	mdp_pclk = clk_get(&pdev->dev, "iface_clk");
+	mdp_pclk = clk_get(&pdev->dev, "mdp_pclk");
 	if (IS_ERR(mdp_pclk))
 		mdp_pclk = NULL;
 
