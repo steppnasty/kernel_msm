@@ -48,8 +48,8 @@ extern struct workqueue_struct *mdp_hist_wq;
 
 extern uint32 mdp_intr_mask;
 
-#define MDP4_REVISION_V1		0
-#define MDP4_REVISION_V2		1
+#define MDP4_REVISION_V1	0
+#define MDP4_REVISION_V2	1
 #define MDP4_REVISION_V2_1	2
 #define MDP4_REVISION_NONE	0xffffffff
 
@@ -72,7 +72,7 @@ extern uint32 mdp_intr_mask;
 #define MDPOP_SHARPENING	BIT(11) /* enable sharpening */
 #define MDPOP_BLUR		BIT(12) /* enable blur */
 #define MDPOP_FG_PM_ALPHA       BIT(13)
-#define MDP_ALLOC(x)  kmalloc(x, GFP_KERNEL)
+#define MDP_ALLOC(x) kmalloc(x, GFP_KERNEL)
 
 struct mdp_buf_type {
 	struct ion_handle *ihdl;
@@ -321,13 +321,13 @@ extern struct mdp_hist_mgmt *mdp_hist_mgmt_array[];
 #define TV_OUT_DMA3_START   BIT(13)
 #define MDP_HIST_DONE       BIT(20)
 
-/*MDP4 MDP histogram interrupts*/
-/*note: these are only applicable on MDP4+ targets*/
+/* MDP4 MDP histogram interrupts */
+/* note: these are only applicable on MDP4+ targets */
 #define INTR_VG1_HISTOGRAM		BIT(5)
 #define INTR_VG2_HISTOGRAM		BIT(6)
 #define INTR_DMA_P_HISTOGRAM		BIT(17)
 #define INTR_DMA_S_HISTOGRAM		BIT(26)
-/*end MDP4 MDP histogram interrupts*/
+/* end MDP4 MDP histogram interrupts */
 
 /* histogram interrupts */
 #define INTR_HIST_DONE			BIT(1)
@@ -809,15 +809,6 @@ static inline int mdp4_mddi_on(struct platform_device *pdev)
 }
 #endif
 
-
-#ifndef CONFIG_FB_MSM_MDDI
-static inline void mdp4_mddi_rdptr_init(int cndx)
-{
-	/* empty */
-}
-
-#endif
-
 void set_cont_splashScreen_status(int);
 
 int mdp_hw_cursor_update(struct fb_info *info, struct fb_cursor *cursor);
@@ -834,8 +825,7 @@ static inline int mdp_hw_cursor_sync_update(struct fb_info *info,
 void mdp_enable_irq(uint32 term);
 void mdp_disable_irq(uint32 term);
 void mdp_disable_irq_nosync(uint32 term);
-int mdp_get_bytes_per_pixel(uint32_t format,
-				 struct msm_fb_data_type *mfd);
+int mdp_get_bytes_per_pixel(uint32_t format, struct msm_fb_data_type *mfd);
 int mdp_set_core_clk(u32 rate);
 int mdp_clk_round_rate(u32 rate);
 
@@ -879,31 +869,6 @@ void mdp_histogram_handle_isr(struct mdp_hist_mgmt *mgmt);
 void __mdp_histogram_kickoff(struct mdp_hist_mgmt *mgmt);
 void __mdp_histogram_reset(struct mdp_hist_mgmt *mgmt);
 unsigned int mdp_check_suspended(void);
-void mdp_footswitch_ctrl(boolean on);
-
-#ifdef CONFIG_FB_MSM_MDP303
-static inline void mdp4_dsi_cmd_dma_busy_wait(struct msm_fb_data_type *mfd)
-{
-	/* empty */
-}
-
-static inline void mdp4_dsi_blt_dmap_busy_wait(struct msm_fb_data_type *mfd)
-{
-	/* empty */
-}
-static inline void mdp4_overlay_dsi_state_set(int state)
-{
-	/* empty */
-}
-static inline int mdp4_overlay_dsi_state_get(void)
-{
-	return 0;
-}
-static inline void mdp4_iommu_detach(void)
-{
-	/*empty */
-}
-#endif
 
 void mdp_vid_quant_set(void);
 #ifndef CONFIG_FB_MSM_MDP40
