@@ -48,11 +48,11 @@ typedef enum {
 	DISPLAY_EXT_MDDI,	/* External MDDI */
 } DISP_TARGET;
 
-/* panel device locaiton */
+/* panel device location */
 typedef enum {
 	DISPLAY_1 = 0,		/* attached as first device */
 	DISPLAY_2,		/* attached on second device */
-	DISPLAY_3,              /* attached on third writeback device */
+	DISPLAY_3,		/* attached on third writeback device */
 	MAX_PHYS_TARGET_NUM,
 } DISP_TARGET_PHYS;
 
@@ -162,7 +162,6 @@ struct msm_panel_info {
 	__u32 frame_count;
 	__u32 is_3d_panel;
 	__u32 frame_rate;
-
 
 	struct mddi_panel_info mddi;
 	struct lcd_panel_info lcd;
