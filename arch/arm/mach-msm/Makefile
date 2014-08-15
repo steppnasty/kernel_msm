@@ -5,6 +5,7 @@ obj-y += timer-8x60.o clock-core.o clock-voter.o
 else
 obj-y += timer.o clock.o
 endif
+obj-y += subsystem_map.o
 
 ifndef CONFIG_ARCH_MSM8X60
 obj-y += irq.o devices.o pmic.o vreg.o pwrtest.o
