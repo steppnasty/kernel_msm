@@ -726,7 +726,6 @@ void mdp4_mddi_overlay_kickoff(struct msm_fb_data_type *mfd,
 			struct mdp4_overlay_pipe *pipe);
 void mdp4_mddi_kickoff_video(struct msm_fb_data_type *mfd,
 			struct mdp4_overlay_pipe *pipe);
-void mdp4_mddi_blt_dmap_busy_wait(struct msm_fb_data_type *mfd);
 void mdp4_mddi_wait4vsync(int cndx);
 #else
 static inline int mdp4_mddi_off(struct platform_device *pdev)
@@ -800,10 +799,6 @@ static inline int mdp4_mddi_overlay_blt_stop(struct msm_fb_data_type *mfd)
 {
 	return 0;
 }
-static inline void mdp4_mddi_blt_dmap_busy_wait(struct msm_fb_data_type *mfd)
-{
-	/* empty */
-}
 static inline void mdp4_mddi_rdptr_init(int cndx)
 {
 	/* empty */
@@ -819,10 +814,6 @@ static inline void mdp4_mddi_overlay_kickoff(struct msm_fb_data_type *mfd,
 }
 static inline void mdp4_mddi_kickoff_video(struct msm_fb_data_type *mfd,
 			struct mdp4_overlay_pipe *pipe)
-{
-	/* empty */
-}
-static inline void mdp4_mddi_blt_dmap_busy_wait(struct msm_fb_data_type *mfd)
 {
 	/* empty */
 }
