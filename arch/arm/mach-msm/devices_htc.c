@@ -192,7 +192,7 @@ struct kgsl_device_platform_data kgsl_3d0_pdata = {
 	},
 };
 
-static struct platform_device msm_kgsl_3d0 = {
+struct platform_device msm_kgsl_3d0 = {
 	.name = "kgsl-3d0",
 	.id = 0,
 	.num_resources = ARRAY_SIZE(kgsl_3d0_resources),
@@ -203,7 +203,7 @@ static struct platform_device msm_kgsl_3d0 = {
 };
 
 #ifdef CONFIG_MSM_KGSL_2D
-static struct resource kgsl_2d0_resources[] = {
+struct resource kgsl_2d0_resources[] = {
 	{
 		.name = KGSL_2D0_REG_MEMORY,
 		.start = 0xA3900000, /* Z180 base address */
