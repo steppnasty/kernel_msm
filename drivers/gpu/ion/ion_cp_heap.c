@@ -35,6 +35,9 @@
 
 #include <asm/mach/map.h>
 
+#include <linux/sched.h>
+#include <../arch/arm/mm/mm.h>
+
 /**
  * struct ion_cp_heap - container for the heap and shared heap data
 
