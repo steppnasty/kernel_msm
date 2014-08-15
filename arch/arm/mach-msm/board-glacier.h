@@ -42,6 +42,11 @@
 #define MSM_FB_BASE		0x2FD00000
 #define MSM_FB_SIZE		0x00300000
 
+#ifdef CONFIG_ION_MSM
+#define MSM_ION_SF_SIZE		MSM_PMEM_MDP_SIZE
+#define MSM_ION_HEAP_NUM	4
+#endif
+
 #define GLACIER_GPIO_WIFI_IRQ             147
 #define GLACIER_GPIO_WIFI_SHUTDOWN_N       39
 
