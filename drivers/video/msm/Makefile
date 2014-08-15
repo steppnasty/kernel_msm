@@ -11,7 +11,10 @@ endif
 obj-y += mdp.o
 obj-$(CONFIG_FB_MSM_OVERLAY) += mdp4_util.o
 obj-$(CONFIG_FB_MSM_OVERLAY) += mdp4_overlay.o
-obj-$(CONFIG_FB_MSM_OVERLAY) += mdp4_overlay_mddi.o
+obj-$(CONFIG_FB_MSM_MDDI) += mdp4_overlay_mddi.o
+obj-$(CONFIG_FB_MSM_LCDC) += mdp4_overlay_lcdc.o
+
+obj-$(CONFIG_DEBUG_FS) += mdp_debugfs.o
 
 obj-$(CONFIG_FB_MSM_LEGACY_MDP) += mdp_hw_legacy.o
 
@@ -21,25 +24,26 @@ obj-$(CONFIG_MSM_MDP30) += mdp_ppp22.o
 obj-$(CONFIG_MSM_MDP302)+= mdp_ppp22.o
 obj-$(CONFIG_MSM_MDP31) += mdp_ppp31.o
 
-# MDDI interface
-#
-obj-y += mddi.o
+obj-y += mdp_dma.o
+obj-y += mdp_dma_s.o
+obj-y += mdp_vsync.o
+obj-y += mdp_cursor.o
+obj-y += mdp_dma_tv.o
 
-# MDDI client/panel drivers
-#
-ifdef CONFIG_ARCH_MSM7X30
-obj-y += mddi_client_dummy.o
-obj-y += mddi_client_toshiba.o
-obj-y += mddi_client_novb9f6_5580.o
-obj-y += mddi_client_novb9f6_5560.o
-obj-y += mddi_client_renesas_R61408.o
-obj-y += mddi_client_hx8356.o mddi_himax_cabc.o
-endif
+# LCDC
+obj-$(CONFIG_FB_MSM_LCDC) += lcdc.o
+
+# MDDI
+msm_mddi-objs := mddi.o mddihost.o mddihosti.o
+obj-$(CONFIG_FB_MSM_MDDI) += msm_mddi.o
 
 # MDP LCD controller driver
 obj-$(CONFIG_FB_MSM_LCDC) += mdp_lcdc.o
 obj-$(CONFIG_FB_MSM_DTV) += mdp_dtv.o
 obj-$(CONFIG_FB_MSM_TVOUT) += tvenc.o tvfb.o
+
+# MSM FB Panel
+obj-y += msm_fb_panel.o
 
 obj-$(CONFIG_MSM_VIDC_720P) += vidc/
 
