@@ -743,7 +743,7 @@ static inline void mdp4_mddi_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe
 }
 static inline int mdp4_mddi_pipe_commit(int cndx, int wait)
 {
-	/* empty */
+	return 0;
 }
 static inline void mdp4_mddi_dma_busy_wait(struct msm_fb_data_type *mfd)
 {
