@@ -8,34 +8,58 @@ config FB_MSM
 	select SW_SYNC
 	default y
 
+config FB_MSM_LCDC_HW
+	bool
+	default n
+
+config FB_MSM_TRIPLE_BUFFER
+	bool "Support for triple frame buffer"
+	default n
+
+config FB_MSM_MDP_HW
+	bool
+	default n
+
 config FB_MSM_LEGACY_MDP
 	bool
 	depends on FB_MSM && (MSM_MDP30 || MSM_MDP31 || MSM_MDP302)
 	default y
+
+config FB_MSM_MDP40
+	select FB_MSM_LCDC_HW
+	select FB_MSM_MDP_HW
+	bool "MDP HW ver4.0"
+	---help---
+	  Support for MSM MDP HW revision 4.0
+	  Say Y here if this is msm7x30 variant platform.
 
 config FB_MSM_MDP_PPP
 	bool
 	depends on FB_MSM_LEGACY_MDP
 	default y
 
+config FB_MSM_MDDI
+	bool
+	default y
+
 config FB_MSM_LCDC
 	bool "Support for integrated LCD controller in qsd8x50 ,MSM7x27 and MSM7x30"
-	depends on FB_MSM && (MSM_MDP31 || MSM_MDP302 || MSM_MDP40)
-	default y
+	depends on FB_MSM && (MSM_MDP31 || MSM_MDP302 || FB_MSM_MDP40)
+	default n
 
 config FB_MSM_DTV
 	bool "Support for TV-Out in qsd8x50"
-	depends on FB_MSM && MSM_MDP40
+	depends on FB_MSM && FB_MSM_MDP40
 	default n
 
 config FB_MSM_TVOUT
 	bool "Support for TV-Out in qsd8x50"
-	depends on FB_MSM && (MSM_MDP31 || MSM_MDP40)
+	depends on FB_MSM && (MSM_MDP31 || FB_MSM_MDP40)
 	default n
 
 config FB_MSM_OVERLAY
 	bool "Support for overlay in MSM7X30"
-	depends on FB_MSM && MSM_MDP40
+	depends on FB_MSM && FB_MSM_MDP40
 	default y
 
 config FB_MSM_DTV
@@ -43,9 +67,18 @@ config FB_MSM_DTV
 	bool
 	default n
 
+config FB_MSM_NO_MDP_PIPE_CTRL
+	depends on FB_MSM_OVERLAY
+	bool "Do not use mdp_pipe_ctrl"
+	---help---
+	  Saying 'Y' here obsoletes the mdp_pipe_ctrl function,
+	  which was used to control mdp-related clocks. MDP4 vsync-driven
+	  screen updates will use a different clock control mechanism if
+	  this is selected.
+
 config FB_MSM_MDP_ABL
         bool "Support QCT auto backlight scaling"
-        depends on FB_MSM && (MSM_MDP40)
+        depends on FB_MSM && (FB_MSM_MDP40)
         default n
 
 config MSM_ROTATOR
@@ -68,24 +101,24 @@ config MSM_ROTATOR_USE_IMEM
 
 config MSM_HDMI_COMMON
 	bool "Turn on HDMI common interface"
-	depends on FB_MSM_OVERLAY && MSM_MDP40
+	depends on FB_MSM_OVERLAY && FB_MSM_MDP40
 	bool
 	default n
 
 config MSM_HDMI
 	bool "Support for HDMI in QCT platform"
-	depends on MSM_MDP31 || MSM_MDP40
+	depends on MSM_MDP31 || FB_MSM_MDP40
 	default n
 
 config MSM_HDMI_MHL
 	bool "Turn on MHL chip driver"
-	depends on FB_MSM_OVERLAY && MSM_MDP40
+	depends on FB_MSM_OVERLAY && FB_MSM_MDP40
 	bool
 	default n
 
 config MSM_HDMI_MHL_SII9232
 	bool "support sii9232 driver"
-	depends on MSM_HDMI_MHL && MSM_MDP40
+	depends on MSM_HDMI_MHL && FB_MSM_MDP40
 	bool
 	default n
 
@@ -96,7 +129,7 @@ config MDP_UNDERRUN_WORKAROUND_DISABLED
 
 config MDP4_HW_VSYNC
 	bool "QCT hardware TE"
-	depends on MSM_MDP40
+	depends on FB_MSM_MDP40
 	default n
 
 source "drivers/video/msm/vidc/Kconfig"
