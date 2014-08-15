@@ -249,7 +249,7 @@ void mdp4_mddi_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe)
 
 static void mdp4_mddi_blt_ov_update(struct mdp4_overlay_pipe *pipe);
 
-int mdp4_mddi_pipe_commit(void)
+int mdp4_mddi_pipe_commit(int wait)
 {
 	int  i, undx;
 	int mixer = 0;
@@ -372,6 +372,9 @@ int mdp4_mddi_pipe_commit(void)
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
 	mdp4_stat.overlay_commit[pipe->mixer_num]++;
+
+	if (wait)
+		mdp4_mddi_wait4vsync(0);
 
 	return cnt;
 }
@@ -1052,10 +1055,8 @@ void mdp4_mddi_overlay(struct msm_fb_data_type *mfd)
 	mdp4_overlay_mdp_perf_upd(mfd, 1);
 
 	mutex_lock(&mfd->dma->ov_mutex);
-	mdp4_mddi_pipe_commit();
+	mdp4_mddi_pipe_commit(0);
 	mutex_unlock(&mfd->dma->ov_mutex);
-
-	mdp4_mddi_wait4vsync(0);
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
 }
 

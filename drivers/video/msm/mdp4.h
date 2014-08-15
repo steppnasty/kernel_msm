@@ -700,7 +700,7 @@ static inline void mdp4_dmap_done_lcdc(int cndx)
 int mdp4_mddi_off(struct platform_device *pdev);
 int mdp4_mddi_on(struct platform_device *pdev);
 void mdp4_mddi_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe);
-int mdp4_mddi_pipe_commit(int cndx, int wait);
+int mdp4_mddi_pipe_commit(int wait);
 void mdp4_mddi_dma_busy_wait(struct msm_fb_data_type *mfd);
 void mdp4_mddi_overlay_restore(void);
 ssize_t mdp4_mddi_show_event(struct device *dev,
@@ -740,7 +740,7 @@ static inline void mdp4_mddi_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe
 {
 	/* empty */
 }
-static inline int mdp4_mddi_pipe_commit(int cndx, int wait)
+static inline int mdp4_mddi_pipe_commit(int wait)
 {
 	return 0;
 }
