@@ -29,6 +29,7 @@ config ARCH_MSM7X30
 	bool "MSM7x30"
 	select ARCH_MSM_SCORPION
 	select CPU_V7
+	select MSM_MULTIMEDIA_USE_ION
 
 config ARCH_QSD8X50
 	bool "QSD8x50"
@@ -1373,7 +1374,7 @@ config MSM_ADSP_REPORT_EVENTS
 
 config MSM7KV2_AUDIO
         bool "MSM7K v2 audio"
-        depends on (ARCH_MSM7X30 && ANDROID_PMEM)
+        depends on ARCH_MSM7X30
         default n
         help
           Enables QDSP5V2-based audio drivers for audio playbacks and
@@ -1381,7 +1382,7 @@ config MSM7KV2_AUDIO
 
 config MSM7KV2_1X_AUDIO
         bool "MSM7K v2 audio (version 1.x)"
-        depends on (ARCH_MSM7X30 && ANDROID_PMEM)
+        depends on ARCH_MSM7X30
         default n
         help
           Enables QDSP5V2-based audio drivers for audio playbacks and
@@ -1828,6 +1829,14 @@ config MSM_SHOW_RESUME_IRQ
 		This option logs wake up interrupts that have triggered just before
 		the resume loop unrolls. Say Y if you want to debug why the system
 		resumed.
+
+config MSM_MULTIMEDIA_USE_ION
+	bool "Multimedia support using Ion"
+	depends on ION_MSM
+	help
+	  Enable support for multimedia drivers using Ion for buffer management
+	  instead of pmem. Selecting this may also involve userspace
+	  dependencies as well.
 
 config MSM7X30_DDR2
 	bool "Request max ebi1 at max cpu frequency"
