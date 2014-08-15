@@ -376,8 +376,6 @@ int mdp4_mddi_pipe_commit(void)
 	return cnt;
 }
 
-static void mdp4_overlay_update_mddi(struct msm_fb_data_type *mfd);
-
 void mdp4_mddi_vsync_ctrl(struct fb_info *info, int enable)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
@@ -788,7 +786,7 @@ static void mdp4_overlay_setup_pipe_addr(struct msm_fb_data_type *mfd,
 	pipe->srcp0_addr = (uint32)src;
 }
 
-static void mdp4_overlay_update_mddi(struct msm_fb_data_type *mfd)
+void mdp4_overlay_update_mddi(struct msm_fb_data_type *mfd)
 {
 	int ptype;
 	uint32 mddi_ld_param;
