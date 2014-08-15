@@ -147,7 +147,7 @@ static struct platform_device msm_vpe_device = {
 #endif
 
 #ifdef CONFIG_MSM_KGSL
-struct resource kgsl_3d0_resources[] = {
+static struct resource kgsl_3d0_resources[] = {
 	{
 		.name  = KGSL_3D0_REG_MEMORY,
 		.start = 0xA3500000, /* 3D GRP address */
@@ -162,7 +162,7 @@ struct resource kgsl_3d0_resources[] = {
 	},
 };
 
-struct kgsl_device_platform_data kgsl_3d0_pdata = {
+static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 	.pwrlevel = {
 		{
 			.gpu_freq = 245760000,
@@ -203,7 +203,7 @@ struct platform_device msm_kgsl_3d0 = {
 };
 
 #ifdef CONFIG_MSM_KGSL_2D
-struct resource kgsl_2d0_resources[] = {
+static struct resource kgsl_2d0_resources[] = {
 	{
 		.name = KGSL_2D0_REG_MEMORY,
 		.start = 0xA3900000, /* Z180 base address */
@@ -237,7 +237,7 @@ static struct kgsl_device_platform_data kgsl_2d0_pdata = {
 	},
 };
 
-static struct platform_device msm_kgsl_2d0 = {
+struct platform_device msm_kgsl_2d0 = {
 	.name = "kgsl-2d0",
 	.id = 0,
 	.num_resources = ARRAY_SIZE(kgsl_2d0_resources),
