@@ -37,6 +37,12 @@ obj-$(CONFIG_FB_MSM_LCDC) += lcdc.o
 msm_mddi-objs := mddi.o mddihost.o mddihosti.o
 obj-$(CONFIG_FB_MSM_MDDI) += msm_mddi.o
 
+# MDDI client/panel drivers
+#
+ifdef CONFIG_ARCH_MSM7X30
+obj-$(CONFIG_MACH_GLACIER) += mddi_nt21856_wvga.o
+endif
+
 # MDP LCD controller driver
 obj-$(CONFIG_FB_MSM_LCDC) += mdp_lcdc.o
 obj-$(CONFIG_FB_MSM_DTV) += mdp_dtv.o
