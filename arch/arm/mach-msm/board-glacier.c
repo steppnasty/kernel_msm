@@ -3,6 +3,7 @@
  * Copyright (C) 2009 Google, Inc.
  * Copyright (C) 2010 HTC Corporation.
  * Author: Tony Liu <tony_liu@htc.com>
+ * Modified 2014, Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
