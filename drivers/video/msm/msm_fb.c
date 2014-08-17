@@ -135,7 +135,7 @@ static int msm_fb_pan_idle(struct msm_fb_data_type *mfd);
 int msm_fb_debugfs_file_index;
 struct dentry *msm_fb_debugfs_root;
 struct dentry *msm_fb_debugfs_file[MSM_FB_MAX_DBGFS];
-static int bl_scale, bl_min_lvl;
+static int bl_scale, bl_min_lvl, bl_first_run;
 
 DEFINE_MUTEX(msm_fb_notify_update_sem);
 void msmfb_no_update_notify_timer_cb(unsigned long data)
@@ -1909,6 +1909,11 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 		schedule_delayed_work(&mfd->backlight_worker,
 				backlight_duration);
 
+	if (!bl_first_run) {
+		unset_bl_level = mfd->panel_info.bl_max;
+		bl_first_run = 1;
+	}
+
 	++mfd->panel_info.frame_count;
 	return 0;
 }
@@ -1925,6 +1930,10 @@ static void msm_fb_commit_wq_handler(struct work_struct *work)
 	info = &fb_backup->info;
 	if (fb_backup->disp_commit.flags & MDP_DISPLAY_COMMIT_OVERLAY) {
 		mdp4_overlay_commit(info);
+		if (!bl_first_run) {
+			unset_bl_level = mfd->panel_info.bl_max;
+			bl_first_run = 1;
+		}
 	} else {
 		var = &fb_backup->disp_commit.var;
 		msm_fb_pan_display_sub(var, info);
