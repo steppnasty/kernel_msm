@@ -1779,6 +1779,8 @@ void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 		mdp4_lcdc_base_swap(0, pipe);
 	else if (ctrl->panel_mode & MDP4_PANEL_DTV)
 		mdp4_dtv_base_swap(0, pipe);
+	else if (ctrl->panel_mode & MDP4_PANEL_MDDI)
+		mdp4_mddi_base_swap(0, pipe);
 
 	mdp4_overlay_reg_flush(bspipe, 1);
 	/* borderfill pipe as base layer */
@@ -1833,6 +1835,8 @@ void mdp4_overlay_borderfill_stage_down(struct mdp4_overlay_pipe *pipe)
 		mdp4_lcdc_base_swap(0, bspipe);
 	else if (ctrl->panel_mode & MDP4_PANEL_DTV)
 		mdp4_dtv_base_swap(0, bspipe);
+	else if (ctrl->panel_mode & MDP4_PANEL_MDDI)
+		mdp4_mddi_base_swap(0, bspipe);
 
 	/* free borderfill pipe */
 	mdp4_overlay_reg_flush(pipe, 1);
@@ -3499,6 +3503,9 @@ int mdp4_overlay_commit(struct fb_info *info)
 	mdp4_overlay_mdp_perf_upd(mfd, 1);
 
 	switch (mfd->panel.type) {
+	case MDDI_PANEL:
+		mdp4_mddi_pipe_commit(1);
+		break;
 	case MIPI_CMD_PANEL:
 		mdp4_dsi_cmd_pipe_commit(0, 1);
 		break;
