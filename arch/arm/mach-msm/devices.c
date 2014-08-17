@@ -46,6 +46,12 @@
 #include <linux/mfd/pmic8058.h>
 #endif
 
+#if defined(CONFIG_MSM_MDP40)
+#define MDP_BASE	0xA3F00000
+#else
+#define MDP_BASE        0xAA200000
+#endif
+
 int usb_phy_error;
 
 #define HSUSB_API_INIT_PHY_PROC	2
@@ -1186,17 +1192,12 @@ int __init rmt_storage_add_ramfs(void)
 }
 #endif
 
-static struct resource resources_mddi0[] = {
+static struct resource msm_mddi_resources[] = {
 	{
 		.start	= MSM_PMDH_PHYS,
 		.end	= MSM_PMDH_PHYS + MSM_PMDH_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.start	= INT_MDDI_PRI,
-		.end	= INT_MDDI_PRI,
-		.flags	= IORESOURCE_IRQ,
-	},
+	}
 };
 
 static struct resource resources_mddi1[] = {
@@ -1212,14 +1213,11 @@ static struct resource resources_mddi1[] = {
 	},
 };
 
-struct platform_device msm_device_mddi0 = {
-	.name = "msm_mddi",
-	.id = 0,
-	.num_resources = ARRAY_SIZE(resources_mddi0),
-	.resource = resources_mddi0,
-	.dev            = {
-		.coherent_dma_mask      = 0xffffffff,
-	},
+struct platform_device msm_mddi_device = {
+	.name	= "mddi",
+	.id	= 0,
+	.num_resources	= ARRAY_SIZE(msm_mddi_resources),
+	.resource	= msm_mddi_resources,
 };
 
 struct platform_device msm_device_mddi1 = {
@@ -1232,11 +1230,11 @@ struct platform_device msm_device_mddi1 = {
 	}
 };
 
-static struct resource resources_mdp[] = {
+static struct resource msm_mdp_resources[] = {
 	{
-		.start	= MSM_MDP_PHYS,
-		.end	= MSM_MDP_PHYS + MSM_MDP_SIZE - 1,
 		.name	= "mdp",
+		.start	= MDP_BASE,
+		.end	= MDP_BASE + MSM_MDP_SIZE - 1,
 		.flags	= IORESOURCE_MEM
 	},
 	{
@@ -1246,11 +1244,11 @@ static struct resource resources_mdp[] = {
 	},
 };
 
-struct platform_device msm_device_mdp = {
-	.name = "msm_mdp",
+struct platform_device msm_mdp_device = {
+	.name = "mdp",
 	.id = 0,
-	.num_resources = ARRAY_SIZE(resources_mdp),
-	.resource = resources_mdp,
+	.num_resources = ARRAY_SIZE(msm_mdp_resources),
+	.resource = msm_mdp_resources,
 };
 
 #if defined(CONFIG_ARCH_MSM7X30)
@@ -1442,14 +1440,8 @@ struct clk msm_clocks[] = {
 	CLK_ALL("icodec_tx_clk", ICODEC_TX_CLK, NULL, 0),
 	CLK_ALL("imem_clk", IMEM_CLK, NULL, OFF),
 	CLK_ALL("mdc_clk", MDC_CLK, NULL, 0),
-	CLK_ALL("mdp_clk", MDP_CLK, &msm_device_mdp.dev, 0),
 	CLK_ALL("pbus_clk", PBUS_CLK, NULL, 0),
 	CLK_ALL("pcm_clk", PCM_CLK, NULL, 0),
-#ifdef CONFIG_MACH_SUPERSONIC
-	CLK_ALL("mddi_clk", PMDH_CLK, &msm_device_mddi0.dev, OFF),
-#else
-	CLK_ALL("mddi_clk", PMDH_CLK, &msm_device_mddi0.dev, OFF | MINMAX),
-#endif
 	CLK_ALL("sdac_clk", SDAC_CLK, NULL, OFF),
 	CLK_ALL("sdc_clk", SDC1_CLK, &msm_device_sdc1.dev, OFF),
 	CLK_ALL("sdc_pclk", SDC1_PCLK, &msm_device_sdc1.dev, OFF),
@@ -1479,9 +1471,6 @@ struct clk msm_clocks[] = {
 #endif
 	CLK_ALL("spi_clk", SPI_CLK, NULL, 0),
 	CLK_ALL("usb_phy_clk", USB_PHY_CLK, NULL, USE_MIN),
-	CLK_8X50("lcdc_pclk_clk", LCDC_PCLK, &msm_device_mdp.dev, 0),
-	CLK_8X50("lcdc_pad_pclk_clk", LCDC_PAD_PCLK, &msm_device_mdp.dev, 0),
-	CLK_8X50("mdp_vsync_clk", MDP_VSYNC_CLK, &msm_device_mdp.dev, 0),
 
 	CLOCK(NULL, 0, NULL, 0, 0),
 #else /* 7x30 clock tbl */

@@ -138,7 +138,7 @@ static struct resource msm_vpe_resources[] = {
        },
 };
 
-static struct platform_device msm_vpe_device = {
+struct platform_device msm_vpe_device = {
        .name = "msm_vpe",
        .id   = 0,
        .num_resources = ARRAY_SIZE(msm_vpe_resources),

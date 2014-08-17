@@ -95,9 +95,9 @@ extern struct platform_device msm_device_ssbi7;
 #endif /*CONFIG_MSM8X60_SSBI*/
 extern struct platform_device msm_gsbi1_qup_spi_device;
 extern struct platform_device msm_gsbi8_qup_spi_device;
-extern struct platform_device msm_device_mddi0;
+extern struct platform_device msm_mddi_device;
 extern struct platform_device msm_device_mddi1;
-extern struct platform_device msm_device_mdp;
+extern struct platform_device msm_mdp_device;
 #if defined(CONFIG_ARCH_MSM7X30)
 extern struct platform_device msm_device_i2c_2;
 extern struct platform_device qup_device_i2c;
@@ -140,5 +140,8 @@ extern struct platform_device msm_device_ssbi_pmic;
 #endif
 extern struct platform_device msm_kgsl_3d0;
 extern struct platform_device msm_kgsl_2d0;
+extern struct platform_device msm_vpe_device;
+
+extern int glacier_mddi_init(void);
 
 #endif
