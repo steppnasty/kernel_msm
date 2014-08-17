@@ -43,6 +43,11 @@
 
 #define VERSION_KEY_MASK	0xFFFFFF00
 
+#ifdef CONFIG_MACH_GLACIER
+#include <mach/panel_id.h>
+static struct msm_fb_data_type *mdp4_mfd;
+#endif
+
 struct mdp4_overlay_ctrl {
 	struct mdp4_overlay_pipe plist[OVERLAY_PIPE_MAX];
 	struct mdp4_overlay_pipe *stage[MDP4_MIXER_MAX][MDP4_MIXER_STAGE_MAX];
@@ -663,6 +668,9 @@ void mdp4_overlay_rgb_setup(struct mdp4_overlay_pipe *pipe)
 	uint32 curr, mask;
 	uint32 offset = 0;
 	int pnum;
+#ifdef CONFIG_MACH_GLACIER
+	uint32 dst_newx = 0, dst_newy = 0;
+#endif
 
 	pnum = pipe->pipe_num - OVERLAY_PIPE_RGB1; /* start from 0 */
 	rgb_base = MDP_BASE + MDP4_RGB_BASE;
@@ -688,8 +696,25 @@ void mdp4_overlay_rgb_setup(struct mdp4_overlay_pipe *pipe)
 
 #ifdef MDP4_IGC_LUT_ENABLE
 	pipe->op_mode |= MDP4_OP_IGC_LUT_EN;
+#else
+	pipe->op_mode = 0;
 #endif
+#ifdef CONFIG_MACH_GLACIER
+	/* workaround for Glacier Sharp panel */
+	if (panel_type == 1) {
+		pipe->op_mode ^= MDP4_OP_FLIP_UD;
+		dst_newy = mdp4_mfd->var_yres - pipe->dst_y - pipe->dst_h;
+		dst_xy = dst_newy << 16;
+	} else
+		dst_xy = pipe->dst_y << 16;
 
+	if (panel_type == 1) {
+		pipe->op_mode ^= MDP4_OP_FLIP_LR;
+		dst_newx = mdp4_mfd->var_xres - pipe->dst_x - pipe->dst_w;
+		dst_xy |= dst_newx;
+	} else
+		dst_xy |= pipe->dst_x;
+#endif
 	mdp4_scale_setup(pipe);
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
@@ -800,6 +825,9 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 	uint32 mask;
 	int pnum, ptype, i;
 	uint32_t block;
+#ifdef CONFIG_MACH_GLACIER
+	uint32 dst_newx = 0, dst_newy = 0;
+#endif
 
 	pnum = pipe->pipe_num - OVERLAY_PIPE_VG1; /* start from 0 */
 	vg_base = MDP_BASE + MDP4_VIDEO_BASE;
@@ -855,6 +883,25 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 
 #ifdef MDP4_IGC_LUT_ENABLE
 	pipe->op_mode |= MDP4_OP_IGC_LUT_EN;
+#else
+	pipe->op_mode = 0;
+#endif
+
+#ifdef CONFIG_MACH_GLACIER
+	/* workaround for Glacier Sharp panel */
+	if (panel_type == 1) {
+		pipe->op_mode ^= MDP4_OP_FLIP_UD;
+		dst_newy = mdp4_mfd->var_yres - pipe->dst_y - pipe->dst_h;
+		dst_xy = dst_newy << 16;
+	} else
+		dst_xy = pipe->dst_y << 16;
+
+	if (panel_type == 1) {
+		pipe->op_mode ^= MDP4_OP_FLIP_LR;
+		dst_newx = mdp4_mfd->var_xres - pipe->dst_x - pipe->dst_w;
+		dst_xy |= dst_newx;
+	} else
+		dst_xy |= pipe->dst_x;
 #endif
 
 	mdp4_scale_setup(pipe);
@@ -3710,3 +3757,10 @@ int mdp4_update_base_blend(struct msm_fb_data_type *mfd,
 	}
 	return ret;
 }
+
+#ifdef CONFIG_MACH_GLACIER
+void mdp4_overlay_data_init(struct msm_fb_data_type *mfd)
+{
+	mdp4_mfd = mfd;
+}
+#endif
