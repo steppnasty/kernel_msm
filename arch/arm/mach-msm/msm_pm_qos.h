@@ -30,7 +30,7 @@
 #ifndef __MSM_PM_QOS_H__
 #define __MSM_PM_QOS_H__
 
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 
 struct pm_qos_object;
 

@@ -1,3 +1,5 @@
+#ifndef _LINUX_PM_QOS_H
+#define _LINUX_PM_QOS_H
 /* interface for the pm_qos_power infrastructure of the linux kernel.
  *
  * Mark Gross <mgross@linux.intel.com>
@@ -25,4 +27,4 @@ void pm_qos_remove_request(struct pm_qos_request_list *pm_qos_req);
 int pm_qos_request(int pm_qos_class);
 int pm_qos_add_notifier(int pm_qos_class, struct notifier_block *notifier);
 int pm_qos_remove_notifier(int pm_qos_class, struct notifier_block *notifier);
-
+#endif

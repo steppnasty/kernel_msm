@@ -41,7 +41,7 @@
 #include <asm/atomic.h>
 #include <linux/mutex.h>
 #include <linux/remote_spinlock.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #include <linux/gpio.h>
 
 #define SPI_DRV_NAME                  "spi_qsd"

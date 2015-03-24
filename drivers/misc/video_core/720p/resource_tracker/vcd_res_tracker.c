@@ -20,7 +20,7 @@
 #include "vcd_res_tracker.h"
 #include "video_core_init.h"
 
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #ifdef AXI_CLK_SCALING
 #include <mach/msm_reqs.h>
 #endif

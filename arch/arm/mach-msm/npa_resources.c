@@ -71,7 +71,7 @@
  */
 
 #include <linux/init.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #include "msm_pm_qos.h"
 #include "npa_remote.h"
 

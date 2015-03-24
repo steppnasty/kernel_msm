@@ -16,7 +16,7 @@
  *
  */
 
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #include <linux/err.h>
 #include <mach/msm_reqs.h>
 

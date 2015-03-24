@@ -27,7 +27,7 @@
 #include <linux/debugfs.h>
 #include <linux/device.h>
 #include <linux/seq_file.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #include "mach/socinfo.h"
 
 #include "clock.h"

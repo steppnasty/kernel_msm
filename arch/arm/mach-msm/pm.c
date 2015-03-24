@@ -26,7 +26,7 @@
 #include <linux/suspend.h>
 #include <linux/reboot.h>
 #include <linux/earlysuspend.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #include <mach/msm_iomap.h>
 #include <mach/system.h>
 #include <asm/io.h>

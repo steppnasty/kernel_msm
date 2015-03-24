@@ -16,7 +16,7 @@
  *
  */
 
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #include <mach/camera.h>
 #define MSM_AXI_QOS_NAME "msm_camera"
 

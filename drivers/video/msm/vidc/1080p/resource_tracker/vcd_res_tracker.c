@@ -16,7 +16,7 @@
  *
  */
 #include <linux/firmware.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>

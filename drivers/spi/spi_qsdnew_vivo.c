@@ -80,7 +80,7 @@
 #include <asm/atomic.h>
 #include <linux/mutex.h>
 #include <linux/remote_spinlock.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 
 #define SPI_CONFIG                    0x0000
 #define SPI_IO_CONTROL                0x0004
