@@ -3067,7 +3067,7 @@ static int __devinit msm_camera_probe(struct platform_device *pdev)
 	return rc;
 }
 
-static int __exit msm_camera_exit(struct platform_device *pdev)
+static int msm_camera_exit(struct platform_device *pdev)
 {
 	msm_isp_unregister(&g_server_dev);
 	return 0;
