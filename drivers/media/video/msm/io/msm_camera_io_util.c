@@ -24,20 +24,20 @@
 void msm_camera_io_w(u32 data, void __iomem *addr)
 {
 	CDBG("%s: %08x %08x\n", __func__, (int) (addr), (data));
-	writel_relaxed((data), (addr));
+	writel((data), (addr));
 }
 
 void msm_camera_io_w_mb(u32 data, void __iomem *addr)
 {
 	CDBG("%s: %08x %08x\n", __func__, (int) (addr), (data));
 	wmb();
-	writel_relaxed((data), (addr));
+	writel((data), (addr));
 	wmb();
 }
 
 u32 msm_camera_io_r(void __iomem *addr)
 {
-	uint32_t data = readl_relaxed(addr);
+	uint32_t data = readl(addr);
 	CDBG("%s: %08x %08x\n", __func__, (int) (addr), (data));
 	return data;
 }
@@ -60,7 +60,7 @@ void msm_camera_io_memcpy_toio(void __iomem *dest_addr,
 	u32 *s = (u32 *) src_addr;
 
 	for (i = 0; i < len; i++)
-		writel_relaxed(*s++, d++);
+		writel(*s++, d++);
 }
 
 void msm_camera_io_dump(void __iomem *addr, int size)
