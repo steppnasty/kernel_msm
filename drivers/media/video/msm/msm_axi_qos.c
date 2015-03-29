@@ -19,7 +19,7 @@ static struct clk *ebi1_clk;
 
 int add_axi_qos(void)
 {
-	ebi1_clk = clk_get(NULL, "ebi1_vfe_clk");
+	ebi1_clk = clk_get(NULL, "ebi1_clk");
 	if (IS_ERR(ebi1_clk))
 		ebi1_clk = NULL;
 	else {
