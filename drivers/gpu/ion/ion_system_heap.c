@@ -2,7 +2,7 @@
  * drivers/gpu/ion/ion_system_heap.c
  *
  * Copyright (C) 2011 Google, Inc.
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -15,301 +15,321 @@
  *
  */
 
+#include <asm/page.h>
+#include <linux/dma-mapping.h>
 #include <linux/err.h>
+#include <linux/highmem.h>
 #include <linux/ion.h>
 #include <linux/mm.h>
 #include <linux/scatterlist.h>
+#include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
-#include <linux/iommu.h>
-#include <linux/seq_file.h>
-#include <mach/iommu_domains.h>
 #include "ion_priv.h"
-#include <mach/memory.h>
+#include <linux/dma-mapping.h>
 
-static atomic_t system_heap_allocated;
-static atomic_t system_contig_heap_allocated;
+static unsigned int high_order_gfp_flags = (GFP_HIGHUSER | __GFP_ZERO |
+					    __GFP_NOWARN | __GFP_NORETRY |
+					    __GFP_NO_KSWAPD) & ~__GFP_WAIT;
+static unsigned int low_order_gfp_flags  = (GFP_HIGHUSER | __GFP_ZERO |
+					 __GFP_NOWARN);
+static const unsigned int orders[] = {8, 4, 0};
+static const int num_orders = ARRAY_SIZE(orders);
+static int order_to_index(unsigned int order)
+{
+	int i;
+	for (i = 0; i < num_orders; i++)
+		if (order == orders[i])
+			return i;
+	BUG();
+	return -1;
+}
+
+static unsigned int order_to_size(int order)
+{
+	return PAGE_SIZE << order;
+}
+
+struct ion_system_heap {
+	struct ion_heap heap;
+	struct ion_page_pool **pools;
+};
+
+struct page_info {
+	struct page *page;
+	unsigned int order;
+	struct list_head list;
+};
+
+static struct page *alloc_buffer_page(struct ion_system_heap *heap,
+				      struct ion_buffer *buffer,
+				      unsigned long order)
+{
+	bool cached = ion_buffer_cached(buffer);
+	bool split_pages = ion_buffer_fault_user_mappings(buffer);
+	struct ion_page_pool *pool = heap->pools[order_to_index(order)];
+	struct page *page;
+
+	if (!cached) {
+		page = ion_page_pool_alloc(pool);
+	} else {
+		struct scatterlist sg;
+		gfp_t gfp_flags = low_order_gfp_flags;
+
+		if (order > 4)
+			gfp_flags = high_order_gfp_flags;
+		page = alloc_pages(gfp_flags, order);
+		if (!page) {
+			return 0;
+		}
+		sg_init_table(&sg, 1);
+		sg_set_page(&sg, page, PAGE_SIZE << order, 0);
+		sg_dma_address(&sg) = sg_phys(&sg);
+		dma_sync_sg_for_device(NULL, &sg, 1, DMA_BIDIRECTIONAL);
+	}
+	if (!page)
+		return 0;
+
+	if (split_pages)
+		split_page(page, order);
+	return page;
+}
+
+static void free_buffer_page(struct ion_system_heap *heap,
+			     struct ion_buffer *buffer, struct page *page,
+			     unsigned int order)
+{
+	bool cached = ion_buffer_cached(buffer);
+	bool split_pages = ion_buffer_fault_user_mappings(buffer);
+	int i;
+
+	if (!cached) {
+		struct ion_page_pool *pool = heap->pools[order_to_index(order)];
+		ion_page_pool_free(pool, page);
+	} else if (split_pages) {
+		for (i = 0; i < (1 << order); i++)
+			__free_page(page + i);
+	} else {
+		__free_pages(page, order);
+	}
+}
+
+
+static struct page_info *alloc_largest_available(struct ion_system_heap *heap,
+						 struct ion_buffer *buffer,
+						 unsigned long size,
+						 unsigned int max_order)
+{
+	struct page *page;
+	struct page_info *info;
+	int i;
+
+	for (i = 0; i < num_orders; i++) {
+		if (size < order_to_size(orders[i]))
+			continue;
+		if (max_order < orders[i])
+			continue;
+
+		page = alloc_buffer_page(heap, buffer, orders[i]);
+		if (!page)
+			continue;
+
+		info = kmalloc(sizeof(struct page_info), GFP_KERNEL);
+		if (info) {
+			info->page = page;
+			info->order = orders[i];
+		}
+		return info;
+	}
+	return NULL;
+}
 
 static int ion_system_heap_allocate(struct ion_heap *heap,
 				     struct ion_buffer *buffer,
 				     unsigned long size, unsigned long align,
 				     unsigned long flags)
 {
-	buffer->priv_virt = vmalloc_user(size);
-	if (!buffer->priv_virt)
-		return -ENOMEM;
+	struct ion_system_heap *sys_heap = container_of(heap,
+							struct ion_system_heap,
+							heap);
+	struct sg_table *table;
+	struct scatterlist *sg;
+	int ret;
+	struct list_head pages;
+	struct page_info *info, *tmp_info;
+	int i = 0;
+	unsigned long size_remaining = PAGE_ALIGN(size);
+	unsigned int max_order = orders[0];
+	bool split_pages = ion_buffer_fault_user_mappings(buffer);
 
-	atomic_add(size, &system_heap_allocated);
+	INIT_LIST_HEAD(&pages);
+	while (size_remaining > 0) {
+		info = alloc_largest_available(sys_heap, buffer, size_remaining, max_order);
+		if (!info)
+			goto err;
+		list_add_tail(&info->list, &pages);
+		size_remaining -= (1 << info->order) * PAGE_SIZE;
+		max_order = info->order;
+		i++;
+	}
+
+	table = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
+	if (!table)
+		goto err;
+
+	if (split_pages)
+		ret = sg_alloc_table(table, PAGE_ALIGN(size) / PAGE_SIZE,
+				     GFP_KERNEL);
+	else
+		ret = sg_alloc_table(table, i, GFP_KERNEL);
+
+	if (ret)
+		goto err1;
+
+	sg = table->sgl;
+	list_for_each_entry_safe(info, tmp_info, &pages, list) {
+		struct page *page = info->page;
+		if (split_pages) {
+			for (i = 0; i < (1 << info->order); i++) {
+				sg_set_page(sg, page + i, PAGE_SIZE, 0);
+				sg = sg_next(sg);
+			}
+		} else {
+			sg_set_page(sg, page, (1 << info->order) * PAGE_SIZE,
+				    0);
+			sg = sg_next(sg);
+		}
+		list_del(&info->list);
+		kfree(info);
+	}
+
+	buffer->priv_virt = table;
 	return 0;
+err1:
+	kfree(table);
+err:
+	list_for_each_entry_safe(info, tmp_info, &pages, list) {
+		free_buffer_page(sys_heap, buffer, info->page, info->order);
+		kfree(info);
+	}
+	return -ENOMEM;
 }
 
 void ion_system_heap_free(struct ion_buffer *buffer)
 {
-	vfree(buffer->priv_virt);
-	atomic_sub(buffer->size, &system_heap_allocated);
+	struct ion_heap *heap = buffer->heap;
+	struct ion_system_heap *sys_heap = container_of(heap,
+							struct ion_system_heap,
+							heap);
+	struct sg_table *table = buffer->sg_table;
+	bool cached = ion_buffer_cached(buffer);
+	struct scatterlist *sg;
+	LIST_HEAD(pages);
+	int i;
+
+	/* uncached pages come from the page pools, zero them before returning
+	   for security purposes (other allocations are zerod at alloc time */
+	if (!cached)
+		ion_heap_buffer_zero(buffer);
+
+	for_each_sg(table->sgl, sg, table->nents, i)
+		free_buffer_page(sys_heap, buffer, sg_page(sg),
+				get_order(sg_dma_len(sg)));
+	sg_free_table(table);
+	kfree(table);
 }
 
-struct scatterlist *ion_system_heap_map_dma(struct ion_heap *heap,
-					    struct ion_buffer *buffer)
+struct sg_table *ion_system_heap_map_dma(struct ion_heap *heap,
+					 struct ion_buffer *buffer)
 {
-	struct scatterlist *sglist;
-	struct page *page;
-	int i;
-	int npages = PAGE_ALIGN(buffer->size) / PAGE_SIZE;
-	void *vaddr = buffer->priv_virt;
-
-	sglist = vmalloc(npages * sizeof(struct scatterlist));
-	if (!sglist)
-		return ERR_PTR(-ENOMEM);
-	memset(sglist, 0, npages * sizeof(struct scatterlist));
-	sg_init_table(sglist, npages);
-	for (i = 0; i < npages; i++) {
-		page = vmalloc_to_page(vaddr);
-		if (!page)
-			goto end;
-		sg_set_page(&sglist[i], page, PAGE_SIZE, 0);
-		vaddr += PAGE_SIZE;
-	}
-	/* XXX do cache maintenance for dma? */
-	return sglist;
-end:
-	vfree(sglist);
-	return NULL;
+	return buffer->priv_virt;
 }
 
 void ion_system_heap_unmap_dma(struct ion_heap *heap,
 			       struct ion_buffer *buffer)
 {
-	/* XXX undo cache maintenance for dma? */
-	if (buffer->sglist)
-		vfree(buffer->sglist);
-}
-
-void *ion_system_heap_map_kernel(struct ion_heap *heap,
-				 struct ion_buffer *buffer,
-				 unsigned long flags)
-{
-	if (ION_IS_CACHED(flags))
-		return buffer->priv_virt;
-	else {
-		pr_err("%s: cannot map system heap uncached\n", __func__);
-		return ERR_PTR(-EINVAL);
-	}
-}
-
-void ion_system_heap_unmap_kernel(struct ion_heap *heap,
-				  struct ion_buffer *buffer)
-{
-}
-
-void ion_system_heap_unmap_iommu(struct ion_iommu_map *data)
-{
-	unsigned int domain_num;
-	unsigned int partition_num;
-	struct iommu_domain *domain;
-
-	if (!msm_use_iommu())
-		return;
-
-	domain_num = iommu_map_domain(data);
-	partition_num = iommu_map_partition(data);
-
-	domain = msm_get_iommu_domain(domain_num);
-
-	if (!domain) {
-		WARN(1, "Could not get domain %d. Corruption?\n", domain_num);
-		return;
-	}
-
-	iommu_unmap_range(domain, data->iova_addr, data->mapped_size);
-	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
-				data->mapped_size);
-
 	return;
 }
 
-int ion_system_heap_map_user(struct ion_heap *heap, struct ion_buffer *buffer,
-			     struct vm_area_struct *vma, unsigned long flags)
-{
-	if (ION_IS_CACHED(flags))
-		return remap_vmalloc_range(vma, buffer->priv_virt,
-						vma->vm_pgoff);
-	else {
-		pr_err("%s: cannot map system heap uncached\n", __func__);
-		return -EINVAL;
-	}
-}
-
-int ion_system_heap_cache_ops(struct ion_heap *heap, struct ion_buffer *buffer,
-			void *vaddr, unsigned int offset, unsigned int length,
-			unsigned int cmd)
-{
-	unsigned long vstart, pstart;
-	void *vtemp;
-	unsigned long ln = 0;
-	void (*op)(unsigned long, unsigned long, unsigned long);
-
-	switch (cmd) {
-	case ION_IOC_CLEAN_CACHES:
-		op = clean_caches;
-		break;
-	case ION_IOC_INV_CACHES:
-		op = invalidate_caches;
-		break;
-	case ION_IOC_CLEAN_INV_CACHES:
-		op = clean_and_invalidate_caches;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	for (vtemp = buffer->priv_virt + offset,
-	     vstart = (unsigned long) vaddr;
-			ln < length;
-			vtemp += PAGE_SIZE, ln += PAGE_SIZE,
-			vstart += PAGE_SIZE) {
-		pstart = page_to_phys(vmalloc_to_page(vtemp));
-		/*
-		 * If vmalloc -> page -> phys is returning NULL, something
-		 * has really gone wrong...
-		 */
-		if (!pstart) {
-			WARN(1, "Could not translate %p to physical address\n",
-				vtemp);
-			return -EINVAL;
-		}
-
-		op(vstart, PAGE_SIZE, pstart);
-	}
-
-	return 0;
-}
-
-static int ion_system_print_debug(struct ion_heap *heap, struct seq_file *s)
-{
-	seq_printf(s, "total bytes currently allocated: %lx\n",
-			(unsigned long) atomic_read(&system_heap_allocated));
-
-	return 0;
-}
-
-int ion_system_heap_map_iommu(struct ion_buffer *buffer,
-				struct ion_iommu_map *data,
-				unsigned int domain_num,
-				unsigned int partition_num,
-				unsigned long align,
-				unsigned long iova_length,
-				unsigned long flags)
-{
-	int ret = 0, i;
-	struct iommu_domain *domain;
-	unsigned long extra;
-	unsigned long extra_iova_addr;
-	struct page *page;
-	int npages = buffer->size >> PAGE_SHIFT;
-	void *vaddr = buffer->priv_virt;
-	struct scatterlist *sglist = 0;
-	int prot = IOMMU_WRITE | IOMMU_READ;
-	prot |= ION_IS_CACHED(flags) ? IOMMU_CACHE : 0;
-
-	if (!ION_IS_CACHED(flags))
-		return -EINVAL;
-
-	if (!msm_use_iommu())
-		return -EINVAL;
-
-	data->mapped_size = iova_length;
-	extra = iova_length - buffer->size;
-
-	data->iova_addr = msm_allocate_iova_address(domain_num, partition_num,
-						data->mapped_size, align);
-
-	if (!data->iova_addr) {
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	domain = msm_get_iommu_domain(domain_num);
-
-	if (!domain) {
-		ret = -ENOMEM;
-		goto out1;
-	}
-
-
-	sglist = vmalloc(sizeof(*sglist) * npages);
-	if (!sglist) {
-		ret = -ENOMEM;
-		goto out1;
-	}
-
-	sg_init_table(sglist, npages);
-	for (i = 0; i < npages; i++) {
-		page = vmalloc_to_page(vaddr);
-		if (!page)
-			goto out1;
-		sg_set_page(&sglist[i], page, PAGE_SIZE, 0);
-		vaddr += PAGE_SIZE;
-	}
-
-	ret = iommu_map_range(domain, data->iova_addr, sglist,
-			      buffer->size, prot);
-
-	if (ret) {
-		pr_err("%s: could not map %lx in domain %p\n",
-			__func__, data->iova_addr, domain);
-		goto out1;
-	}
-
-	extra_iova_addr = data->iova_addr + buffer->size;
-	if (extra) {
-		ret = msm_iommu_map_extra(domain, extra_iova_addr, extra, SZ_4K,
-					  prot);
-		if (ret)
-			goto out2;
-	}
-	vfree(sglist);
-	return ret;
-
-out2:
-	iommu_unmap_range(domain, data->iova_addr, buffer->size);
-out1:
-	vfree(sglist);
-	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
-				data->mapped_size);
-out:
-	return ret;
-}
-
-static struct ion_heap_ops vmalloc_ops = {
+static struct ion_heap_ops system_heap_ops = {
 	.allocate = ion_system_heap_allocate,
 	.free = ion_system_heap_free,
 	.map_dma = ion_system_heap_map_dma,
 	.unmap_dma = ion_system_heap_unmap_dma,
-	.map_kernel = ion_system_heap_map_kernel,
-	.unmap_kernel = ion_system_heap_unmap_kernel,
-	.map_user = ion_system_heap_map_user,
-	.cache_op = ion_system_heap_cache_ops,
-	.print_debug = ion_system_print_debug,
-	.map_iommu = ion_system_heap_map_iommu,
-	.unmap_iommu = ion_system_heap_unmap_iommu,
+	.map_kernel = ion_heap_map_kernel,
+	.unmap_kernel = ion_heap_unmap_kernel,
+	.map_user = ion_heap_map_user,
 };
+
+static int ion_system_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
+				      void *unused)
+{
+
+	struct ion_system_heap *sys_heap = container_of(heap,
+							struct ion_system_heap,
+							heap);
+	int i;
+	for (i = 0; i < num_orders; i++) {
+		struct ion_page_pool *pool = sys_heap->pools[i];
+		seq_printf(s, "%d order %u highmem pages in pool = %lu total\n",
+			   pool->high_count, pool->order,
+			   (1 << pool->order) * PAGE_SIZE * pool->high_count);
+		seq_printf(s, "%d order %u lowmem pages in pool = %lu total\n",
+			   pool->low_count, pool->order,
+			   (1 << pool->order) * PAGE_SIZE * pool->low_count);
+	}
+	return 0;
+}
 
 struct ion_heap *ion_system_heap_create(struct ion_platform_heap *unused)
 {
-	struct ion_heap *heap;
+	struct ion_system_heap *heap;
+	int i;
 
-	heap = kzalloc(sizeof(struct ion_heap), GFP_KERNEL);
+	heap = kzalloc(sizeof(struct ion_system_heap), GFP_KERNEL);
 	if (!heap)
 		return ERR_PTR(-ENOMEM);
-	heap->ops = &vmalloc_ops;
-	heap->type = ION_HEAP_TYPE_SYSTEM;
-	return heap;
+	heap->heap.ops = &system_heap_ops;
+	heap->heap.type = ION_HEAP_TYPE_SYSTEM;
+	heap->heap.flags = ION_HEAP_FLAG_DEFER_FREE;
+	heap->pools = kzalloc(sizeof(struct ion_page_pool *) * num_orders,
+			      GFP_KERNEL);
+	if (!heap->pools)
+		goto err_alloc_pools;
+	for (i = 0; i < num_orders; i++) {
+		struct ion_page_pool *pool;
+		gfp_t gfp_flags = low_order_gfp_flags;
+
+		if (orders[i] > 4)
+			gfp_flags = high_order_gfp_flags;
+		pool = ion_page_pool_create(gfp_flags, orders[i]);
+		if (!pool)
+			goto err_create_pool;
+		heap->pools[i] = pool;
+	}
+	heap->heap.debug_show = ion_system_heap_debug_show;
+	return &heap->heap;
+err_create_pool:
+	for (i = 0; i < num_orders; i++)
+		if (heap->pools[i])
+			ion_page_pool_destroy(heap->pools[i]);
+	kfree(heap->pools);
+err_alloc_pools:
+	kfree(heap);
+	return ERR_PTR(-ENOMEM);
 }
 
 void ion_system_heap_destroy(struct ion_heap *heap)
 {
-	kfree(heap);
+	struct ion_system_heap *sys_heap = container_of(heap,
+							struct ion_system_heap,
+							heap);
+	int i;
+
+	for (i = 0; i < num_orders; i++)
+		ion_page_pool_destroy(sys_heap->pools[i]);
+	kfree(sys_heap->pools);
+	kfree(sys_heap);
 }
 
 static int ion_system_contig_heap_allocate(struct ion_heap *heap,
@@ -321,14 +341,12 @@ static int ion_system_contig_heap_allocate(struct ion_heap *heap,
 	buffer->priv_virt = kzalloc(len, GFP_KERNEL);
 	if (!buffer->priv_virt)
 		return -ENOMEM;
-	atomic_add(len, &system_contig_heap_allocated);
 	return 0;
 }
 
 void ion_system_contig_heap_free(struct ion_buffer *buffer)
 {
 	kfree(buffer->priv_virt);
-	atomic_sub(buffer->size, &system_contig_heap_allocated);
 }
 
 static int ion_system_contig_heap_phys(struct ion_heap *heap,
@@ -340,154 +358,30 @@ static int ion_system_contig_heap_phys(struct ion_heap *heap,
 	return 0;
 }
 
-struct scatterlist *ion_system_contig_heap_map_dma(struct ion_heap *heap,
-						   struct ion_buffer *buffer)
+struct sg_table *ion_system_contig_heap_map_dma(struct ion_heap *heap,
+						struct ion_buffer *buffer)
 {
-	struct scatterlist *sglist;
+	struct sg_table *table;
+	int ret;
 
-	sglist = vmalloc(sizeof(struct scatterlist));
-	if (!sglist)
+	table = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
+	if (!table)
 		return ERR_PTR(-ENOMEM);
-	sg_init_table(sglist, 1);
-	sg_set_page(sglist, virt_to_page(buffer->priv_virt), buffer->size, 0);
-	return sglist;
-}
-
-int ion_system_contig_heap_map_user(struct ion_heap *heap,
-				    struct ion_buffer *buffer,
-				    struct vm_area_struct *vma,
-				    unsigned long flags)
-{
-	unsigned long pfn = __phys_to_pfn(virt_to_phys(buffer->priv_virt));
-
-	if (ION_IS_CACHED(flags))
-		return remap_pfn_range(vma, vma->vm_start, pfn + vma->vm_pgoff,
-			       vma->vm_end - vma->vm_start,
-			       vma->vm_page_prot);
-	else {
-		pr_err("%s: cannot map system heap uncached\n", __func__);
-		return -EINVAL;
-	}
-}
-
-int ion_system_contig_heap_cache_ops(struct ion_heap *heap,
-			struct ion_buffer *buffer, void *vaddr,
-			unsigned int offset, unsigned int length,
-			unsigned int cmd)
-{
-	unsigned long vstart, pstart;
-
-	pstart = virt_to_phys(buffer->priv_virt) + offset;
-	if (!pstart) {
-		WARN(1, "Could not do virt to phys translation on %p\n",
-			buffer->priv_virt);
-		return -EINVAL;
-	}
-
-	vstart = (unsigned long) vaddr;
-
-	switch (cmd) {
-	case ION_IOC_CLEAN_CACHES:
-		clean_caches(vstart, length, pstart);
-		break;
-	case ION_IOC_INV_CACHES:
-		invalidate_caches(vstart, length, pstart);
-		break;
-	case ION_IOC_CLEAN_INV_CACHES:
-		clean_and_invalidate_caches(vstart, length, pstart);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int ion_system_contig_print_debug(struct ion_heap *heap,
-					 struct seq_file *s)
-{
-	seq_printf(s, "total bytes currently allocated: %lx\n",
-		(unsigned long) atomic_read(&system_contig_heap_allocated));
-
-	return 0;
-}
-
-int ion_system_contig_heap_map_iommu(struct ion_buffer *buffer,
-				struct ion_iommu_map *data,
-				unsigned int domain_num,
-				unsigned int partition_num,
-				unsigned long align,
-				unsigned long iova_length,
-				unsigned long flags)
-{
-	int ret = 0;
-	struct iommu_domain *domain;
-	unsigned long extra;
-	struct scatterlist *sglist = 0;
-	struct page *page = 0;
-	int prot = IOMMU_WRITE | IOMMU_READ;
-	prot |= ION_IS_CACHED(flags) ? IOMMU_CACHE : 0;
-
-	if (!ION_IS_CACHED(flags))
-		return -EINVAL;
-
-	if (!msm_use_iommu()) {
-		data->iova_addr = virt_to_phys(buffer->vaddr);
-		return 0;
-	}
-
-	data->mapped_size = iova_length;
-	extra = iova_length - buffer->size;
-
-	data->iova_addr = msm_allocate_iova_address(domain_num, partition_num,
-						data->mapped_size, align);
-
-	if (!data->iova_addr) {
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	domain = msm_get_iommu_domain(domain_num);
-
-	if (!domain) {
-		ret = -ENOMEM;
-		goto out1;
-	}
-	page = virt_to_page(buffer->vaddr);
-
-	sglist = vmalloc(sizeof(*sglist));
-	if (!sglist)
-		goto out1;
-
-	sg_init_table(sglist, 1);
-	sg_set_page(sglist, page, buffer->size, 0);
-
-	ret = iommu_map_range(domain, data->iova_addr, sglist,
-			      buffer->size, prot);
+	ret = sg_alloc_table(table, 1, GFP_KERNEL);
 	if (ret) {
-		pr_err("%s: could not map %lx in domain %p\n",
-			__func__, data->iova_addr, domain);
-		goto out1;
+		kfree(table);
+		return ERR_PTR(ret);
 	}
+	sg_set_page(table->sgl, virt_to_page(buffer->priv_virt), buffer->size,
+		    0);
+	return table;
+}
 
-	if (extra) {
-		unsigned long extra_iova_addr = data->iova_addr + buffer->size;
-		ret = msm_iommu_map_extra(domain, extra_iova_addr, extra, SZ_4K,
-					  prot);
-		if (ret)
-			goto out2;
-	}
-	vfree(sglist);
-	return ret;
-out2:
-	iommu_unmap_range(domain, data->iova_addr, buffer->size);
-
-out1:
-	vfree(sglist);
-	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
-						data->mapped_size);
-out:
-	return ret;
+void ion_system_contig_heap_unmap_dma(struct ion_heap *heap,
+				      struct ion_buffer *buffer)
+{
+	sg_free_table(buffer->sg_table);
+	kfree(buffer->sg_table);
 }
 
 static struct ion_heap_ops kmalloc_ops = {
@@ -495,14 +389,10 @@ static struct ion_heap_ops kmalloc_ops = {
 	.free = ion_system_contig_heap_free,
 	.phys = ion_system_contig_heap_phys,
 	.map_dma = ion_system_contig_heap_map_dma,
-	.unmap_dma = ion_system_heap_unmap_dma,
-	.map_kernel = ion_system_heap_map_kernel,
-	.unmap_kernel = ion_system_heap_unmap_kernel,
-	.map_user = ion_system_contig_heap_map_user,
-	.cache_op = ion_system_contig_heap_cache_ops,
-	.print_debug = ion_system_contig_print_debug,
-	.map_iommu = ion_system_contig_heap_map_iommu,
-	.unmap_iommu = ion_system_heap_unmap_iommu,
+	.unmap_dma = ion_system_contig_heap_unmap_dma,
+	.map_kernel = ion_heap_map_kernel,
+	.unmap_kernel = ion_heap_unmap_kernel,
+	.map_user = ion_heap_map_user,
 };
 
 struct ion_heap *ion_system_contig_heap_create(struct ion_platform_heap *unused)
