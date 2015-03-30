@@ -1533,7 +1533,7 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 			return -ENODEV;
 	}
 
-	handle = ion_import_fd(kgsl_ion_client, fd);
+	handle = ion_import_dma_buf(kgsl_ion_client, fd);
 	if (IS_ERR_OR_NULL(handle))
 		return PTR_ERR(handle);
 

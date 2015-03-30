@@ -30,7 +30,7 @@
 #include <linux/fb.h>
 #include <linux/regulator/consumer.h>
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 #else /* FIXME */
 struct ion_handle {
 };
@@ -815,7 +815,7 @@ static int get_img(struct msmfb_data *fbd, unsigned long *start,
 #endif
 
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-	*p_ihdl = ion_import_fd(msm_rotator_dev->client,
+	*p_ihdl = ion_import_dma_buf(msm_rotator_dev->client,
 		fbd->memory_id);
 	if (IS_ERR_OR_NULL(*p_ihdl))
 		return PTR_ERR(*p_ihdl);
