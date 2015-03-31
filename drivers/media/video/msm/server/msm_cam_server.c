@@ -1312,11 +1312,6 @@ static int msm_close_server(struct file *fp)
 
 				pmctl = msm_cam_server_get_mctl(
 				g_server_dev.pcam_active[i]->mctl_handle);
-				if (pmctl && pmctl->mctl_release) {
-					pmctl->mctl_release(pmctl);
-					/*so that it isn't closed again*/
-					pmctl->mctl_release = NULL;
-				}
 				msm_cam_server_send_error_evt(pmctl,
 					V4L2_EVENT_PRIVATE_START +
 					MSM_CAM_APP_NOTIFY_ERROR_EVENT);
