@@ -9,6 +9,8 @@
  *
  *  Page table mapping constructs and function prototypes
  */
+#ifndef __ASM_MACH_MAP_H
+#define __ASM_MACH_MAP_H
 #include <asm/io.h>
 
 struct map_desc {
@@ -40,4 +42,6 @@ extern int ioremap_page(unsigned long virt, unsigned long phys,
 			const struct mem_type *mtype);
 #else
 #define iotable_init(map,num)	do { } while (0)
+#endif
+
 #endif
