@@ -96,12 +96,11 @@ static struct pm_qos_object network_throughput_pm_qos = {
 static BLOCKING_NOTIFIER_HEAD(system_bus_freq_notifier);
 static struct pm_qos_object system_bus_freq_pm_qos = {
 	.requests =
-		{LIST_HEAD_INIT(system_bus_freq_pm_qos.requests.list)},
+		PLIST_HEAD_INIT(system_bus_freq_pm_qos.requests),
 	.notifiers = &system_bus_freq_notifier,
 	.name = "system_bus_freq",
 	.default_value = 0,
-	.target_value = ATOMIC_INIT(0),
-	.comparitor = max_compare
+	.type = PM_QOS_MAX,
 };
 
 
