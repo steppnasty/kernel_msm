@@ -65,7 +65,7 @@ struct device_node {
 #endif
 };
 
-define MAX_PHANDLE_ARGS 8
+#define MAX_PHANDLE_ARGS 8
 struct of_phandle_args {
 	struct device_node *np;
 	int args_count;
