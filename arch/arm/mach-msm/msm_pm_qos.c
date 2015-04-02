@@ -20,27 +20,19 @@
 #include <linux/err.h>
 #include <mach/msm_reqs.h>
 
-struct pm_qos_request_list {
-        struct list_head list;
-        union {
-                s32 value;
-                s32 usec;
-                s32 kbps;
-        };
-        int pm_qos_class;
+enum pm_qos_type {
+	PM_QOS_MAX,		/* return the largest value */
+	PM_QOS_MIN		/* return the smallest value */
 };
-
 
 struct pm_qos_object {
-        struct pm_qos_request_list requests;
-        struct blocking_notifier_head *notifiers;
-        struct miscdevice pm_qos_power_miscdev;
-        char *name;
-        s32 default_value;
-        atomic_t target_value;
-        s32 (*comparitor)(s32, s32);
+	struct plist_head requests;
+	struct blocking_notify_head *notifiers;
+	struct miscdevice pm_qos_power_miscdev;
+	char *name;
+	s32 default_value;
+	enum pm_qos_type type;
 };
-
 
 int msm_pm_qos_add(struct pm_qos_object *class, char *request_name,
 		   s32 value, void **request_data)
