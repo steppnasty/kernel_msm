@@ -196,7 +196,7 @@ MODULE_LICENSE("GPL v2");
 MODULE_VERSION("0.3");
 MODULE_ALIAS("platform:"SPI_DRV_NAME);
 
-static struct pm_qos_request_list *qos_req_list;
+static struct pm_qos_request_list qos_req_list;
 
 #ifdef CONFIG_DEBUG_FS
 /* Used to create debugfs entries */
@@ -1425,9 +1425,6 @@ static void msm_spi_workq(struct work_struct *work)
 
 	mutex_lock(&dd->core_lock);
 
-	/* Don't allow power collapse until we release mutex */
-	pm_qos_update_request(qos_req_list,
-				  dd->pm_lat);
 	if (dd->use_rlock)
 		remote_mutex_lock(&dd->r_lock);
 
@@ -1466,9 +1463,6 @@ static void msm_spi_workq(struct work_struct *work)
 
 	if (dd->use_rlock)
 		remote_mutex_unlock(&dd->r_lock);
-
-	pm_qos_update_request(qos_req_list,
-				  PM_QOS_DEFAULT_VALUE);
 
 	mutex_unlock(&dd->core_lock);
 	/* If needed, this can be done after the current message is complete,
@@ -2086,14 +2080,10 @@ skip_dma_resources:
 		}
 		dd->use_rlock = 1;
 		dd->pm_lat = pdata->pm_lat;
-		qos_req_list = pm_qos_add_request(PM_QOS_CPU_DMA_LATENCY, 
-					    PM_QOS_DEFAULT_VALUE);
-		if (IS_ERR(qos_req_list)) {
-			dev_err(&pdev->dev, "%s: Failed to request pm_qos\n",
-				__func__);
-			goto err_probe_add_pm_qos;
-		}
+		pm_qos_add_request(&qos_req_list, PM_QOS_CPU_DMA_LATENCY, 
+						PM_QOS_DEFAULT_VALUE);
 	}
+
 	mutex_lock(&dd->core_lock);
 	if (dd->use_rlock)
 		remote_mutex_lock(&dd->r_lock);
@@ -2223,7 +2213,6 @@ err_probe_clk_undefined:
 			remote_mutex_unlock(&dd->r_lock);
 		mutex_unlock(&dd->core_lock);
 	}
-err_probe_add_pm_qos:
 err_probe_rlock_init:
 	msm_spi_release_gsbi(dd);
 err_probe_ioremap2:
@@ -2303,7 +2292,7 @@ static int __devexit msm_spi_remove(struct platform_device *pdev)
 	struct msm_spi    *dd = spi_master_get_devdata(master);
 	struct msm_spi_platform_data *pdata = pdev->dev.platform_data;
 
-	pm_qos_remove_request(qos_req_list);
+	pm_qos_remove_request(&qos_req_list);
 	spi_debugfs_exit(dd);
 	sysfs_remove_group(&pdev->dev.kobj, &dev_attr_grp);
 
