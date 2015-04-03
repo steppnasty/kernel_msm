@@ -105,8 +105,7 @@ static struct pm_qos_object network_throughput_pm_qos = {
 
 static BLOCKING_NOTIFIER_HEAD(system_bus_freq_notifier);
 static struct pm_qos_object system_bus_freq_pm_qos = {
-	.requests =
-		PLIST_HEAD_INIT(system_bus_freq_pm_qos.requests),
+	.constraints = PLIST_HEAD_INIT(system_bus_freq_pm_qos.constraints),
 	.notifiers = &system_bus_freq_notifier,
 	.name = "system_bus_freq",
 	.default_value = 0,

@@ -196,7 +196,7 @@ MODULE_LICENSE("GPL v2");
 MODULE_VERSION("0.3");
 MODULE_ALIAS("platform:"SPI_DRV_NAME);
 
-static struct pm_qos_request_list qos_req_list;
+static struct pm_qos_request qos_req_list;
 
 #ifdef CONFIG_DEBUG_FS
 /* Used to create debugfs entries */
