@@ -23,12 +23,7 @@
 #include <linux/input.h>
 #include <linux/usb.h>
 #include <linux/leds-pmic8058.h>
-#ifdef CONFIG_MSM_BUS_SCALING
 #include <mach/msm_bus.h>
-#endif
-#ifdef CONFIG_ARCH_MSM8X60
-#include <asm/clkdev.h>
-#endif
 #include "msm_ssbi.h"
 
 #define BIT0                    0x00000001
@@ -94,11 +89,23 @@ struct msm_camera_io_clk {
 	uint32_t vfe_clk_rate;
 };
 
+struct msm_cam_expander_info {
+	struct i2c_board_info const *board_info;
+	int bus_id;
+};
+
 struct msm_camera_device_platform_data {
 	void (*camera_gpio_on) (void);
 	void (*camera_gpio_off)(void);
 	struct msm_camera_io_ext ioext;
 	struct msm_camera_io_clk ioclk;
+	uint8_t csid_core;
+	uint8_t is_csiphy;
+	uint8_t is_csic;
+	uint8_t is_csid;
+	uint8_t is_ispif;
+	uint8_t is_vpe;
+	struct msm_bus_scale_pdata *cam_bus_scale_table;
 };
 enum msm_camera_csi_data_format {
 	CSI_8BIT,
@@ -127,6 +134,9 @@ struct msm_camera_legacy_device_platform_data {
 #define MSM_CAMERA_FLASH_SRC_PMIC (0x00000001<<0)
 #define MSM_CAMERA_FLASH_SRC_PWM  (0x00000001<<1)
 #define MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER	(0x00000001<<2)
+#define MSM_CAMERA_FLASH_SRC_EXT     (0x00000001<<3)
+#define MSM_CAMERA_FLASH_SRC_LED (0x00000001<<3)
+#define MSM_CAMERA_FLASH_SRC_LED1 (0x00000001<<4)
 
 struct msm_camera_sensor_flash_pmic {
 	uint8_t num_of_src;
@@ -152,6 +162,23 @@ struct msm_camera_sensor_flash_current_driver {
 	const struct pmic8058_leds_platform_data *driver_channel;
 };
 
+enum msm_camera_ext_led_flash_id {
+	MAM_CAMERA_EXT_LED_FLASH_SC628A,
+	MAM_CAMERA_EXT_LED_FLASH_TPS61310,
+};
+
+struct msm_camera_sensor_flash_external {
+	uint32_t led_en;
+	uint32_t led_flash_en;
+	enum msm_camera_ext_led_flash_id flash_id;
+	struct msm_cam_expander_info *expander_info;
+};
+
+struct msm_camera_sensor_flash_led {
+	const char *led_name;
+	const int led_name_len;
+};
+
 struct msm_camera_sensor_flash_src {
 	int flash_sr_type;
 	int (*camera_flash)(int level);
@@ -160,6 +187,9 @@ struct msm_camera_sensor_flash_src {
 		struct msm_camera_sensor_flash_pwm pwm_src;
 		struct msm_camera_sensor_flash_current_driver
 			current_driver_src;
+		struct msm_camera_sensor_flash_external
+			ext_driver_src;
+		struct msm_camera_sensor_flash_led led_src;
 	} _fsrc;
 };
 
@@ -192,6 +222,137 @@ struct msm_camera_sensor_strobe_flash_data {
 	int flash_charge_done;
 };
 
+enum msm_camera_type {
+	BACK_CAMERA_2D,
+	FRONT_CAMERA_2D,
+	BACK_CAMERA_3D,
+	BACK_CAMERA_INT_3D,
+};
+
+enum msm_sensor_type {
+	BAYER_SENSOR,
+	YUV_SENSOR,
+};
+
+enum camera_vreg_type {
+	REG_LDO,
+	REG_VS,
+};
+
+struct camera_vreg_t {
+	const char *reg_name;
+	enum camera_vreg_type type;
+	int min_voltage;
+	int max_voltage;
+	int op_mode;
+};
+
+struct msm_gpio_set_tbl {
+	unsigned gpio;
+	unsigned long flags;
+	uint32_t delay;
+};
+
+struct msm_camera_gpio_num_info {
+	uint16_t gpio_num[7];
+};
+
+struct msm_camera_csi_lane_params {
+	uint16_t csi_lane_assign;
+	uint16_t csi_lane_mask;
+};
+
+struct msm_camera_gpio_conf {
+	void *cam_gpiomux_conf_tbl;
+	uint8_t cam_gpiomux_conf_tbl_size;
+	struct gpio *cam_gpio_common_tbl;
+	uint8_t cam_gpio_common_tbl_size;
+	struct gpio *cam_gpio_req_tbl;
+	uint8_t cam_gpio_req_tbl_size;
+	struct msm_gpio_set_tbl *cam_gpio_set_tbl;
+	uint8_t cam_gpio_set_tbl_size;
+	uint32_t gpio_no_mux;
+	uint32_t *camera_off_table;
+	uint8_t camera_off_table_size;
+	uint32_t *camera_on_table;
+	uint8_t camera_on_table_size;
+	struct msm_camera_gpio_num_info *gpio_num_info;
+};
+
+enum msm_camera_i2c_mux_mode {
+	MODE_R,
+	MODE_L,
+	MODE_DUAL
+};
+
+struct msm_camera_i2c_conf {
+	uint8_t use_i2c_mux;
+	struct platform_device *mux_dev;
+	enum msm_camera_i2c_mux_mode i2c_mux_mode;
+};
+
+struct msm_camera_sensor_platform_info {
+	int mount_angle;
+	int sensor_reset;
+	struct camera_vreg_t *cam_vreg;
+	int num_vreg;
+	int32_t (*ext_power_ctrl) (int enable);
+	struct msm_camera_gpio_conf *gpio_conf;
+	struct msm_camera_i2c_conf *i2c_conf;
+	struct msm_camera_csi_lane_params *csi_lane_params;
+};
+
+enum msm_camera_actuator_name {
+	MSM_ACTUATOR_MAIN_CAM_0,
+	MSM_ACTUATOR_MAIN_CAM_1,
+	MSM_ACTUATOR_MAIN_CAM_2,
+	MSM_ACTUATOR_MAIN_CAM_3,
+	MSM_ACTUATOR_MAIN_CAM_4,
+	MSM_ACTUATOR_MAIN_CAM_5,
+	MSM_ACTUATOR_WEB_CAM_0,
+	MSM_ACTUATOR_WEB_CAM_1,
+	MSM_ACTUATOR_WEB_CAM_2,
+};
+
+struct msm_actuator_info {
+	struct i2c_board_info const *board_info;
+	enum msm_camera_actuator_name cam_name;
+	int bus_id;
+	int vcm_pwd;
+	int vcm_enable;
+};
+
+/* aospSX: from msm_cam_sensor.h */
+/* ----------------------------- */
+
+enum sensor_sub_module_t {
+	SUB_MODULE_SENSOR,
+	SUB_MODULE_CHROMATIX,
+	SUB_MODULE_ACTUATOR,
+	SUB_MODULE_EEPROM,
+	SUB_MODULE_LED_FLASH,
+	SUB_MODULE_STROBE_FLASH,
+	SUB_MODULE_CSID,
+	SUB_MODULE_CSID_3D,
+	SUB_MODULE_CSIPHY,
+	SUB_MODULE_CSIPHY_3D,
+	SUB_MODULE_MAX,
+};
+
+#if 0
+struct msm_sensor_info_t {
+	char sensor_name[MAX_SENSOR_NAME];
+	int32_t session_id;
+	int32_t subdev_id[SUB_MODULE_MAX];
+};
+#endif
+/* ----------------------------- */
+
+struct msm_eeprom_info {
+	struct i2c_board_info const *board_info;
+	int bus_id;
+};
+
 struct msm_camera_sensor_info {
 	const char *sensor_name;
 	int sensor_reset;
@@ -218,6 +379,7 @@ struct msm_camera_sensor_info {
 	void (*camera_main_set_probe)(int);
 	int mclk;
 	int flash_type;
+	struct msm_camera_sensor_platform_info *sensor_platform_info;
 	uint8_t led_high_enabled;
 	int need_suspend;
 	struct msm_camera_device_platform_data *pdata;
@@ -240,6 +402,10 @@ struct msm_camera_sensor_info {
 	int mirror_mode; /* for sensor upside down */
 	int zero_shutter_mode; /* for doing zero shutter lag on MIPI */
 	int dev_node;
+	enum msm_camera_type camera_type;
+	enum msm_sensor_type sensor_type;
+	struct msm_actuator_info *actuator_info;
+	struct msm_eeprom_info *eeprom_info;
 };
 
 
@@ -421,6 +587,12 @@ struct msm_i2c_platform_data {
 	int src_clk_rate;
 	int use_gsbi_shared_mode;
 	void (*msm_i2c_config_gpio)(int iface, int config_type);
+};
+
+struct vcap_platform_data {
+	unsigned *gpios;
+	int num_gpios;
+	struct msm_bus_scale_pdata *bus_client_pdata;
 };
 
 /* common init routines for use by arch/arm/mach-msm/board-*.c */
