@@ -242,6 +242,17 @@ static uint32_t display_off_gpio_table[] = {
 	LCM_GPIO_CFG(SAGA_LCD_R5, 0),
 };
 
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n;
+	unsigned id;
+	for (n = 0; n < len; n++) {
+		id = table[n];
+		if (msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0))
+			printk(KERN_ERR "%s: config gpio fail\n", __func__);
+	}
+}
+
 static int panel_gpio_switch(int on)
 {
 	config_gpio_table(

@@ -105,6 +105,16 @@ static uint32_t usb_ID_PIN_ouput_table[] = {
 	PCOM_GPIO_CFG(VIVOW_GPIO_USB_ID_PIN, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_4MA),
 };
 
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n;
+	unsigned id;
+	for (n = 0; n < len; n++) {
+		id = table[n];
+		if (msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0))
+			printk(KERN_ERR "%s: config gpio fail\n", __func__);
+	}
+}
 
 void config_vivow_usb_id_gpios(bool output)
 {

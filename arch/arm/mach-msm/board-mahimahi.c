@@ -68,7 +68,17 @@ extern void __init mahimahi_audio_init(void);
 
 extern int microp_headset_has_mic(void);
 
-static void config_gpio_table(uint32_t *table, int len);
+
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n;
+	unsigned id;
+	for (n = 0; n < len; n++) {
+		id = table[n];
+		if (msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0))
+			printk(KERN_ERR "%s: config gpio fail\n", __func__);
+	}
+}
 
 static int mahimahi_phy_init_seq[] = {
 	0x0C, 0x31,
@@ -543,8 +553,6 @@ static struct i2c_board_info rev_CX_i2c_devices[] = {
 		I2C_BOARD_INFO("smb329", 0x6E >> 1),
 	},
 };
-
-static void config_gpio_table(uint32_t *table, int len);
 
 static uint32_t camera_off_gpio_table[] = {
 	/* CAMERA */

@@ -30,9 +30,6 @@
 /* see /arch/arm/mach-msm/generic_gpio.c for implementation */
 extern void register_gpio_int_mask(unsigned int gpio, unsigned int idle);
 extern void unregister_gpio_int_mask(unsigned int gpio, unsigned int idle);
-#ifndef CONFIG_ARCH_MSM8X60
-extern void config_gpio_table(uint32_t *table, int len);
-#endif
 extern int gpio_configure(unsigned int gpio, unsigned long flags);
 
 static inline int gpio_get_value(unsigned gpio)

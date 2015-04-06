@@ -213,6 +213,17 @@ static uint32_t mecha_serial_debug_ac_detect_table[] = {
 	PCOM_GPIO_CFG(MECHA_GPIO_UART3_TX, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_4MA),
 };
 
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n;
+	unsigned id;
+	for (n = 0; n < len; n++) {
+		id = table[n];
+		if (msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0))
+			printk(KERN_ERR "%s: config gpio fail\n", __func__);
+	}
+}
+
 /*1: china ac*/
 static int mecha_china_ac_detect()
 {

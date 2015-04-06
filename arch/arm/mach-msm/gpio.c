@@ -658,18 +658,6 @@ void unregister_gpio_int_mask(unsigned int gpio, unsigned int idle)
 }
 EXPORT_SYMBOL(unregister_gpio_int_mask);
 
-void config_gpio_table(uint32_t *table, int len)
-{
-	int n;
-	unsigned id;
-	for (n = 0; n < len; n++) {
-		id = table[n];
-		if (msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0))
-			printk(KERN_ERR "%s: config gpio fail\n", __func__);
-	}
-}
-EXPORT_SYMBOL(config_gpio_table);
-
 int gpio_tlmm_config(unsigned config, unsigned disable)
 {
 	return msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, &disable);

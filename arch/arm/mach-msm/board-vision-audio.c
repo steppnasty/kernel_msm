@@ -137,6 +137,17 @@ void vision_snddev_receiver_pamp_on(int en)
 	pr_aud_info("%s %d\n", __func__, en);
 }
 
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n;
+	unsigned id;
+	for (n = 0; n < len; n++) {
+		id = table[n];
+		if (msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0))
+			printk(KERN_ERR "%s: config gpio fail\n", __func__);
+	}
+}
+
 void vision_snddev_bt_sco_pamp_on(int en)
 {
 	static int bt_sco_refcount;

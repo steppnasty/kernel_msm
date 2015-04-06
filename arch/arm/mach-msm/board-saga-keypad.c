@@ -48,6 +48,17 @@ static struct gpio_event_direct_entry saga_keypad_input_map[] = {
 	},
 };
 
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n;
+	unsigned id;
+	for (n = 0; n < len; n++) {
+		id = table[n];
+		if (msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0))
+			printk(KERN_ERR "%s: config gpio fail\n", __func__);
+	}
+}
+
 static void saga_setup_input_gpio(void)
 {
 	uint32_t inputs_gpio_table[] = {

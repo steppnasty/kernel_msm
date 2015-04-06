@@ -99,6 +99,17 @@ static struct mmc_vdd_xlat mmc_vdd_table[] = {
 static unsigned int sdslot_vdd = 0xffffffff;
 static unsigned int sdslot_vreg_enabled;
 
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n;
+	unsigned id;
+	for (n = 0; n < len; n++) {
+		id = table[n];
+		if (msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0))
+			printk(KERN_ERR "%s: config gpio fail\n", __func__);
+	}
+}
+
 static uint32_t saga_sdslot_switchvdd(struct device *dev, unsigned int vdd)
 {
 	int i;
