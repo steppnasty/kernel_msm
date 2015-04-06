@@ -254,10 +254,5 @@ int __init glacier_init_panel(void)
 	rc = platform_device_register(&msm_mddi_device);
 	if (rc)
 		return rc;
-
-	rc = platform_device_register(&msm_vpe_device);
-	if (rc)
-		return rc;
-
 	return 0;
 }

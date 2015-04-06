@@ -141,7 +141,8 @@ extern struct platform_device msm_device_ssbi_pmic;
 #endif
 extern struct platform_device msm_kgsl_3d0;
 extern struct platform_device msm_kgsl_2d0;
-extern struct platform_device msm_vpe_device;
+extern struct platform_device msm_device_vpe;
+extern struct platform_device msm_device_csic0;
 
 extern int glacier_mddi_init(void);
 

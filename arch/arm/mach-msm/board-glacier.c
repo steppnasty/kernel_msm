@@ -1516,9 +1516,12 @@ static struct platform_device glacier_oj = {
 		.platform_data	= &glacier_oj_data,
 	}
 };
+
+static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data;
 static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
 	{
 		I2C_BOARD_INFO("s5k4e1gx", 0x20 >> 1),
+		.platform_data = &msm_camera_sensor_s5k4e1gx_data,
 	},
 	{
 		I2C_BOARD_INFO("mt9v113", 0x3C), /* 0x78: w, 0x79 :r */
@@ -1705,11 +1708,6 @@ static struct resource msm_camera_resources[] = {
 		.end	= 0xA6000000 + SZ_1M - 1,
 		.flags	= IORESOURCE_MEM,
 	},
-	{
-		.start	= INT_VFE,
-		.end	= INT_VFE,
-		.flags	= IORESOURCE_IRQ,
-	},
 };
 
 static struct msm_camera_device_platform_data msm_camera_device_data = {
@@ -1721,8 +1719,17 @@ static struct msm_camera_device_platform_data msm_camera_device_data = {
 	.ioext.appsz  = MSM_CLK_CTL_SIZE,
 	.ioext.camifpadphy = 0xAB000000,
 	.ioext.camifpadsz  = 0x00000400,
+
 };
 
+static struct msm_camera_device_platform_data glacier_s5k4e1gx_platform_data = {
+	.camera_gpio_on = config_glacier_camera_on_gpios,
+	.camera_gpio_off = config_glacier_camera_off_gpios,
+	.csid_core = 0,
+	.ioclk = {
+		.vfe_clk_rate = 122880000,
+	},
+};
 
 static void glacier_s5k4e1gx_clk_switch(void){
 	int rc = 0;
@@ -1755,12 +1762,17 @@ static int flashlight_control(int mode)
 	return aat1271_flashlight_control(mode);
 }
 
+static struct msm_camera_sensor_platform_info s5k4e1gx_sensor_platform_info = {
+	.mount_angle = 90
+};
+
 static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.camera_flash		= flashlight_control,
 	.num_flash_levels	= FLASHLIGHT_NUM,
 	.low_temp_limit		= 5,
 	.low_cap_limit		= 15,
 };
+
 static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.sensor_name    = "s5k4e1gx",
 	.sensor_reset   = GLACIER_CAM_RST,
@@ -1773,13 +1785,12 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.analog_pwd1_gpio = GLACIER_CAM_A2V85_EN,
 	.camera_power_on = glacier_sensor_vreg_on,
 	.camera_power_off = glacier_sensor_vreg_off,
-	.pdata          = &msm_camera_device_data,
-	.flash_type     = MSM_CAMERA_FLASH_LED,
-	.resource       = msm_camera_resources,
-	.num_resources  = ARRAY_SIZE(msm_camera_resources),
+	.pdata          = &glacier_s5k4e1gx_platform_data,
 	.flash_cfg	= &msm_camera_sensor_flash_cfg,
 	.sensor_lc_disable = true, /* disable sensor lens correction */
 	.cam_select_pin = GLACIER_CLK_SWITCH,
+	.sensor_platform_info = &s5k4e1gx_sensor_platform_info,
+	.csi_if = 0,
 };
 
 static struct platform_device msm_camera_sensor_s5k4e1gx = {
@@ -1789,6 +1800,38 @@ static struct platform_device msm_camera_sensor_s5k4e1gx = {
 	},
 };
 
+static struct resource glacier_vfe_resources[] = {
+	{
+		.name	= "msm_vfe",
+		.start	= 0xA6000000,
+		.end	= 0xA6000000 + SZ_1M - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "msm_vfe",
+		.start	= INT_VFE,
+		.end	= INT_VFE,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name	= "msm_camif",
+		.start	= 0xAB000000,
+		.end    = 0xAB000000 + SZ_1K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data;
+
+static struct platform_device msm_device_vfe = {
+	.name		= "msm_vfe",
+	.id		= 0,
+	.resource	= glacier_vfe_resources,
+	.num_resources	= ARRAY_SIZE(glacier_vfe_resources),
+	.dev = {
+		.platform_data = &msm_camera_sensor_mt9v113_data,
+	},
+};
 
 #ifdef CONFIG_MSM_GEMINI
 static struct resource msm_gemini_resources[] = {
@@ -1811,6 +1854,9 @@ static struct platform_device msm_gemini_device = {
 };
 #endif
 
+static struct msm_camera_sensor_platform_info mt9v113_sensor_platform_info = {
+	.mount_angle = 0
+};
 
 static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data = {
 	.sensor_name	= "mt9v113",
@@ -1824,6 +1870,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data = {
 	.resource = msm_camera_resources,
 	.num_resources = ARRAY_SIZE(msm_camera_resources),
 	.cam_select_pin = GLACIER_CLK_SWITCH,
+	.sensor_platform_info = &mt9v113_sensor_platform_info,
 };
 
 static struct platform_device msm_camera_sensor_mt9v113 = {
@@ -1833,6 +1880,18 @@ static struct platform_device msm_camera_sensor_mt9v113 = {
 	},
 };
 
+static struct platform_device msm_camera_server = {
+	.name = "msm_cam_server",
+	.id = 0,
+};
+
+void __init glacier_init_cam(void)
+{
+	platform_device_register(&msm_camera_server);
+	platform_device_register(&msm_device_vfe);
+	platform_device_register(&msm_device_csic0);
+	platform_device_register(&msm_device_vpe);
+}
 
 static struct platform_device glacier_rfkill = {
 	.name = "glacier_rfkill",
@@ -2092,9 +2151,6 @@ static struct platform_device *devices[] __initdata = {
 	&msm_device_vidc_720p,
 #ifdef CONFIG_MSM_GEMINI
 	&msm_gemini_device,
-#endif
-#ifdef CONFIG_MSM_CAMERA_7X30
-	//&msm_vpe_device,
 #endif
 #ifdef CONFIG_MSM7KV2_1X_AUDIO
 	&msm_aux_pcm_device,
@@ -2366,6 +2422,9 @@ static void __init glacier_init(void)
 #endif
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
+#ifdef CONFIG_MSM_CAMERA_V4L2
+	glacier_init_cam();
+#endif
 
 #ifdef CONFIG_USB_ANDROID
 	glacier_add_usb_devices();

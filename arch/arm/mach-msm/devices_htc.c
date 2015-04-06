@@ -125,25 +125,49 @@ static struct platform_device ram_console_device = {
 	.resource       = ram_console_resource,
 };
 
-#ifdef CONFIG_MSM_CAMERA_7X30
-static struct resource msm_vpe_resources[] = {
-       {
-               .start  = 0xAD200000,
-               .end    = 0xAD200000 + SZ_1M - 1,
-               .flags  = IORESOURCE_MEM,
-       },
-       {
-               .start  = INT_VPE,
-               .end    = INT_VPE,
-               .flags  = IORESOURCE_IRQ,
-       },
+#ifdef CONFIG_MSM_CAMERA_V4L2
+static struct resource msm_csic_resources[] = {
+	{
+		.name	= "csic",
+		.start	= 0xA6100000,
+		.end	= 0xA6100000 + 0x00000400 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "csic",
+		.start	= INT_CSI,
+		.end	= INT_CSI,
+		.flags	= IORESOURCE_IRQ,
+	},
 };
 
-struct platform_device msm_vpe_device = {
-       .name = "msm_vpe",
-       .id   = 0,
-       .num_resources = ARRAY_SIZE(msm_vpe_resources),
-       .resource = msm_vpe_resources,
+static struct resource msm_vpe_resources[] = {
+	{
+		.name	= "vpe",
+		.start	= 0xAD200000,
+		.end	= 0xAD200000 + SZ_1M - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "vpe",
+		.start	= INT_VPE,
+		.end	= INT_VPE,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm_device_csic0 = {
+	.name		= "msm_csic",
+	.id		= 0,
+	.resource	= msm_csic_resources,
+	.num_resources	= ARRAY_SIZE(msm_csic_resources),
+};
+
+struct platform_device msm_device_vpe = {
+	.name		= "msm_vpe",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(msm_vpe_resources),
+	.resource	= msm_vpe_resources,
 };
 #endif
 
@@ -289,10 +313,7 @@ void __init msm_add_mem_devices(struct msm_pmem_setting *setting)
 	platform_device_register(&msm_kgsl_2d0);
 #endif
 #endif
-
-#ifdef CONFIG_MSM_CAMERA_7X30
-	platform_device_register(&msm_vpe_device);
-#endif
+	platform_device_register(&msm_device_vpe);
 }
 
 #define PM_LIBPROG      0x30000061
