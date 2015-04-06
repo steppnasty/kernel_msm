@@ -30,6 +30,7 @@ config ARCH_MSM7X30
 	select ARCH_MSM_SCORPION
 	select CPU_V7
 	select MSM_MULTIMEDIA_USE_ION
+	select ARM_HAS_SG_CHAIN
 
 config ARCH_QSD8X50
 	bool "QSD8x50"
