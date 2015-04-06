@@ -171,7 +171,6 @@ kgsl_mem_entry_destroy(struct kref *kref)
 	 */
 
 	if (entry->memtype == KGSL_MEM_ENTRY_ION) {
-		ion_unmap_dma(kgsl_ion_client, entry->priv_data);
 		entry->memdesc.sg = NULL;
 	}
 
@@ -1524,6 +1523,7 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 		struct kgsl_pagetable *pagetable, int fd)
 {
 	struct ion_handle *handle;
+	struct sg_table *sg_table;
 	struct scatterlist *s;
 	unsigned long flags;
 
@@ -1545,10 +1545,11 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 	if (ion_handle_get_flags(kgsl_ion_client, handle, &flags))
 		goto err;
 
-	entry->memdesc.sg = ion_map_dma(kgsl_ion_client, handle, flags);
-
-	if (IS_ERR_OR_NULL(entry->memdesc.sg))
+	sg_table = ion_sg_table(kgsl_ion_client, entry->priv_data);
+	if (IS_ERR_OR_NULL(entry->priv_data))
 		goto err;
+
+	entry->memdesc.sg = sg_table->sgl;
 
 	/* Calculate the size of the memdesc from the sglist */
 
@@ -1669,7 +1670,6 @@ error_put_file_ptr:
 			fput(entry->priv_data);
 		break;
 	case KGSL_MEM_ENTRY_ION:
-		ion_unmap_dma(kgsl_ion_client, entry->priv_data);
 		ion_free(kgsl_ion_client, entry->priv_data);
 		break;
 	default:
