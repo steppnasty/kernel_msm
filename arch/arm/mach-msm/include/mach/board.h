@@ -322,32 +322,6 @@ struct msm_actuator_info {
 	int vcm_enable;
 };
 
-/* aospSX: from msm_cam_sensor.h */
-/* ----------------------------- */
-
-enum sensor_sub_module_t {
-	SUB_MODULE_SENSOR,
-	SUB_MODULE_CHROMATIX,
-	SUB_MODULE_ACTUATOR,
-	SUB_MODULE_EEPROM,
-	SUB_MODULE_LED_FLASH,
-	SUB_MODULE_STROBE_FLASH,
-	SUB_MODULE_CSID,
-	SUB_MODULE_CSID_3D,
-	SUB_MODULE_CSIPHY,
-	SUB_MODULE_CSIPHY_3D,
-	SUB_MODULE_MAX,
-};
-
-#if 0
-struct msm_sensor_info_t {
-	char sensor_name[MAX_SENSOR_NAME];
-	int32_t session_id;
-	int32_t subdev_id[SUB_MODULE_MAX];
-};
-#endif
-/* ----------------------------- */
-
 struct msm_eeprom_info {
 	struct i2c_board_info const *board_info;
 	int bus_id;
