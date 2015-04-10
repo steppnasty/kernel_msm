@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  *
  */
+#include <linux/module.h>
 #include <linux/fb.h>
 #include <linux/file.h>
 #include <linux/fs.h>
@@ -25,6 +26,8 @@
 #include <linux/ashmem.h>
 #include <linux/major.h>
 #include <linux/ion.h>
+#include <linux/io.h>
+#include <mach/socinfo.h>
 
 #include "kgsl.h"
 #include "kgsl_debugfs.h"
@@ -343,6 +346,7 @@ static void kgsl_check_idle_locked(struct kgsl_device *device)
 	    device->state == KGSL_STATE_ACTIVE &&
 		device->requested_state == KGSL_STATE_NONE) {
 		kgsl_pwrctrl_request_state(device, KGSL_STATE_NAP);
+		kgsl_pwrscale_idle(device, 1);
 		if (kgsl_pwrctrl_sleep(device) != 0)
 			mod_timer(&device->idle_timer,
 				  jiffies +
@@ -457,8 +461,8 @@ static int kgsl_suspend_device(struct kgsl_device *device, pm_message_t state)
 			INIT_COMPLETION(device->hwaccess_gate);
 			device->ftbl->suspend_context(device);
 			device->ftbl->stop(device);
-			if (device->idle_wakelock.name)
-				wake_unlock(&device->idle_wakelock);
+			pm_qos_update_request(&device->pm_qos_req_dma,
+						PM_QOS_DEFAULT_VALUE);
 			kgsl_pwrctrl_set_state(device, KGSL_STATE_SUSPEND);
 			break;
 		case KGSL_STATE_SLUMBER:
@@ -540,6 +544,7 @@ void kgsl_early_suspend_driver(struct early_suspend *h)
 					struct kgsl_device, display_off);
 	KGSL_PWR_WARN(device, "early suspend start\n");
 	mutex_lock(&device->mutex);
+	device->pwrctrl.restore_slumber = true;
 	kgsl_pwrctrl_request_state(device, KGSL_STATE_SLUMBER);
 	kgsl_pwrctrl_sleep(device);
 	mutex_unlock(&device->mutex);
@@ -568,9 +573,10 @@ void kgsl_late_resume_driver(struct early_suspend *h)
 					struct kgsl_device, display_off);
 	KGSL_PWR_WARN(device, "late resume start\n");
 	mutex_lock(&device->mutex);
-	device->pwrctrl.restore_slumber = 0;
+	device->pwrctrl.restore_slumber = false;
+	if (device->pwrscale.policy == NULL)
+		kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_TURBO);
 	kgsl_pwrctrl_wake(device);
-	kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_TURBO);
 	mutex_unlock(&device->mutex);
 	kgsl_check_idle(device);
 	KGSL_PWR_WARN(device, "late resume end\n");
@@ -2171,7 +2177,7 @@ void kgsl_unregister_device(struct kgsl_device *device)
 	kgsl_cffdump_close(device->id);
 	kgsl_pwrctrl_uninit_sysfs(device);
 
-	wake_lock_destroy(&device->idle_wakelock);
+	pm_qos_remove_request(&device->pm_qos_req_dma);
 
 	idr_destroy(&device->context_idr);
 
@@ -2262,9 +2268,10 @@ kgsl_register_device(struct kgsl_device *device)
 	if (ret != 0)
 		goto err_close_mmu;
 
-	wake_lock_init(&device->idle_wakelock, WAKE_LOCK_IDLE, device->name);
-
 	idr_init(&device->context_idr);
+
+	pm_qos_add_request(&device->pm_qos_req_dma, PM_QOS_CPU_DMA_LATENCY,
+				PM_QOS_DEFAULT_VALUE);
 
 	/* Initalize the snapshot engine */
 	kgsl_device_snapshot_init(device);

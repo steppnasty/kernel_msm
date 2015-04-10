@@ -582,9 +582,7 @@ void kgsl_idle_check(struct work_struct *work)
 
 	mutex_lock(&device->mutex);
 	if (device->state & (KGSL_STATE_ACTIVE | KGSL_STATE_NAP)) {
-		if ((device->requested_state != KGSL_STATE_SLEEP) &&
-			(device->requested_state != KGSL_STATE_SLUMBER))
-			kgsl_pwrscale_idle(device);
+		kgsl_pwrscale_idle(device, 0);
 
 		if (kgsl_pwrctrl_sleep(device) != 0) {
 			mod_timer(&device->idle_timer,
@@ -681,8 +679,6 @@ _nap(struct kgsl_device *device)
 		kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
 		kgsl_pwrctrl_clk(device, KGSL_PWRFLAGS_OFF, KGSL_STATE_NAP);
 		kgsl_pwrctrl_set_state(device, KGSL_STATE_NAP);
-		if (device->idle_wakelock.name)
-			wake_unlock(&device->idle_wakelock);
 	case KGSL_STATE_NAP:
 	case KGSL_STATE_SLEEP:
 	case KGSL_STATE_SLUMBER:
@@ -724,7 +720,8 @@ _sleep(struct kgsl_device *device)
 		_sleep_accounting(device);
 		kgsl_pwrctrl_clk(device, KGSL_PWRFLAGS_OFF, KGSL_STATE_SLEEP);
 		kgsl_pwrctrl_set_state(device, KGSL_STATE_SLEEP);
-		wake_unlock(&device->idle_wakelock);
+		pm_qos_update_request(&device->pm_qos_req_dma,
+					PM_QOS_DEFAULT_VALUE);
 		break;
 	case KGSL_STATE_SLEEP:
 	case KGSL_STATE_SLUMBER:
@@ -744,21 +741,18 @@ _slumber(struct kgsl_device *device)
 	case KGSL_STATE_ACTIVE:
 		if (!device->ftbl->isidle(device)) {
 			kgsl_pwrctrl_request_state(device, KGSL_STATE_NONE);
-			device->pwrctrl.restore_slumber = true;
 			return -EBUSY;
 		}
 		/* fall through */
 	case KGSL_STATE_NAP:
 	case KGSL_STATE_SLEEP:
 		del_timer_sync(&device->idle_timer);
-		kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_NOMINAL);
-		device->pwrctrl.restore_slumber = true;
 		device->ftbl->suspend_context(device);
 		device->ftbl->stop(device);
 		_sleep_accounting(device);
 		kgsl_pwrctrl_set_state(device, KGSL_STATE_SLUMBER);
-		if (device->idle_wakelock.name)
-			wake_unlock(&device->idle_wakelock);
+		pm_qos_update_request(&device->pm_qos_req_dma,
+						PM_QOS_DEFAULT_VALUE);
 		break;
 	case KGSL_STATE_SLUMBER:
 		break;
@@ -827,7 +821,8 @@ void kgsl_pwrctrl_wake(struct kgsl_device *device)
 		/* Re-enable HW access */
 		mod_timer(&device->idle_timer,
 				jiffies + device->pwrctrl.interval_timeout);
-		wake_lock(&device->idle_wakelock);
+		pm_qos_update_request(&device->pm_qos_req_dma,
+					GPU_SWFI_LATENCY);
 	case KGSL_STATE_ACTIVE:
 		break;
 	default:

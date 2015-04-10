@@ -117,24 +117,11 @@ static void idlestats_busy(struct kgsl_device *device,
 }
 
 static void idlestats_idle(struct kgsl_device *device,
-			struct kgsl_pwrscale *pwrscale)
+		struct kgsl_pwrscale *pwrscale, unsigned int ignore_idle)
 {
 	int i, nr_cpu;
-	struct kgsl_power_stats stats;
 	struct idlestats_priv *priv = pwrscale->priv;
 
-	/* This is called from within a mutex protected function, so
-	   no additional locking required */
-	device->ftbl->power_stats(device, &stats);
-
-	/* If total_time is zero, then we don't have
-	   any interesting statistics to store */
-	if (stats.total_time == 0) {
-		priv->pulse.busy_start_time = 0;
-		return;
-	}
-
-	priv->pulse.busy_interval   = stats.busy_time;
 	nr_cpu = num_possible_cpus();
 	for (i = 0; i < nr_cpu; i++)
 		if (cpu_online(i))
