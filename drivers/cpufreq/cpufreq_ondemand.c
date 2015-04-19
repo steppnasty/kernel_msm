@@ -1075,7 +1075,7 @@ static int __init cpufreq_gov_dbs_init(void)
 			MIN_SAMPLING_RATE_RATIO * jiffies_to_usecs(10);
 	}
 
-	kondemand_wq = create_rt_workqueue("kondemand");
+	kondemand_wq = create_workqueue("kondemand");
 	if (!kondemand_wq) {
 		printk(KERN_ERR "Creation of kondemand failed\n");
 		return -EFAULT;

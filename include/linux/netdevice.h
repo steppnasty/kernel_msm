@@ -1050,6 +1050,8 @@ struct net_device {
 	/* mid-layer private */
 	void			*ml_priv;
 
+	/* bridge stuff */
+	struct net_bridge_port	*br_port;
 	/* GARP */
 	struct garp_port	*garp_port;
 
