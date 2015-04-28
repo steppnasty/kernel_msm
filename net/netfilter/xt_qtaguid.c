@@ -789,8 +789,8 @@ static int iface_stat_all_proc_read(char *page, char **num_items_returned,
 	int item_index = 0;
 	int len;
 	struct iface_stat *iface_entry;
-	const struct rtnl_link_stats64 dev_stats, *stats;
-	const struct rtnl_link_stats64 no_dev_stats = {0};
+	struct rtnl_link_stats64 dev_stats;
+	const struct rtnl_link_stats64 *stats, no_dev_stats = {0};
 
 	if (unlikely(module_passive)) {
 		*eof = 1;
@@ -952,7 +952,8 @@ static struct iface_stat *iface_alloc(struct net_device *net_dev)
 static void iface_check_stats_reset_and_adjust(struct net_device *net_dev,
 					       struct iface_stat *iface)
 {
-	const struct rtnl_link_stats64 dev_stats, *stats;
+	struct rtnl_link_stats64 dev_stats;
+	const struct rtnl_link_stats64 *stats;
 	bool stats_rewound;
 
 	stats = dev_get_stats(net_dev, &dev_stats);
@@ -1173,7 +1174,8 @@ data_counters_update(struct data_counters *dc, int set,
  */
 static void iface_stat_update(struct net_device *net_dev, bool stash_only)
 {
-	const struct rtnl_link_stats64 dev_stats, *stats;
+	struct rtnl_link_stats64 dev_stats;
+	const struct rtnl_link_stats64 *stats;
 	struct iface_stat *entry;
 
 	stats = dev_get_stats(net_dev, &dev_stats);
