@@ -948,11 +948,11 @@ static int htc_battery_get_property(struct power_supply *psy,
 	return 0;
 }
 
-#define HTC_BATTERY_ATTR(_name)							\
-{										\
-	.attr = { .name = #_name, .mode = 0666, .owner = THIS_MODULE },	\
-	.show = htc_battery_show_property,					\
-	.store = htc_battery_store_property,					\
+#define HTC_BATTERY_ATTR(_name)				\
+{							\
+	.attr = { .name = #_name, .mode = 0666 },	\
+	.show = htc_battery_show_property,		\
+	.store = htc_battery_store_property,		\
 }
 
 static struct device_attribute htc_battery_attrs[] = {
