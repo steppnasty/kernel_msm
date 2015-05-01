@@ -907,12 +907,12 @@ sdioh_request_packet(sdioh_info_t *sd, uint fix_inc, uint write, uint func,
 		pkt_len += 3;
 		pkt_len &= 0xFFFFFFFC;
 
-#ifdef CONFIG_MMC_MSM7X00A
+#ifdef CONFIG_MMC_MSM
 		if ((pkt_len % 64) == 32) {
 			sd_trace(("%s: Rounding up TX packet +=32\n", __FUNCTION__));
 			pkt_len += 32;
 		}
-#endif /* CONFIG_MMC_MSM7X00A */
+#endif /* CONFIG_MMC_MSM */
 		/* Make sure the packet is aligned properly. If it isn't, then this
 		 * is the fault of sdioh_request_buffer() which is supposed to give
 		 * us something we can work with.

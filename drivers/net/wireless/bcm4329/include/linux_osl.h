@@ -218,7 +218,7 @@ extern void osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction);
 #define	BUSPROBE(val, addr)	({ (val) = R_REG(NULL, (addr)); 0; })
 
 
-#if !defined(CONFIG_MMC_MSM7X00A)
+#if !defined(CONFIG_MMC_MSM)
 #define	REG_MAP(pa, size)	ioremap_nocache((unsigned long)(pa), (unsigned long)(size))
 #else
 #define REG_MAP(pa, size)       (void *)(0)
