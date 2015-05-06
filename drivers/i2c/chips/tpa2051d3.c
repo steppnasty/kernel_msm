@@ -276,8 +276,8 @@ int update_amp_parameter(int mode)
 	}
 	return 0;
 }
-static int
-tpa2051d3_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
+static long
+tpa2051d3_ioctl(struct file *file, unsigned int cmd,
 	   unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
@@ -419,7 +419,7 @@ static struct file_operations tpa2051d3_fops = {
 	.owner = THIS_MODULE,
 	.open = tpa2051d3_open,
 	.release = tpa2051d3_release,
-	.ioctl = tpa2051d3_ioctl,
+	.unlocked_ioctl = tpa2051d3_ioctl,
 };
 
 static struct miscdevice tpa2051d3_device = {

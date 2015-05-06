@@ -663,7 +663,7 @@ void aic3254_set_mode(int config, int mode)
 	mutex_unlock(&lock);
 }
 
-static int aic3254_ioctl(struct inode *inode, struct file *file,
+static long aic3254_ioctl(struct file *file,
 		unsigned int cmd, unsigned long argc)
 {
 	struct AIC3254_PARAM para;
@@ -877,7 +877,7 @@ static const struct file_operations aic3254_fops = {
 	.owner = THIS_MODULE,
 	.open = aic3254_open,
 	.release = aic3254_release,
-	.ioctl = aic3254_ioctl,
+	.unlocked_ioctl = aic3254_ioctl,
 };
 
 static struct miscdevice aic3254_misc = {

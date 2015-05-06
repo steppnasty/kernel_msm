@@ -239,7 +239,7 @@ static int diagchar_close(struct inode *inode, struct file *file)
 	return -ENOMEM;
 }
 
-static int diagchar_ioctl(struct inode *inode, struct file *filp,
+static long diagchar_ioctl(struct file *filp,
 			   unsigned int iocmd, unsigned long ioarg)
 {
 	int i, j, count_entries = 0, temp;
@@ -896,7 +896,7 @@ static const struct file_operations diagcharfops = {
 	.owner = THIS_MODULE,
 	.read = diagchar_read,
 	.write = diagchar_write,
-	.ioctl = diagchar_ioctl,
+	.unlocked_ioctl = diagchar_ioctl,
 	.open = diagchar_open,
 	.release = diagchar_close
 };

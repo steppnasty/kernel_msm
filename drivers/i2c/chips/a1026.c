@@ -900,8 +900,8 @@ static int exe_cmd_in_file(unsigned char *incmd)
 }
 #endif /* ENABLE_DIAG_IOCTLS */
 
-static int
-a1026_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
+static long
+a1026_ioctl(struct file *file, unsigned int cmd,
 	   unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
@@ -1048,7 +1048,7 @@ static const struct file_operations a1026_fops = {
 	.owner = THIS_MODULE,
 	.open = a1026_open,
 	.release = a1026_release,
-	.ioctl = a1026_ioctl,
+	.unlocked_ioctl = a1026_ioctl,
 };
 
 static struct miscdevice a1026_device = {

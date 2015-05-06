@@ -40,8 +40,7 @@ struct msg_s {
 	char code[CODE_SIZE];
 };
 
-static int simlock_ioctl(struct inode *inode, struct file *file,
-						unsigned int command, unsigned long arg)
+static long simlock_ioctl(struct file *file, unsigned int command, unsigned long arg)
 {
 	struct msg_s *msg_p = (struct msg_s *)arg;
 	int size, ret;
@@ -92,8 +91,8 @@ static int simlock_ioctl(struct inode *inode, struct file *file,
 }
 
 static const struct file_operations simlock_fops = {
-	.ioctl  =   simlock_ioctl,
-	.owner  =   THIS_MODULE,
+	.owner = THIS_MODULE,
+	.unlocked_ioctl = simlock_ioctl,
 };
 
 

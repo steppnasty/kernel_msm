@@ -567,7 +567,7 @@ static int register_pmem(void)
 done:
 	return result;
 }
-static int acdb_ioctl(struct inode *inode, struct file *f,
+static long acdb_ioctl(struct file *f,
 		unsigned int cmd, unsigned long arg)
 {
 	s32			result = 0;
@@ -750,7 +750,7 @@ static const struct file_operations acdb_fops = {
 	.owner = THIS_MODULE,
 	.open = acdb_open,
 	.release = acdb_release,
-	.ioctl = acdb_ioctl,
+	.unlocked_ioctl = acdb_ioctl,
 	.mmap = acdb_mmap,
 };
 

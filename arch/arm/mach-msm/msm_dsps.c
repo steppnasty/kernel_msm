@@ -368,7 +368,7 @@ static int msm_dsps_power(bool on)
  * IO Control - handle commands from client.
  *
  */
-static int dsps_ioctl(struct inode *inode, struct file *file,
+static long dsps_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
@@ -601,7 +601,7 @@ const struct file_operations dsps_fops = {
 	.owner = THIS_MODULE,
 	.open = dsps_open,
 	.release = dsps_release,
-	.ioctl = dsps_ioctl,
+	.unlocked_ioctl = dsps_ioctl,
 };
 
 /**
