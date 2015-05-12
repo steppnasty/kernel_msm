@@ -2182,6 +2182,21 @@ struct resource resources_batt_alarm = {
 };
 #endif
 
+struct platform_device asoc_msm_pcm = {
+	.name   = "msm-dsp-audio",
+	.id     = 0,
+};
+
+struct platform_device asoc_msm_dai0 = {
+	.name   = "msm-codec-dai",
+	.id     = 0,
+};
+
+struct platform_device asoc_msm_dai1 = {
+	.name   = "msm-cpu-dai",
+	.id     = 0,
+};
+
 static struct fs_driver_data gfx2d0_fs_data = {
 	.clks = (struct fs_clk_data[]){
 		{ .name = "core_clk" },

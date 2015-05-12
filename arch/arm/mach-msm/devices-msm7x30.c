@@ -425,6 +425,21 @@ int msm_add_host(unsigned int host, struct msm_usb_host_platform_data *plat)
 	return platform_device_register(pdev);
 }
 
+struct platform_device asoc_msm_pcm = {
+	.name	= "msm-dsp-audio",
+	.id	= 0,
+};
+
+struct platform_device asoc_msm_dai0 = {
+	.name	= "msm-codec-dai",
+	.id	= 0,
+};
+
+struct platform_device asoc_msm_dai1 = {
+	.name	= "msm-cpu-dai",
+	.id	= 0,
+};
+
 static struct resource resources_nand[] = {
 	[0] = {
 		.start	= 7,

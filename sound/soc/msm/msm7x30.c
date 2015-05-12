@@ -822,16 +822,16 @@ static struct snd_kcontrol_new snd_msm_controls[] = {
 		msm_dual_mic_get, msm_dual_mic_put, 0),
 };
 
-static int msm_new_mixer(struct snd_card *card)
+static int msm_new_mixer(struct snd_soc_codec *codec)
 {
 	unsigned int idx;
 	int err;
 	int dev_cnt;
 
-	strcpy(card->mixername, "MSM Mixer");
+	strcpy(codec->card->snd_card->mixername, "MSM Mixer");
 	for (idx = 0; idx < ARRAY_SIZE(snd_msm_controls); idx++) {
-		err = snd_ctl_add(card,	snd_ctl_new1(&snd_msm_controls[idx],
-					NULL));
+		err = snd_ctl_add(codec->card->snd_card,
+			snd_ctl_new1(&snd_msm_controls[idx], NULL));
 		if (err < 0)
 			MM_AUD_ERR("ERR adding ctl\n");
 	}
@@ -839,8 +839,8 @@ static int msm_new_mixer(struct snd_card *card)
 
 	for (idx = 0; idx < dev_cnt; idx++) {
 		if (!snd_dev_ctl_index(idx)) {
-			err = snd_ctl_add(card, snd_ctl_new1(
-				&snd_dev_controls[idx], NULL));
+			err = snd_ctl_add(codec->card->snd_card,
+				snd_ctl_new1(&snd_dev_controls[idx], NULL));
 			if (err < 0)
 				MM_AUD_ERR("ERR adding ctl\n");
 		} else
@@ -851,38 +851,35 @@ static int msm_new_mixer(struct snd_card *card)
 	return 0;
 }
 
-static int msm_soc_dai_init(struct snd_soc_codec *codec)
+static int msm_soc_dai_init(
+	struct snd_soc_pcm_runtime *rtd)
 {
-
 	int ret = 0;
-	ret = msm_new_mixer(codec->card);
+	struct snd_soc_codec *codec = rtd->codec;
+	ret = msm_new_mixer(codec);
 	if (ret < 0)
 		MM_AUD_ERR("msm_soc: ALSA MSM Mixer Fail\n");
 
 	return ret;
 }
 
-static struct snd_soc_dai_link msm_dai = {
-	.name = "ASOC",
-	.stream_name = "ASOC",
-	.codec_dai = &msm_dais[0],
-	.cpu_dai = &msm_dais[1],
+static struct snd_soc_dai_link msm_dai[] = {
+{
+	.name = "MSM Primary I2S",
+	.stream_name = "DSP 1",
+	.cpu_dai_name = "msm-cpu-dai.0",
+	.platform_name = "msm-dsp-audio.0",
+	.codec_name = "msm-codec-dai.0",
+	.codec_dai_name = "msm-codec-dai",
 	.init	= msm_soc_dai_init,
+},
 };
 
 struct snd_soc_card snd_soc_card_msm = {
 	.name 		= "msm-audio",
-	.dai_link	= &msm_dai,
-	.num_links = 1,
-	.platform = &msm_soc_platform,
+	.dai_link	= msm_dai,
+	.num_links = ARRAY_SIZE(msm_dai),
 };
-
-/* msm_audio audio subsystem */
-static struct snd_soc_device msm_audio_snd_devdata = {
-	.card = &snd_soc_card_msm,
-	.codec_dev = &soc_codec_dev_msm,
-};
-
 
 static int __init msm_audio_init(void)
 {
@@ -892,8 +889,7 @@ static int __init msm_audio_init(void)
 	if (!msm_audio_snd_device)
 		return -ENOMEM;
 
-	platform_set_drvdata(msm_audio_snd_device, &msm_audio_snd_devdata);
-	msm_audio_snd_devdata.dev = &msm_audio_snd_device->dev;
+	platform_set_drvdata(msm_audio_snd_device, &snd_soc_card_msm);
 	ret = platform_device_add(msm_audio_snd_device);
 	if (ret) {
 		platform_device_put(msm_audio_snd_device);

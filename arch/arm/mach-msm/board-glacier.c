@@ -2021,6 +2021,9 @@ static struct platform_device ram_console_device = {
 static struct platform_device *devices[] __initdata = {
 	&ram_console_device,
 	&msm_device_uart2,
+	&asoc_msm_pcm,
+	&asoc_msm_dai0,
+	&asoc_msm_dai1,
 #ifdef CONFIG_MSM_PROC_COMM_REGULATOR
 	&msm_proccomm_regulator_dev,
 #endif

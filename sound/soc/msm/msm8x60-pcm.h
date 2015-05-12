@@ -84,9 +84,7 @@ struct pcm_session {
 };
 
 /* platform data */
-extern struct snd_soc_platform msm_soc_platform;
-extern struct snd_soc_dai msm_dais[2];
-extern struct snd_soc_codec_device soc_codec_dev_msm;
+extern struct snd_soc_platform_driver msm_soc_platform;
 extern struct pcm_session session_route;
 
 #endif /*_MSM_PCM_H*/

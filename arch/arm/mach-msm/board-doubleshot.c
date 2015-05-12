@@ -2097,6 +2097,12 @@ static struct platform_device pm8058_leds = {
 	},
 };
 
+static struct platform_device *asoc_devices[] __initdata = {
+	&asoc_msm_pcm,
+	&asoc_msm_dai0,
+	&asoc_msm_dai1,
+};
+
 static struct resource ram_console_resources[] = {
 	{
 		.start	= MSM_RAM_CONSOLE_BASE,
@@ -4847,6 +4853,8 @@ static void __init doubleshot_init(void)
 #ifdef CONFIG_USB_EHCI_MSM_72K
 		msm_add_host(0, &msm_usb_host_pdata);
 #endif
+		platform_add_devices(asoc_devices,
+				ARRAY_SIZE(asoc_devices));
 	}
 
 	doubleshot_init_panel();
