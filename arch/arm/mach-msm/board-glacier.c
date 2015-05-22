@@ -1507,15 +1507,23 @@ static int __init aux_pcm_gpio_init(void)
 
 static void __init audience_gpio_reset(void)
 {
-	gpio_configure(GLACIER_AUD_A1026_INT,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-	gpio_configure(GLACIER_AUD_MICPATH_SEL,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-	gpio_configure(GLACIER_AUD_A1026_RESET,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-	gpio_configure(GLACIER_AUD_A1026_WAKEUP,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	if (gpio_request(GLACIER_AUD_A1026_INT, "a1026_int"))
+		pr_err("%s: gpio_request (%d) failed\n", __func__, GLACIER_AUD_A1026_INT);
+	if (gpio_request(GLACIER_AUD_MICPATH_SEL, "a1026_micpath"))
+		pr_err("%s: gpio_request (%d) failed\n", __func__, GLACIER_AUD_MICPATH_SEL);
+	if (gpio_request(GLACIER_AUD_A1026_RESET, "a1026_reset"))
+		pr_err("%s: gpio_request (%d) failed\n", __func__, GLACIER_AUD_A1026_RESET);
+	if (gpio_request(GLACIER_AUD_A1026_WAKEUP, "a1026_wakeup"))
+		pr_err("%s: gpio_request (%d) failed\n", __func__, GLACIER_AUD_A1026_WAKEUP);
+	gpio_direction_output(GLACIER_AUD_A1026_INT, 0);
+	gpio_direction_output(GLACIER_AUD_MICPATH_SEL, 0);
+	gpio_direction_output(GLACIER_AUD_A1026_RESET, 0);
+	gpio_direction_output(GLACIER_AUD_A1026_WAKEUP, 0);
 	pr_info("Configure audio codec gpio for devices without audience.\n");
+	gpio_free(GLACIER_AUD_A1026_INT);
+	gpio_free(GLACIER_AUD_MICPATH_SEL);
+	gpio_free(GLACIER_AUD_A1026_RESET);
+	gpio_free(GLACIER_AUD_A1026_WAKEUP);
 }
 
 #endif /* CONFIG_MSM7KV2_1X_AUDIO */
@@ -2399,6 +2407,7 @@ static void __init glacier_init(void)
 
 	msm_device_ssbi7.dev.platform_data = &msm_i2c_ssbi7_pdata;
 #endif
+
 	/*Bit2: 0: with audience. 1: without audience*/
 	if (engineerid & 0x4)
 		audience_gpio_reset();

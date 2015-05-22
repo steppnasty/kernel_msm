@@ -213,38 +213,30 @@ static void glacier_config_bt_init(void)
 	mdelay(5);
 
 	/* BT_SHUTDOWN_N */
-	gpio_configure(GLACIER_GPIO_BT_SHUTDOWN_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+	gpio_direction_output(GLACIER_GPIO_BT_SHUTDOWN_N, 1);
 	mdelay(2);
 	/* BT_RESET_N */
-	gpio_configure(GLACIER_GPIO_BT_RESET_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+	gpio_direction_output(GLACIER_GPIO_BT_RESET_N, 1);
 	mdelay(15);
 	
 	/* BT_RESET_N */
-	gpio_configure(GLACIER_GPIO_BT_RESET_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_direction_output(GLACIER_GPIO_BT_RESET_N, 0);
 	mdelay(2);
 	/* BT_SHUTDOWN_N */
-	gpio_configure(GLACIER_GPIO_BT_SHUTDOWN_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_direction_output(GLACIER_GPIO_BT_SHUTDOWN_N, 0);
 	mdelay(2);
 
 	/* BT_RTS */
-	gpio_configure(GLACIER_GPIO_BT_UART1_RTS,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+	gpio_direction_output(GLACIER_GPIO_BT_UART1_RTS, 1);
 	/* BT_CTS */
 
 	/* BT_RX */
 
 	/* BT_TX */
-	gpio_configure(GLACIER_GPIO_BT_UART1_TX,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_direction_output(GLACIER_GPIO_BT_UART1_TX, 0);
 
 	/* BT_CHIP_WAKE */
-	gpio_configure(GLACIER_GPIO_BT_CHIP_WAKE,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-
+	gpio_direction_output(GLACIER_GPIO_BT_CHIP_WAKE, 0);
 }
 
 static void glacier_config_bt_on(void)
@@ -255,13 +247,11 @@ static void glacier_config_bt_on(void)
 	mdelay(5);
 
 	/* BT_SHUTDOWN_N */
-	gpio_configure(GLACIER_GPIO_BT_SHUTDOWN_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+	gpio_direction_output(GLACIER_GPIO_BT_SHUTDOWN_N, 1);
 	mdelay(2);
 
 	/* BT_RESET_N */
-	gpio_configure(GLACIER_GPIO_BT_RESET_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+	gpio_direction_output(GLACIER_GPIO_BT_RESET_N, 1);
 	mdelay(2);
 
 }
@@ -269,13 +259,11 @@ static void glacier_config_bt_on(void)
 static void glacier_config_bt_off(void)
 {
 	/* BT_RESET_N */
-	gpio_configure(GLACIER_GPIO_BT_RESET_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_direction_output(GLACIER_GPIO_BT_RESET_N, 0);
 	mdelay(2);
 	
 	/* BT_SHUTDOWN_N */
-	gpio_configure(GLACIER_GPIO_BT_SHUTDOWN_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_direction_output(GLACIER_GPIO_BT_SHUTDOWN_N, 0);
 	mdelay(2);
 
 	/* set bt off configuration*/
@@ -284,21 +272,18 @@ static void glacier_config_bt_off(void)
 	mdelay(5);
 
 	/* BT_RTS */
-	gpio_configure(GLACIER_GPIO_BT_UART1_RTS,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_direction_output(GLACIER_GPIO_BT_UART1_RTS, 0);
 	/* BT_CTS */
 
 	/* BT_RX */
 
 	/* BT_TX */
-	gpio_configure(GLACIER_GPIO_BT_UART1_TX,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_direction_output(GLACIER_GPIO_BT_UART1_TX, 0);
 
 	/* BT_HOST_WAKE */
 
 	/* BT_CHIP_WAKE */
-	gpio_configure(GLACIER_GPIO_BT_CHIP_WAKE,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_direction_output(GLACIER_GPIO_BT_CHIP_WAKE, 0);
 }
 
 static int bluetooth_set_power(void *data, bool blocked)
@@ -320,6 +305,22 @@ static int glacier_rfkill_probe(struct platform_device *pdev)
 	int rc = 0;
 	bool default_state = true; /* off */
 
+	rc = gpio_request(GLACIER_GPIO_BT_RESET_N, "bt_reset");
+	if (rc)
+		goto err_gpio_reset;
+	rc = gpio_request(GLACIER_GPIO_BT_SHUTDOWN_N, "bt_shutdown");
+	if (rc)
+		goto err_gpio_shutdown;
+	rc = gpio_request(GLACIER_GPIO_BT_UART1_RTS, "bt_uart1_rts");
+	if (rc)
+		goto err_bt_uart1_rts;
+	rc = gpio_request(GLACIER_GPIO_BT_UART1_TX, "bt_uart1_tx");
+	if (rc)
+		goto err_bt_uart1_tx;
+	rc = gpio_request(GLACIER_GPIO_BT_CHIP_WAKE, "bt_chip_wake");
+	if (rc)
+		goto err_bt_chip_wake;
+
 	glacier_config_bt_init();	/* bt gpio initial config */
 
 	bluetooth_set_power(NULL, default_state);
@@ -328,7 +329,7 @@ static int glacier_rfkill_probe(struct platform_device *pdev)
 						 &glacier_rfkill_ops, NULL);
 	if (!bt_rfk) {
 		rc = -ENOMEM;
-		goto err_rfkill_reset;
+		goto err_rfkill_alloc;
 	}
 
 	rfkill_set_states(bt_rfk, default_state, false);
@@ -342,7 +343,17 @@ static int glacier_rfkill_probe(struct platform_device *pdev)
 
 err_rfkill_reg:
 	rfkill_destroy(bt_rfk);
-err_rfkill_reset:
+err_rfkill_alloc:
+	gpio_free(GLACIER_GPIO_BT_CHIP_WAKE);
+err_bt_chip_wake:
+	gpio_free(GLACIER_GPIO_BT_UART1_TX);
+err_bt_uart1_tx:
+	gpio_free(GLACIER_GPIO_BT_UART1_RTS);
+err_bt_uart1_rts:
+	gpio_free(GLACIER_GPIO_BT_SHUTDOWN_N);
+err_gpio_shutdown:
+	gpio_free(GLACIER_GPIO_BT_RESET_N);
+err_gpio_reset:
 	return rc;
 }
 
@@ -350,6 +361,11 @@ static int glacier_rfkill_remove(struct platform_device *dev)
 {
 	rfkill_unregister(bt_rfk);
 	rfkill_destroy(bt_rfk);
+	gpio_free(GLACIER_GPIO_BT_CHIP_WAKE);
+	gpio_free(GLACIER_GPIO_BT_UART1_TX);
+	gpio_free(GLACIER_GPIO_BT_UART1_RTS);
+	gpio_free(GLACIER_GPIO_BT_SHUTDOWN_N);
+	gpio_free(GLACIER_GPIO_BT_RESET_N);
 
 	return 0;
 }
