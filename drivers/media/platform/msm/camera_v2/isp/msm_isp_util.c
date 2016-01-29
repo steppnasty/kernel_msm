@@ -237,19 +237,12 @@ static int msm_isp_set_clk_rate(struct vfe_device *vfe_dev, long *rate)
 {
 	int rc = 0;
 	int clk_idx = vfe_dev->hw_info->vfe_clk_idx;
-	long round_rate =
-		clk_round_rate(vfe_dev->vfe_clk[clk_idx], *rate);
-	if (round_rate < 0) {
-		pr_err("%s: Invalid vfe clock rate\n", __func__);
-		return round_rate;
-	}
 
-	rc = clk_set_rate(vfe_dev->vfe_clk[clk_idx], round_rate);
+	rc = clk_set_rate(vfe_dev->vfe_clk[clk_idx], rate);
 	if (rc < 0) {
 		pr_err("%s: Vfe set rate error\n", __func__);
 		return rc;
 	}
-	*rate = round_rate;
 	return 0;
 }
 
