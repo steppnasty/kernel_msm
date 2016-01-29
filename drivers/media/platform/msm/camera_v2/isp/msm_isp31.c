@@ -587,8 +587,6 @@ static void msm_vfe31_update_camif_state(
 	struct vfe_device *vfe_dev,
 	enum msm_isp_camif_update_state update_state)
 {
-	uint32_t val;
-	bool bus_en, vfe_en;
 	if (update_state == NO_UPDATE)
 		return;
 

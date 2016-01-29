@@ -845,6 +845,8 @@ int msm_isp_create_isp_buf_mgr(
 	buf_mgr->init_done = 1;
 	buf_mgr->open_count = 0;
 	return 0;
+#ifdef CONFIG_MSM_IOMMU
 iommu_domain_error:
 	return rc;
+#endif
 }
