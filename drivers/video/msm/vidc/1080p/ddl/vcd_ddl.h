@@ -1,29 +1,13 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above
- *       copyright notice, this list of conditions and the following
- *       disclaimer in the documentation and/or other materials provided
- *       with the distribution.
- *     * Neither the name of Code Aurora Forum, Inc. nor the names of its
- *       contributors may be used to endorse or promote products derived
- *       from this software without specific prior written permission.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
  *
- * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
- * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
- * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
  */
 
@@ -38,8 +22,9 @@
 #include "vidc_pix_cache.h"
 #include "vidc.h"
 
-#define DDL_BUSY_STATE  1
 #define DDL_IDLE_STATE  0
+#define DDL_BUSY_STATE  1
+#define DDL_ERROR_STATE 2
 #define DDL_RUN_STATE   3
 
 #define DDL_IS_BUSY(ddl_context) \
@@ -66,6 +51,19 @@
 #define DDLCLIENT_STATE_IS(ddl, state) \
 	(state == (ddl)->client_state)
 
+#define DDL_IS_LTR_ENABLED(encoder) \
+	((encoder->ltr_control.ltrmode.ltr_mode == \
+		VCD_LTR_MODE_AUTO || \
+	encoder->ltr_control.ltrmode.ltr_mode == \
+		VCD_LTR_MODE_MANUAL) && \
+	(encoder->ltr_control.ltr_count > 0))
+
+#define DDL_IS_LTR_IN_AUTO_MODE(encoder) \
+	((encoder->ltr_control.ltrmode.ltr_mode == \
+		VCD_LTR_MODE_AUTO) && \
+	(encoder->ltr_control.ltr_count > 0) && \
+	(encoder->ltr_control.ltr_period > 0))
+
 #define DDL_DPB_OP_INIT       1
 #define DDL_DPB_OP_MARK_FREE  2
 #define DDL_DPB_OP_MARK_BUSY  3
@@ -81,23 +79,14 @@
 #define DDL_INVALID_CODEC_TYPE  ((u32)~0)
 #define DDL_INVALID_INTR_STATUS ((u32)~0)
 
-#define DDL_ENC_REQ_IFRAME        0x1
-#define DDL_ENC_CHANGE_IPERIOD    0x2
-#define DDL_ENC_CHANGE_BITRATE    0x4
-#define DDL_ENC_CHANGE_FRAMERATE  0x8
+#define DDL_ENC_REQ_IFRAME        0x01
+#define DDL_ENC_CHANGE_IPERIOD    0x02
+#define DDL_ENC_CHANGE_BITRATE    0x04
+#define DDL_ENC_CHANGE_FRAMERATE  0x08
+#define DDL_ENC_CHANGE_CIR        0x10
+#define DDL_ENC_LTR_USE_FRAME     0x20
 
 #define DDL_DEC_REQ_OUTPUT_FLUSH  0x1
-
-#define DDL_FW_INST_SPACE_SIZE            (DDL_MEGA_BYTE(1))
-#define DDL_FW_AUX_HOST_CMD_SPACE_SIZE    (DDL_KILO_BYTE(10))
-#define DDL_FW_GLOVIDC_CONTEXT_SIZE       (DDL_KILO_BYTE(400))
-#define DDL_FW_H264DEC_CONTEXT_SPACE_SIZE (DDL_KILO_BYTE(600))
-#define DDL_FW_OTHER_CONTEXT_SPACE_SIZE   (DDL_KILO_BYTE(10))
-
-#define DDL_YUV_BUF_TYPE_LINEAR 0
-#define DDL_YUV_BUF_TYPE_TILE   1
-
-#define VCD_DEC_CPB_SIZE   (DDL_KILO_BYTE(512))
 
 #define DDL_MIN_NUM_OF_B_FRAME  0
 #define DDL_MAX_NUM_OF_B_FRAME  1
@@ -108,12 +97,28 @@
 
 #define DDL_MAX_NUM_IN_INPUTFRAME_POOL          (DDL_MAX_NUM_OF_B_FRAME + 1)
 
+#define MDP_MIN_TILE_HEIGHT			96
+
+#define DDL_MAX_NUM_LTR_FRAMES                  2
+#define DDL_LTR_FRAME_START_ID                  1
+
+enum ddl_mem_area {
+	DDL_FW_MEM	= 0x0,
+	DDL_MM_MEM	= 0x1,
+	DDL_CMD_MEM	= 0x2
+};
+
 struct ddl_buf_addr{
 	u8  *virtual_base_addr;
 	u8  *physical_base_addr;
 	u8  *align_physical_addr;
 	u8  *align_virtual_addr;
+	phys_addr_t alloced_phys_addr;
+	struct msm_mapped_buffer *mapped_buffer;
+	struct ion_handle *alloc_handle;
 	u32 buffer_size;
+	enum ddl_mem_area mem_type;
+	void *pil_cookie;
 };
 enum ddl_cmd_state{
 	DDL_CMD_INVALID         = 0x0,
@@ -127,6 +132,7 @@ enum ddl_cmd_state{
 	DDL_CMD_ENCODE_FRAME    = 0x8,
 	DDL_CMD_EOS             = 0x9,
 	DDL_CMD_CHANNEL_END     = 0xA,
+	DDL_CMD_ENCODE_CONTINUE = 0xB,
 	DDL_CMD_32BIT           = 0x7FFFFFFF
 };
 enum ddl_client_state{
@@ -141,7 +147,9 @@ enum ddl_client_state{
 	DDL_CLIENT_WAIT_FOR_FRAME_DONE     = 0x8,
 	DDL_CLIENT_WAIT_FOR_EOS_DONE       = 0x9,
 	DDL_CLIENT_WAIT_FOR_CHEND          = 0xA,
+	DDL_CLIENT_FATAL_ERROR             = 0xB,
 	DDL_CLIENT_FAVIDC_ERROR            = 0xC,
+	DDL_CLIENT_WAIT_FOR_CONTINUE       = 0xD,
 	DDL_CLIENT_32BIT                   = 0x7FFFFFFF
 };
 struct ddl_hw_interface{
@@ -179,6 +187,7 @@ struct ddl_dec_buffer_size{
 	u32  sz_desc;
 	u32  sz_cpb;
 	u32  sz_context;
+	u32  sz_extnuserdata;
 };
 struct ddl_dec_buffers{
 	struct ddl_buf_addr desc;
@@ -190,10 +199,12 @@ struct ddl_dec_buffers{
 	struct ddl_buf_addr bit_plane2;
 	struct ddl_buf_addr bit_plane1;
 	struct ddl_buf_addr stx_parser;
-	struct ddl_buf_addr h264_mv[32];
+	struct ddl_buf_addr h264_mv[DDL_MAX_BUFFER_COUNT];
 	struct ddl_buf_addr h264_vert_nb_mv;
 	struct ddl_buf_addr h264_nb_ip;
 	struct ddl_buf_addr context;
+	struct ddl_buf_addr extnuserdata;
+	struct ddl_buf_addr meta_hdr[DDL_MAX_BUFFER_COUNT];
 };
 struct ddl_enc_buffer_size{
 	u32  sz_cur_y;
@@ -228,6 +239,63 @@ struct ddl_enc_buffers{
 struct ddl_codec_data_hdr{
 	u32  decoding;
 };
+struct ddl_batch_frame_data {
+	struct ddl_buf_addr slice_batch_in;
+	struct ddl_buf_addr slice_batch_out;
+	struct ddl_frame_data_tag input_frame;
+	struct ddl_frame_data_tag output_frame
+			[DDL_MAX_NUM_BFRS_FOR_SLICE_BATCH];
+	u32 num_output_frames;
+	u32 out_frm_next_frmindex;
+};
+struct ddl_mp2_datadumpenabletype {
+	u32 userdatadump_enable;
+	u32 pictempscalable_extdump_enable;
+	u32 picspat_extdump_enable;
+	u32 picdisp_extdump_enable;
+	u32 copyright_extdump_enable;
+	u32 quantmatrix_extdump_enable;
+	u32 seqscalable_extdump_enable;
+	u32 seqdisp_extdump_enable;
+	u32 seq_extdump_enable;
+};
+
+
+struct ddl_ltrlist {
+	bool ltr_in_use;
+	u32 ltr_id;
+};
+
+struct ddl_ltr_encoding_type {
+	struct vcd_property_ltrmode_type  ltrmode;
+	struct vcd_property_ltruse_type  failed_use_cmd;
+	struct ddl_ltrlist *ltr_list;
+	u32 ltr_count;
+	u32 ltr_period;
+	u32 ltr_use_frames;
+	u32 curr_ltr_id;
+	u32 storing_idx;
+	u32 out_frame_cnt_to_use_this_ltr;
+	u32 out_frame_cnt_before_next_idr;
+	bool storing;
+	bool callback_reqd;
+	bool meta_data_reqd;
+	bool using;
+	bool first_ltr_use_arvd;
+	bool use_ltr_reqd;
+	bool store_for_intraframe_insertion;
+	bool pending_chg_ltr_useframes; /* True if
+		 * corresponding driver context of
+		 * out_frame_cnt_to_use_this_ltr
+		 * is pending to be changed with
+		 * client settings
+		 */
+	bool store_ltr0;
+	bool store_ltr1;
+	bool use_ltr0;
+	bool use_ltr1;
+};
+
 struct ddl_encoder_data{
 	struct ddl_codec_data_hdr   hdr;
 	struct vcd_property_codec   codec;
@@ -251,7 +319,8 @@ struct ddl_encoder_data{
 	struct vcd_property_adaptive_rc_params  adaptive_rc;
 	struct vcd_property_intra_refresh_mb_number  intra_refresh;
 	struct vcd_property_buffer_format  buf_format;
-	struct vcd_property_buffer_format  re_con_buf_format;
+	struct vcd_property_buffer_format  recon_buf_format;
+	struct vcd_property_sps_pps_for_idr_enable sps_pps;
 	struct ddl_buf_addr  seq_header;
 	struct vcd_buffer_requirement  input_buf_req;
 	struct vcd_buffer_requirement  output_buf_req;
@@ -260,6 +329,8 @@ struct ddl_encoder_data{
 	struct ddl_enc_buffers  hw_bufs;
 	struct ddl_yuv_buffer_size  input_buf_size;
 	struct vidc_1080p_enc_frame_info enc_frame_info;
+	struct ddl_ltr_encoding_type  ltr_control;
+	u32  plusptype_enable;
 	u32  meta_data_enable_flag;
 	u32  suffix;
 	u32  meta_data_offset;
@@ -273,6 +344,13 @@ struct ddl_encoder_data{
 	u32  mb_info_enable;
 	u32  ext_enc_control_val;
 	u32  num_references_for_p_frame;
+	u32  closed_gop;
+	u32  num_slices_comp;
+	bool  intra_period_changed;
+	struct vcd_property_slice_delivery_info slice_delivery_info;
+	struct ddl_batch_frame_data batch_frame;
+	u32 avc_delimiter_enable;
+	u32 vui_timinginfo_enable;
 };
 struct ddl_decoder_data {
 	struct ddl_codec_data_hdr  hdr;
@@ -297,12 +375,14 @@ struct ddl_decoder_data {
 	struct ddl_yuv_buffer_size  dpb_buf_size;
 	struct vidc_1080p_dec_disp_info dec_disp_info;
 	u32  progressive_only;
+	u32  output_order;
 	u32  meta_data_enable_flag;
 	u32  suffix;
 	u32  meta_data_offset;
 	u32  header_in_start;
 	u32  min_dpb_num;
 	u32  y_cb_cr_size;
+	u32  yuv_size;
 	u32  dynamic_prop_change;
 	u32  dynmic_prop_change_req;
 	u32  flush_pending;
@@ -312,6 +392,12 @@ struct ddl_decoder_data {
 	u32  prev_ip_frm_tag;
 	u32  cont_mode;
 	u32  reconfig_detected;
+	u32  dmx_disable;
+	int avg_dec_time;
+	int dec_time_sum;
+	struct ddl_mp2_datadumpenabletype mp2_datadump_enable;
+	u32 mp2_datadump_status;
+	u32 extn_user_data_enable;
 };
 union ddl_codec_data{
 	struct ddl_codec_data_hdr  hdr;
@@ -328,7 +414,6 @@ struct ddl_context{
 	u32 pix_cache_enable;
 	u32 fw_version;
 	u32 fw_memory_size;
-	u32 fw_ctxt_memory_size;
 	u32 cmd_seq_num;
 	u32 response_cmd_ch_id;
 	enum ddl_cmd_state cmd_state;
@@ -338,6 +423,7 @@ struct ddl_context{
 	struct ddl_buf_addr dram_base_a;
 	struct ddl_buf_addr dram_base_b;
 	struct ddl_hw_interface ddl_hw_response;
+	struct ion_client *video_ion_client;
 	void (*ddl_callback) (u32 event, u32 status, void *payload,
 		size_t sz, u32 *ddl_handle, void *const client_data);
 	void (*interrupt_clr) (void);
@@ -353,6 +439,9 @@ struct ddl_context{
 		(struct vidc_1080p_enc_seq_start_param *param);
 	void(*vidc_encode_frame_start[2])
 		(struct vidc_1080p_enc_frame_start_param *param);
+	void(*vidc_encode_slice_batch_start[2])
+		(struct vidc_1080p_enc_frame_start_param *param);
+	u32 frame_channel_depth;
 };
 struct ddl_client_context{
 	struct ddl_context  *ddl_context;
@@ -383,9 +472,12 @@ void ddl_vidc_channel_set(struct ddl_client_context *);
 void ddl_vidc_channel_end(struct ddl_client_context *);
 void ddl_vidc_encode_init_codec(struct ddl_client_context *);
 void ddl_vidc_decode_init_codec(struct ddl_client_context *);
+void ddl_vidc_encode_frame_continue(struct ddl_client_context *);
 void ddl_vidc_encode_frame_run(struct ddl_client_context *);
+void ddl_vidc_encode_slice_batch_run(struct ddl_client_context *);
 void ddl_vidc_decode_frame_run(struct ddl_client_context *);
 void ddl_vidc_decode_eos_run(struct ddl_client_context *ddl);
+void ddl_vidc_encode_eos_run(struct ddl_client_context *ddl);
 void ddl_release_context_buffers(struct ddl_context *);
 void ddl_release_client_internal_buffers(struct ddl_client_context *ddl);
 u32  ddl_vidc_decode_set_buffers(struct ddl_client_context *);
@@ -393,7 +485,7 @@ u32  ddl_decoder_dpb_transact(struct ddl_decoder_data *decoder,
 	struct ddl_frame_data_tag *in_out_frame, u32 operation);
 u32  ddl_decoder_dpb_init(struct ddl_client_context *ddl);
 u32  ddl_client_transact(u32 , struct ddl_client_context **);
-void ddl_set_default_decoder_buffer_req(struct ddl_decoder_data *decoder,
+u32  ddl_set_default_decoder_buffer_req(struct ddl_decoder_data *decoder,
 	u32 estimate);
 void ddl_set_default_encoder_buffer_req(struct ddl_encoder_data
 	*encoder);
@@ -403,7 +495,7 @@ u32  ddl_decoder_ready_to_start(struct ddl_client_context *,
 	struct vcd_sequence_hdr *);
 u32  ddl_get_yuv_buffer_size(struct vcd_property_frame_size *frame_size,
 	struct vcd_property_buffer_format *buf_format, u32 interlace,
-	u32 *pn_c_offset);
+	u32 decoding, u32 *pn_c_offset);
 void ddl_calculate_stride(struct vcd_property_frame_size *frame_size,
 	u32 interlace);
 u32  ddl_codec_type_transact(struct ddl_client_context *ddl,
@@ -446,17 +538,21 @@ void ddl_pmem_free(struct ddl_buf_addr *addr);
 
 u32 ddl_get_input_frame_from_pool(struct ddl_client_context *ddl,
 	u8 *input_buffer_address);
+u32 ddl_get_stream_buf_from_batch_pool(struct ddl_client_context *ddl,
+	struct ddl_frame_data_tag *stream_buffer);
 u32 ddl_insert_input_frame_to_pool(struct ddl_client_context *ddl,
 	struct ddl_frame_data_tag *ddl_input_frame);
-
 void ddl_decoder_chroma_dpb_change(struct ddl_client_context *ddl);
 u32  ddl_check_reconfig(struct ddl_client_context *ddl);
 void ddl_handle_reconfig(u32 res_change, struct ddl_client_context *ddl);
+void ddl_fill_dec_desc_buffer(struct ddl_client_context *ddl);
+void ddl_set_vidc_timeout(struct ddl_client_context *ddl);
+
 
 #ifdef DDL_BUF_LOG
 void ddl_list_buffers(struct ddl_client_context *ddl);
 #endif
-#ifdef DDL_MSG_LOG
+#if DDL_MSG_LOG
 s8 *ddl_get_state_string(enum ddl_client_state client_state);
 #endif
 extern unsigned char *vidc_video_codec_fw;
@@ -465,5 +561,26 @@ extern u32 vidc_video_codec_fw_size;
 u32 ddl_fw_init(struct ddl_buf_addr *dram_base);
 void ddl_get_fw_info(const unsigned char **fw_array_addr,
 	unsigned int *fw_size);
-void ddl_fw_release(void);
+void ddl_fw_release(struct ddl_buf_addr *);
+int ddl_vidc_decode_get_avg_time(struct ddl_client_context *ddl);
+void ddl_vidc_decode_reset_avg_time(struct ddl_client_context *ddl);
+void ddl_calc_core_proc_time(const char *func_name, u32 index,
+		struct ddl_client_context *ddl);
+s32 ddl_encoder_ltr_control(struct ddl_client_context *ddl);
+void ddl_encoder_use_ltr_fail_callback(
+	struct ddl_client_context *ddl);
+void ddl_handle_ltr_in_framedone(struct ddl_client_context *ddl);
+s32 ddl_clear_ltr_list(struct ddl_ltr_encoding_type *ltr_control,
+	bool only_use_flag);
+s32 ddl_find_oldest_ltr_not_in_use(
+	struct ddl_ltr_encoding_type *ltr_control);
+s32 ddl_find_ltr_in_use(struct ddl_ltr_encoding_type *ltr_control);
+s32 ddl_find_ltr_from_list(struct ddl_ltr_encoding_type *ltr_control,
+	u32 ltr_id);
+s32 ddl_use_ltr_from_list(struct ddl_ltr_encoding_type *ltr_control,
+	u32 ltr_idx);
+s32 ddl_allocate_ltr_list(struct ddl_ltr_encoding_type *ltr_control);
+s32 ddl_free_ltr_list(struct ddl_ltr_encoding_type *ltr_control);
+void ddl_print_ltr_list(struct ddl_ltr_encoding_type *ltr_control);
+
 #endif

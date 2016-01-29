@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -9,23 +9,20 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA.
- *
  */
 
 #include "vcd_ddl.h"
 #include "vcd_ddl_metadata.h"
 #include "vcd_ddl_shared_mem.h"
 #include "vcd_core.h"
+#include "vcd_res_tracker_api.h"
 
 #if defined(PIX_CACHE_DISABLE)
 #define DDL_PIX_CACHE_ENABLE  false
 #else
 #define DDL_PIX_CACHE_ENABLE  true
 #endif
+static unsigned int run_cnt;
 
 void ddl_vidc_core_init(struct ddl_context *ddl_context)
 {
@@ -62,6 +59,10 @@ void ddl_vidc_core_init(struct ddl_context *ddl_context)
 		vidc_1080p_encode_frame_start_ch0;
 	ddl_context->vidc_encode_frame_start[1] =
 		vidc_1080p_encode_frame_start_ch1;
+	ddl_context->vidc_encode_slice_batch_start[0] =
+		vidc_1080p_encode_slice_batch_start_ch0;
+	ddl_context->vidc_encode_slice_batch_start[1] =
+		vidc_1080p_encode_slice_batch_start_ch1;
 	vidc_1080p_release_sw_reset();
 	ddl_context->pix_cache_enable = DDL_PIX_CACHE_ENABLE;
 	if (ddl_context->pix_cache_enable) {
@@ -108,15 +109,17 @@ void ddl_vidc_channel_set(struct ddl_client_context *ddl)
 		dec_pix_cache = VIDC_1080P_DECODE_PCACHE_DISABLE;
 	const enum vidc_1080p_encode_p_cache_enable
 		enc_pix_cache = VIDC_1080P_ENCODE_PCACHE_ENABLE;
-	u32 pix_cache_ctrl, ctxt_mem_offset, ctxt_mem_size;
+	u32 pix_cache_ctrl, ctxt_mem_offset, ctxt_mem_size, arg1 = 0;
+	u8 *hw_ctxt = NULL;
 
 	if (ddl->decoding) {
-		if (vidc_msg_timing)
-			ddl_set_core_start_time(__func__, DEC_OP_TIME);
+		ddl_set_core_start_time(__func__, DEC_OP_TIME);
 		vcd_codec = &(ddl->codec_data.decoder.codec.codec);
 		pix_cache_ctrl = (u32)dec_pix_cache;
 		ctxt_mem_offset = DDL_ADDR_OFFSET(ddl_context->dram_base_a,
 		ddl->codec_data.decoder.hw_bufs.context) >> 11;
+		hw_ctxt =
+		ddl->codec_data.decoder.hw_bufs.context.virtual_base_addr;
 		ctxt_mem_size =
 			ddl->codec_data.decoder.hw_bufs.context.buffer_size;
 	} else {
@@ -124,8 +127,14 @@ void ddl_vidc_channel_set(struct ddl_client_context *ddl)
 		pix_cache_ctrl = (u32)enc_pix_cache;
 		ctxt_mem_offset = DDL_ADDR_OFFSET(ddl_context->dram_base_a,
 			ddl->codec_data.encoder.hw_bufs.context) >> 11;
+		hw_ctxt =
+		ddl->codec_data.encoder.hw_bufs.context.virtual_base_addr;
 		ctxt_mem_size =
 			ddl->codec_data.encoder.hw_bufs.context.buffer_size;
+	}
+	if (!res_trk_check_for_sec_session() && hw_ctxt) {
+		memset(hw_ctxt, 0, ctxt_mem_size);
+		arg1 = 1 << 29;
 	}
 	switch (*vcd_codec) {
 	default:
@@ -185,8 +194,9 @@ void ddl_vidc_channel_set(struct ddl_client_context *ddl)
 	DDL_MSG_LOW("ddl_state_transition: %s ~~> DDL_CLIENT_WAIT_FOR_CHDONE",
 	ddl_get_state_string(ddl->client_state));
 	ddl->client_state = DDL_CLIENT_WAIT_FOR_CHDONE;
+	arg1 |= (u32)codec;
 	vidc_1080p_set_host2risc_cmd(VIDC_1080P_HOST2RISC_CMD_OPEN_CH,
-		(u32)codec, pix_cache_ctrl, ctxt_mem_offset,
+		arg1, pix_cache_ctrl, ctxt_mem_offset,
 		ctxt_mem_size);
 }
 
@@ -197,9 +207,16 @@ void ddl_vidc_decode_init_codec(struct ddl_client_context *ddl)
 	struct vidc_1080p_dec_seq_start_param seq_start_param;
 	u32 seq_size;
 
-	if (vidc_msg_timing)
-		ddl_set_core_start_time(__func__, DEC_OP_TIME);
+	ddl_set_core_start_time(__func__, DEC_OP_TIME);
 	vidc_1080p_set_decode_mpeg4_pp_filter(decoder->post_filter.post_filter);
+	vidc_sm_set_concealment_color(&ddl->shared_mem[ddl->command_channel],
+		DDL_CONCEALMENT_Y_COLOR, DDL_CONCEALMENT_C_COLOR);
+
+	vidc_sm_set_error_concealment_config(
+		&ddl->shared_mem[ddl->command_channel],
+		VIDC_SM_ERR_CONCEALMENT_INTER_SLICE_MB_COPY,
+		VIDC_SM_ERR_CONCEALMENT_INTRA_SLICE_COLOR_CONCEALMENT,
+		VIDC_SM_ERR_CONCEALMENT_ENABLE);
 
 	ddl_vidc_metadata_enable(ddl);
 	vidc_sm_set_metadata_start_address(&ddl->shared_mem
@@ -246,16 +263,30 @@ void ddl_vidc_decode_init_codec(struct ddl_client_context *ddl)
 		decoder->hw_bufs.desc),
 	seq_start_param.descriptor_buffer_size =
 		decoder->hw_bufs.desc.buffer_size;
-	if (decoder->codec.codec == VCD_CODEC_MPEG4)
+	if ((decoder->codec.codec == VCD_CODEC_MPEG4) ||
+		(decoder->codec.codec == VCD_CODEC_DIVX_4) ||
+		(decoder->codec.codec == VCD_CODEC_DIVX_5) ||
+		(decoder->codec.codec == VCD_CODEC_DIVX_6) ||
+		(decoder->codec.codec == VCD_CODEC_XVID))
 		vidc_sm_set_mpeg4_profile_override(
 			&ddl->shared_mem[ddl->command_channel],
 			VIDC_SM_PROFILE_INFO_ASP);
+	if (VCD_CODEC_MPEG2 == decoder->codec.codec)
+		vidc_sm_set_mp2datadumpbuffer(
+			&ddl->shared_mem[ddl->command_channel],
+			DDL_ADDR_OFFSET(ddl_context->dram_base_a,
+			ddl->codec_data.decoder.hw_bufs.extnuserdata),
+			DDL_KILO_BYTE(2));
 	if (VCD_CODEC_H264 == decoder->codec.codec)
 		vidc_sm_set_decoder_sei_enable(
 			&ddl->shared_mem[ddl->command_channel],
 			VIDC_SM_RECOVERY_POINT_SEI);
 	ddl_context->vidc_decode_seq_start[ddl->command_channel](
 		&seq_start_param);
+
+	vidc_sm_set_decoder_stuff_bytes_consumption(
+		&ddl->shared_mem[ddl->command_channel],
+		VIDC_SM_NUM_STUFF_BYTES_CONSUME_NONE);
 }
 
 void ddl_vidc_decode_dynamic_property(struct ddl_client_context *ddl,
@@ -300,7 +331,7 @@ void ddl_vidc_encode_dynamic_property(struct ddl_client_context *ddl,
 {
 	struct ddl_encoder_data *encoder = &(ddl->codec_data.encoder);
 	u32 frame_rate_change = false, bit_rate_change = false;
-	u32 i_period_change = false, reset_req = false;
+	u32 reset_req = false;
 
 	if (!enable) {
 		if (encoder->dynmic_prop_change_req) {
@@ -313,6 +344,17 @@ void ddl_vidc_encode_dynamic_property(struct ddl_client_context *ddl,
 			encoder->dynamic_prop_change &=
 				~(DDL_ENC_REQ_IFRAME);
 		}
+		if (encoder->dynamic_prop_change & DDL_ENC_LTR_USE_FRAME) {
+			if (encoder->ltr_control.callback_reqd) {
+				DDL_MSG_ERROR("%s: LTR use failed", __func__);
+				ddl_encoder_use_ltr_fail_callback(ddl);
+				encoder->ltr_control.callback_reqd = false;
+			} else {
+				encoder->ltr_control.use_ltr_reqd = true;
+			}
+			encoder->dynamic_prop_change &=
+				~(DDL_ENC_LTR_USE_FRAME);
+		}
 		if ((encoder->dynamic_prop_change &
 			DDL_ENC_CHANGE_BITRATE)) {
 			bit_rate_change = true;
@@ -324,7 +366,7 @@ void ddl_vidc_encode_dynamic_property(struct ddl_client_context *ddl,
 		}
 		if ((encoder->dynamic_prop_change
 			& DDL_ENC_CHANGE_IPERIOD)) {
-			i_period_change = true;
+			encoder->intra_period_changed = true;
 			vidc_sm_set_encoder_new_i_period(
 				&ddl->shared_mem[ddl->command_channel],
 				encoder->i_period.p_frames);
@@ -339,6 +381,15 @@ void ddl_vidc_encode_dynamic_property(struct ddl_client_context *ddl,
 				(u32)(DDL_FRAMERATE_SCALE(encoder->\
 				frame_rate.fps_numerator) /
 				encoder->frame_rate.fps_denominator));
+			if (encoder->vui_timinginfo_enable &&
+				encoder->frame_rate.fps_denominator) {
+				vidc_sm_set_h264_encoder_timing_info(
+					&ddl->shared_mem[ddl->command_channel],
+					DDL_FRAMERATE_SCALE_FACTOR,
+					(u32)(DDL_FRAMERATE_SCALE(encoder->\
+					frame_rate.fps_numerator) / encoder->\
+					frame_rate.fps_denominator) << 1);
+			}
 			encoder->dynamic_prop_change &=
 				~(DDL_ENC_CHANGE_FRAMERATE);
 		}
@@ -347,7 +398,7 @@ void ddl_vidc_encode_dynamic_property(struct ddl_client_context *ddl,
 		vidc_sm_set_encoder_param_change(
 			&ddl->shared_mem[ddl->command_channel],
 			bit_rate_change, frame_rate_change,
-			i_period_change);
+			encoder->intra_period_changed);
 	}
 }
 
@@ -366,7 +417,7 @@ static void ddl_vidc_encode_set_profile_level(
 		encode_profile = VIDC_1080P_PROFILE_MPEG4_ADV_SIMPLE;
 	break;
 	case VCD_PROFILE_H264_BASELINE:
-		encode_profile = VIDC_1080P_PROFILE_H264_BASELINE;
+		encode_profile = VIDC_1080P_PROFILE_H264_CONSTRAINED_BASELINE;
 	break;
 	case VCD_PROFILE_H264_MAIN:
 		encode_profile = VIDC_1080P_PROFILE_H264_MAIN;
@@ -504,6 +555,29 @@ static void ddl_vidc_encode_set_multi_slice_info(
 		i_multi_slice_size, i_multi_slice_byte);
 }
 
+static void ddl_vidc_encode_set_batch_slice_info(
+	struct ddl_client_context *ddl)
+{
+	struct ddl_context *ddl_context = ddl->ddl_context;
+	struct ddl_encoder_data *encoder = &(ddl->codec_data.encoder);
+	DDL_MSG_LOW("%s\n", __func__);
+	encoder->batch_frame.slice_batch_out.buffer_size =
+					encoder->output_buf_req.sz;
+	DDL_MSG_LOW("encoder->batch_frame.slice_batch_out.buffer_size = %d\n",
+			encoder->batch_frame.slice_batch_out.buffer_size);
+	vidc_sm_set_encoder_batch_config(
+			&ddl->shared_mem[ddl->command_channel],
+			1,
+			DDL_ADDR_OFFSET(ddl_context->dram_base_a,
+			encoder->batch_frame.slice_batch_in),
+			DDL_ADDR_OFFSET(ddl_context->dram_base_a,
+			encoder->batch_frame.slice_batch_out),
+			encoder->batch_frame.slice_batch_out.buffer_size);
+	vidc_sm_set_encoder_slice_batch_int_ctrl(
+			&ddl->shared_mem[ddl->command_channel],
+			0);
+}
+
 void ddl_vidc_encode_init_codec(struct ddl_client_context *ddl)
 {
 	struct ddl_context *ddl_context = ddl->ddl_context;
@@ -517,7 +591,7 @@ void ddl_vidc_encode_init_codec(struct ddl_client_context *ddl)
 	u32 index, luma[4], chroma[4], hdr_ext_control = false;
 	const u32 recon_bufs = 4;
 	u32 h263_cpfc_enable = false;
-	u32 scaled_frame_rate;
+	u32 scaled_frame_rate, ltr_enable;
 
 	ddl_vidc_encode_set_profile_level(ddl);
 	vidc_1080p_set_encode_frame_size(encoder->frame_size.width,
@@ -536,12 +610,22 @@ void ddl_vidc_encode_init_codec(struct ddl_client_context *ddl)
 			encoder->frame_rate.fps_denominator;
 	if ((encoder->codec.codec == VCD_CODEC_H263) &&
 		(DDL_FRAMERATE_SCALE(DDL_INITIAL_FRAME_RATE)
-		 != scaled_frame_rate))
+		 != scaled_frame_rate) && encoder->plusptype_enable)
 		h263_cpfc_enable = true;
+	ltr_enable = DDL_IS_LTR_ENABLED(encoder);
+	DDL_MSG_HIGH("ltr_enable = %u", ltr_enable);
 	vidc_sm_set_extended_encoder_control(&ddl->shared_mem
 		[ddl->command_channel], hdr_ext_control,
 		r_cframe_skip, false, 0,
-		h263_cpfc_enable);
+		h263_cpfc_enable, encoder->sps_pps.sps_pps_for_idr_enable_flag,
+		encoder->closed_gop, encoder->avc_delimiter_enable,
+		encoder->vui_timinginfo_enable, ltr_enable);
+	if (encoder->vui_timinginfo_enable) {
+		vidc_sm_set_h264_encoder_timing_info(
+			&ddl->shared_mem[ddl->command_channel],
+			DDL_FRAMERATE_SCALE_FACTOR,
+			scaled_frame_rate << 1);
+	}
 	vidc_sm_set_encoder_init_rc_value(&ddl->shared_mem
 		[ddl->command_channel],
 		encoder->target_bit_rate.target_bitrate);
@@ -712,6 +796,7 @@ void ddl_vidc_encode_frame_run(struct ddl_client_context *ddl)
 	u32 dpb_addr_y[4], dpb_addr_c[4];
 	u32 index, y_addr, c_addr;
 
+	DDL_MSG_LOW("%s\n", __func__);
 	ddl_vidc_encode_set_metadata_output_buf(ddl);
 
 	encoder->enc_frame_info.meta_data_exists = false;
@@ -737,7 +822,8 @@ void ddl_vidc_encode_frame_run(struct ddl_client_context *ddl)
 		encoder->dynmic_prop_change_req = true;
 		ddl_vidc_encode_dynamic_property(ddl, true);
 	}
-
+	if (DDL_IS_LTR_ENABLED(encoder))
+		ddl_encoder_ltr_control(ddl);
 	vidc_1080p_set_encode_circular_intra_refresh(
 		encoder->intra_refresh.cir_mb_number);
 	ddl_vidc_encode_set_multi_slice_info(encoder);
@@ -752,12 +838,21 @@ void ddl_vidc_encode_frame_run(struct ddl_client_context *ddl)
 	ddl_context->dram_base_a.align_physical_addr, stream->physical);
 	enc_param.stream_buffer_size =
 		encoder->client_output_buf_req.sz;
-
 	enc_param.intra_frame = encoder->intra_frame_insertion;
-	if (encoder->intra_frame_insertion)
-		encoder->intra_frame_insertion = false;
 	enc_param.input_flush = false;
-		vidc_sm_set_encoder_vop_time(
+	enc_param.slice_enable = false;
+	enc_param.store_ltr0 = encoder->ltr_control.store_ltr0;
+	enc_param.store_ltr1 = encoder->ltr_control.store_ltr1;
+	enc_param.use_ltr0 = encoder->ltr_control.use_ltr0;
+	enc_param.use_ltr1 = encoder->ltr_control.use_ltr1;
+
+	encoder->intra_frame_insertion = false;
+	encoder->intra_period_changed = false;
+	encoder->ltr_control.store_ltr0 = false;
+	encoder->ltr_control.store_ltr1 = false;
+	encoder->ltr_control.use_ltr0 = false;
+	encoder->ltr_control.use_ltr1 = false;
+	vidc_sm_set_encoder_vop_time(
 			&ddl->shared_mem[ddl->command_channel], true,
 			encoder->vop_timing.vop_time_resolution,
 			ddl->input_frame.frm_delta);
@@ -788,6 +883,143 @@ void ddl_vidc_encode_frame_run(struct ddl_client_context *ddl)
 		&enc_param);
 }
 
+void ddl_vidc_encode_frame_continue(struct ddl_client_context *ddl)
+{
+	struct ddl_context *ddl_context = ddl->ddl_context;
+	struct vcd_frame_data *input_vcd_frm = &(ddl->input_frame.vcd_frm);
+	u32 address_offset;
+	address_offset = (u32)(ddl->output_frame.vcd_frm.physical -
+			ddl_context->dram_base_a.align_physical_addr) >>
+			DDL_VIDC_1080P_BASE_OFFSET_SHIFT;
+	DDL_MSG_LOW("%s\n", __func__);
+	if (VCD_FRAME_FLAG_EOS & input_vcd_frm->flags)
+		ddl->client_state = DDL_CLIENT_WAIT_FOR_EOS_DONE;
+	else
+		ddl->client_state = DDL_CLIENT_WAIT_FOR_FRAME_DONE;
+	ddl->cmd_state = DDL_CMD_ENCODE_CONTINUE;
+	vidc_1080p_set_host2risc_cmd(VIDC_1080P_HOST2RISC_CMD_CONTINUE_ENC,
+		address_offset,
+		0, 0, 0);
+}
+
+void ddl_vidc_encode_slice_batch_run(struct ddl_client_context *ddl)
+{
+	struct vidc_1080p_enc_frame_start_param enc_param;
+	struct ddl_context *ddl_context = ddl->ddl_context;
+	struct ddl_encoder_data  *encoder = &(ddl->codec_data.encoder);
+	struct ddl_enc_buffers *enc_buffers = &(encoder->hw_bufs);
+	struct vcd_frame_data *input_vcd_frm =
+		&(ddl->input_frame.vcd_frm);
+	u32 dpb_addr_y[4], dpb_addr_c[4];
+	u32 index, y_addr, c_addr;
+	u32 bitstream_size;
+	struct vidc_1080p_enc_slice_batch_in_param *slice_batch_in =
+		(struct vidc_1080p_enc_slice_batch_in_param *)
+		encoder->batch_frame.slice_batch_in.align_virtual_addr;
+	DDL_MSG_LOW("%s\n", __func__);
+	DDL_MEMSET(slice_batch_in, 0,
+		sizeof(struct vidc_1080p_enc_slice_batch_in_param));
+	DDL_MEMSET(encoder->batch_frame.slice_batch_in.align_virtual_addr, 0,
+		sizeof(struct vidc_1080p_enc_slice_batch_in_param));
+	encoder->batch_frame.out_frm_next_frmindex = 0;
+	bitstream_size = encoder->batch_frame.output_frame[0].vcd_frm.alloc_len;
+	encoder->output_buf_req.sz = bitstream_size;
+	y_addr = DDL_OFFSET(ddl_context->dram_base_b.align_physical_addr,
+			input_vcd_frm->physical);
+	c_addr = (y_addr + encoder->input_buf_size.size_y);
+	enc_param.encode = VIDC_1080P_ENC_TYPE_SLICE_BATCH_START;
+	DDL_MSG_LOW("ddl_state_transition: %s ~~>"
+		"DDL_CLIENT_WAIT_FOR_FRAME_DONE",
+		ddl_get_state_string(ddl->client_state));
+	slice_batch_in->cmd_type = VIDC_1080P_ENC_TYPE_SLICE_BATCH_START;
+	ddl->client_state = DDL_CLIENT_WAIT_FOR_FRAME_DONE;
+	ddl->cmd_state = DDL_CMD_ENCODE_FRAME;
+	vidc_1080p_set_encode_circular_intra_refresh(
+		encoder->intra_refresh.cir_mb_number);
+	ddl_vidc_encode_set_multi_slice_info(encoder);
+	enc_param.cmd_seq_num = ++ddl_context->cmd_seq_num;
+	enc_param.inst_id = ddl->instance_id;
+	enc_param.shared_mem_addr_offset = DDL_ADDR_OFFSET(
+			ddl_context->dram_base_a,
+			ddl->shared_mem[ddl->command_channel]);
+	enc_param.current_y_addr_offset = y_addr;
+	enc_param.current_c_addr_offset = c_addr;
+	enc_param.stream_buffer_size = bitstream_size;
+	slice_batch_in->num_stream_buffer =
+		encoder->batch_frame.num_output_frames;
+	slice_batch_in->stream_buffer_size = bitstream_size;
+	DDL_MSG_LOW("%s slice_batch_in->num_stream_buffer = %u size = %u\n",
+			 __func__, slice_batch_in->num_stream_buffer,
+			slice_batch_in->stream_buffer_size);
+	for (index = 0; index < encoder->batch_frame.num_output_frames;
+		index++) {
+		slice_batch_in->stream_buffer_addr_offset[index] =
+		((DDL_OFFSET(ddl_context->dram_base_b.align_physical_addr,
+		encoder->batch_frame.output_frame[index].vcd_frm.physical)) >>
+			DDL_VIDC_1080P_BASE_OFFSET_SHIFT);
+	}
+	slice_batch_in->input_size = VIDC_1080P_SLICE_BATCH_IN_SIZE(index);
+	enc_param.intra_frame = encoder->intra_frame_insertion;
+	if (encoder->intra_frame_insertion)
+		encoder->intra_frame_insertion = false;
+	enc_param.input_flush = false;
+	enc_param.slice_enable =
+		encoder->slice_delivery_info.enable;
+	vidc_sm_set_encoder_vop_time(
+			&ddl->shared_mem[ddl->command_channel], true,
+			encoder->vop_timing.vop_time_resolution,
+			ddl->input_frame.frm_delta);
+	vidc_sm_set_frame_tag(&ddl->shared_mem[ddl->command_channel],
+			ddl->input_frame.vcd_frm.ip_frm_tag);
+	DDL_MSG_LOW("%sdpb_count = %d\n", __func__, enc_buffers->dpb_count);
+	if (ddl_context->pix_cache_enable) {
+		for (index = 0; index < enc_buffers->dpb_count;
+			index++) {
+			dpb_addr_y[index] =
+				(u32) VIDC_1080P_DEC_DPB_RESET_VALUE;
+			dpb_addr_c[index] = (u32) enc_buffers->dpb_c
+				[index].align_physical_addr;
+		}
+
+		dpb_addr_y[index] = (u32) input_vcd_frm->physical;
+		dpb_addr_c[index] = (u32) input_vcd_frm->physical +
+				encoder->input_buf_size.size_y;
+
+		vidc_pix_cache_init_luma_chroma_base_addr(
+			enc_buffers->dpb_count + 1, dpb_addr_y, dpb_addr_c);
+		vidc_pix_cache_set_frame_size(encoder->frame_size.width,
+			encoder->frame_size.height);
+		vidc_pix_cache_set_frame_range(enc_buffers->sz_dpb_y,
+			enc_buffers->sz_dpb_c);
+		vidc_pix_cache_clear_cache_tags();
+	}
+	if ((!encoder->rc_level.frame_level_rc) &&
+		(!encoder->rc_level.mb_level_rc)) {
+		encoder->session_qp.p_frame_qp++;
+		if (encoder->session_qp.p_frame_qp > encoder->qp_range.max_qp)
+			encoder->session_qp.p_frame_qp =
+						encoder->qp_range.min_qp;
+		vidc_sm_set_pand_b_frame_qp(
+			&ddl->shared_mem[ddl->command_channel],
+				encoder->session_qp.b_frame_qp,
+				encoder->session_qp.p_frame_qp);
+	}
+
+	if (vidc_msg_timing) {
+		if (run_cnt < 2) {
+			ddl_reset_core_time_variables(ENC_OP_TIME);
+			ddl_reset_core_time_variables(ENC_SLICE_OP_TIME);
+			run_cnt++;
+		 }
+		ddl_update_core_start_time(__func__, ENC_SLICE_OP_TIME);
+		ddl_set_core_start_time(__func__, ENC_OP_TIME);
+	}
+	encoder->num_slices_comp = 0;
+	ddl_vidc_encode_set_batch_slice_info(ddl);
+	ddl_context->vidc_encode_slice_batch_start[ddl->command_channel] (
+			&enc_param);
+}
+
 u32 ddl_vidc_decode_set_buffers(struct ddl_client_context *ddl)
 {
 	struct ddl_context *ddl_context = ddl->ddl_context;
@@ -801,6 +1033,7 @@ u32 ddl_vidc_decode_set_buffers(struct ddl_client_context *ddl)
 		DDL_MSG_ERROR("STATE-CRITICAL");
 		return VCD_ERR_FAIL;
 	}
+	ddl_set_vidc_timeout(ddl);
 	ddl_vidc_decode_set_metadata_output(decoder);
 	if (decoder->dp_buf.no_of_dec_pic_buf <
 		decoder->client_output_buf_req.actual_count)
@@ -815,10 +1048,10 @@ u32 ddl_vidc_decode_set_buffers(struct ddl_client_context *ddl)
 #ifdef DDL_BUF_LOG
 	ddl_list_buffers(ddl);
 #endif
-	if (vidc_msg_timing)
-		ddl_set_core_start_time(__func__, DEC_OP_TIME);
+	ddl_set_core_start_time(__func__, DEC_OP_TIME);
 	ddl_decoder_dpb_transact(decoder, NULL, DDL_DPB_OP_INIT);
-	ddl_decoder_dpb_init(ddl);
+	if (ddl_decoder_dpb_init(ddl) == VCD_ERR_FAIL)
+		return VCD_ERR_FAIL;
 	DDL_MSG_LOW("ddl_state_transition: %s ~~> DDL_CLIENT_WAIT_FOR_DPBDONE",
 	ddl_get_state_string(ddl->client_state));
 	ddl->client_state = DDL_CLIENT_WAIT_FOR_DPBDONE;
@@ -846,6 +1079,7 @@ u32 ddl_vidc_decode_set_buffers(struct ddl_client_context *ddl)
 				ddl_context->dram_base_a, ddl->shared_mem
 				[ddl->command_channel]);
 	init_buf_param.dpb_count = decoder->dp_buf.no_of_dec_pic_buf;
+	init_buf_param.dmx_disable = decoder->dmx_disable;
 	ddl_context->vidc_decode_init_buffers[ddl->command_channel] (
 		&init_buf_param);
 	return VCD_S_SUCCESS;
@@ -861,10 +1095,8 @@ void ddl_vidc_decode_frame_run(struct ddl_client_context *ddl)
 	struct ddl_mask *dpb_mask = &ddl->codec_data.decoder.dpb_mask;
 	struct vidc_1080p_dec_frame_start_param dec_param;
 	u32 dpb_addr_y[32], index;
-	if (vidc_msg_timing) {
-		ddl_set_core_start_time(__func__, DEC_OP_TIME);
-		ddl_set_core_start_time(__func__, DEC_IP_TIME);
-	}
+	ddl_set_core_start_time(__func__, DEC_OP_TIME);
+	ddl_set_core_start_time(__func__, DEC_IP_TIME);
 	if ((!bit_stream->data_len) || (!bit_stream->physical)) {
 		ddl_vidc_decode_eos_run(ddl);
 		return;
@@ -892,11 +1124,15 @@ void ddl_vidc_decode_frame_run(struct ddl_client_context *ddl)
 	dec_param.release_dpb_bit_mask = dpb_mask->hw_mask;
 	dec_param.decode = VIDC_1080P_DEC_TYPE_FRAME_DATA;
 	dec_param.dpb_count = decoder->dp_buf.no_of_dec_pic_buf;
+	dec_param.dmx_disable = decoder->dmx_disable;
+	if (decoder->dmx_disable)
+		ddl_fill_dec_desc_buffer(ddl);
 	if (decoder->flush_pending) {
 		dec_param.dpb_flush = true;
 		decoder->flush_pending = false;
 	} else
 		dec_param.dpb_flush = false;
+	ddl_set_vidc_timeout(ddl);
 	vidc_sm_set_frame_tag(&ddl->shared_mem[ddl->command_channel],
 		bit_stream->ip_frm_tag);
 	if (ddl_context->pix_cache_enable) {
@@ -958,4 +1194,45 @@ void ddl_vidc_decode_eos_run(struct ddl_client_context *ddl)
 	bit_stream->ip_frm_tag);
 	ddl_context->vidc_decode_frame_start[ddl->command_channel] (
 		&dec_param);
+}
+
+void ddl_vidc_encode_eos_run(struct ddl_client_context *ddl)
+{
+	struct vidc_1080p_enc_frame_start_param enc_param;
+	struct ddl_context *ddl_context = ddl->ddl_context;
+	struct ddl_encoder_data *encoder = &(ddl->codec_data.encoder);
+	DDL_MSG_LOW("%s\n", __func__);
+	ddl->client_state = DDL_CLIENT_WAIT_FOR_EOS_DONE;
+	ddl_vidc_encode_dynamic_property(ddl, true);
+	ddl->client_state = DDL_CMD_EOS;
+	DDL_MEMSET(&enc_param, 0, sizeof(enc_param));
+	enc_param.encode = VIDC_1080P_ENC_TYPE_LAST_FRAME_DATA;
+	enc_param.cmd_seq_num = ++ddl_context->cmd_seq_num;
+	enc_param.inst_id = ddl->instance_id;
+	enc_param.shared_mem_addr_offset =
+		DDL_ADDR_OFFSET(ddl_context->dram_base_a,
+		ddl->shared_mem[ddl->command_channel]);
+	enc_param.current_y_addr_offset = 0;
+	enc_param.current_c_addr_offset = 0;
+	enc_param.stream_buffer_size = 0;
+	enc_param.intra_frame = encoder->intra_frame_insertion;
+	vidc_sm_set_frame_tag(&ddl->shared_mem[ddl->command_channel],
+				ddl->input_frame.vcd_frm.ip_frm_tag);
+	ddl_context->vidc_encode_frame_start[ddl->command_channel](
+						&enc_param);
+}
+
+int ddl_vidc_decode_get_avg_time(struct ddl_client_context *ddl)
+{
+	int avg_time = 0;
+	struct ddl_decoder_data *decoder = &(ddl->codec_data.decoder);
+	avg_time = decoder->avg_dec_time;
+	return avg_time;
+}
+
+void ddl_vidc_decode_reset_avg_time(struct ddl_client_context *ddl)
+{
+	struct ddl_decoder_data *decoder = &(ddl->codec_data.decoder);
+	decoder->avg_dec_time = 0;
+	decoder->dec_time_sum = 0;
 }

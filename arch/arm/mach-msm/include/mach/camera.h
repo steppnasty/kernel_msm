@@ -24,7 +24,7 @@
 
 #include <mach/board.h>
 #include <media/msm_camera.h>
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 #include <mach/iommu_domains.h>
 
 #ifdef CONFIG_MSM_CAMERA_DEBUG
@@ -150,7 +150,7 @@ struct msm_camera_csi2_params {
 	struct msm_camera_csiphy_params csiphy_params;
 };
 
-#ifndef CONFIG_MSM_CAMERA_V4L2
+#ifndef CONFIG_MSMB_CAMERA
 #define VFE31_OUTPUT_MODE_PT (0x1 << 0)
 #define VFE31_OUTPUT_MODE_S (0x1 << 1)
 #define VFE31_OUTPUT_MODE_V (0x1 << 2)

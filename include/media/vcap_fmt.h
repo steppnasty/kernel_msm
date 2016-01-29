@@ -1,18 +1,6 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
-
 #ifndef VCAP_FMT_H
 #define VCAP_FMT_H
+#include <linux/videodev2.h>
 
 #define V4L2_BUF_TYPE_INTERLACED_IN_DECODER (V4L2_BUF_TYPE_PRIVATE)
 
@@ -23,11 +11,13 @@
 #define VCAP_VC_NPL_OFLOW_ERR_EVENT 4
 #define VCAP_VC_LBUF_OFLOW_ERR_EVENT 5
 #define VCAP_VC_BUF_OVERWRITE_EVENT 6
-#define VCAP_VP_REG_R_ERR_EVENT 7
-#define VCAP_VP_REG_W_ERR_EVENT 8
-#define VCAP_VP_IN_HEIGHT_ERR_EVENT 9
-#define VCAP_VP_IN_WIDTH_ERR_EVENT 10
-#define VCAP_MAX_NOTIFY_EVENT 11
+#define VCAP_VC_VSYNC_SEQ_ERR 7
+#define VCAP_VP_REG_R_ERR_EVENT 8
+#define VCAP_VP_REG_W_ERR_EVENT 9
+#define VCAP_VP_IN_HEIGHT_ERR_EVENT 10
+#define VCAP_VP_IN_WIDTH_ERR_EVENT 11
+#define VCAP_VC_UNEXPECT_BUF_DONE 12
+#define VCAP_MAX_NOTIFY_EVENT 13
 
 enum hal_vcap_mode {
 	HAL_VCAP_MODE_PRO = 0,
@@ -35,13 +25,18 @@ enum hal_vcap_mode {
 };
 
 enum hal_vcap_polar {
-	HAL_VCAP_POLAR_NEG = 0,
-	HAL_VCAP_POLAR_POS,
+	HAL_VCAP_POLAR_POS = 0,
+	HAL_VCAP_POLAR_NEG,
 };
 
 enum hal_vcap_color {
 	HAL_VCAP_YUV = 0,
 	HAL_VCAP_RGB,
+};
+
+enum nr_threshold_mode {
+	NR_THRESHOLD_STATIC = 0,
+	NR_THRESHOLD_DYNAMIC,
 };
 
 enum nr_mode {
@@ -70,6 +65,7 @@ struct nr_config {
 };
 
 struct nr_param {
+	enum nr_threshold_mode threshold;
 	enum nr_mode mode;
 	enum nr_decay_ratio decay_ratio;
 	uint8_t window;
@@ -80,6 +76,7 @@ struct nr_param {
 #define VCAPIOC_NR_S_PARAMS _IOWR('V', (BASE_VIDIOC_PRIVATE+0), struct nr_param)
 
 #define VCAPIOC_NR_G_PARAMS _IOWR('V', (BASE_VIDIOC_PRIVATE+1), struct nr_param)
+#define VCAPIOC_S_NUM_VC_BUF _IOWR('V', (BASE_VIDIOC_PRIVATE+2), int)
 
 struct v4l2_format_vc_ext {
 	enum hal_vcap_mode     mode;
@@ -116,8 +113,14 @@ enum vcap_type {
 	VP_OUT_TYPE,
 };
 
+enum vcap_stride {
+	VC_STRIDE_16,
+	VC_STRIDE_32,
+};
+
 struct vcap_priv_fmt {
 	enum vcap_type type;
+	enum vcap_stride stride;
 	union {
 		struct v4l2_format_vc_ext timing;
 		struct v4l2_pix_format pix;

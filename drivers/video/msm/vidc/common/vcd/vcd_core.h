@@ -1,35 +1,20 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above
- *       copyright notice, this list of conditions and the following
- *       disclaimer in the documentation and/or other materials provided
- *       with the distribution.
- *     * Neither the name of Code Aurora Forum, Inc. nor the names of its
- *       contributors may be used to endorse or promote products derived
- *       from this software without specific prior written permission.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
  *
- * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
- * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
- * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
  */
 #ifndef _VCD_CORE_H_
 #define _VCD_CORE_H_
 
-#include "vcd_api.h"
+#include <linux/msm_ion.h>
+#include <media/msm/vcd_api.h>
 #include "vcd_ddl_api.h"
 
 #include "vcd_util.h"
@@ -40,7 +25,7 @@
 
 #define VCD_MIN_PERF_LEVEL                   37900
 
-#define VCD_DRIVER_INSTANCE_MAX              4
+#define VCD_DRIVER_CLIENTS_MAX              6
 
 #define VCD_MAX_CLIENT_TRANSACTIONS          32
 
@@ -52,6 +37,7 @@
 
 #define VCD_TIMESTAMP_RESOLUTION             1000000
 #define VCD_DEC_INITIAL_FRAME_RATE           30
+#define VCD_MAXPERF_FPS_THRESHOLD_X_1000     (59*1000)
 
 #define VCD_FIRST_IP_RCVD                    0x00000004
 #define VCD_FIRST_OP_RCVD                    0x00000008
@@ -76,8 +62,8 @@ enum vcd_command {
 };
 
 enum vcd_core_type {
-	VCD_CORE_1080P,
-	VCD_CORE_720P,
+    VCD_CORE_1080P,
+    VCD_CORE_720P
 };
 
 struct vcd_cmd_q_element {
@@ -140,7 +126,7 @@ struct vcd_dev_ctxt {
 
 	struct vcd_init_config config;
 
-	u32 driver_ids[VCD_DRIVER_INSTANCE_MAX];
+	u32 driver_ids[VCD_DRIVER_CLIENTS_MAX];
 	u32 refs;
 	u8 *device_base_addr;
 	void *hw_timer_handle;
@@ -161,7 +147,6 @@ struct vcd_dev_ctxt {
 	u32 reqd_perf_lvl;
 	u32 curr_perf_lvl;
 	u32 set_perf_lvl_pending;
-
 };
 
 struct vcd_clnt_status {
@@ -172,7 +157,7 @@ struct vcd_clnt_status {
 	u32 int_field_cnt;
 	s64 first_ts;
 	s64 prev_ts;
-	u32 time_elapsed;
+	u64 time_elapsed;
 	struct vcd_frame_data eos_trig_ip_frm;
 	struct ddl_frame_data_tag eos_prev_op_frm;
 	u32 eos_prev_op_frm_status;
@@ -200,11 +185,13 @@ struct vcd_clnt_ctxt {
 	u32 live;
 	u32 decoding;
 	u32 bframe;
+	u32 num_slices;
 
 	struct vcd_property_frame_rate frm_rate;
 	u32 frm_p_units;
 	u32 reqd_perf_lvl;
 	u32 time_resoln;
+	u32 time_frame_delta;
 
 	struct vcd_buffer_pool in_buf_pool;
 	struct vcd_buffer_pool out_buf_pool;
@@ -220,9 +207,13 @@ struct vcd_clnt_ctxt {
 	struct vcd_sequence_hdr seq_hdr;
 	u8 *seq_hdr_phy_addr;
 	struct vcd_clnt_status status;
-
+	struct ion_client *vcd_ion_client;
+	u32 vcd_enable_ion;
 	struct vcd_clnt_ctxt *next;
 	u32 meta_mode;
+	int perf_set_by_client;
+	int secure;
+	bool is_turbo_enabled;
 };
 
 #define VCD_BUFFERPOOL_INUSE_DECREMENT(val) \

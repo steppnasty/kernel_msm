@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,7 +11,10 @@
  *
  */
 
+#include <linux/export.h>
 #include <linux/kernel.h>
+
+#include <asm/page.h>
 
 #include "kgsl.h"
 #include "kgsl_pwrscale.h"
@@ -44,6 +47,9 @@ static struct kgsl_pwrscale_policy *kgsl_pwrscale_policies[] = {
 #endif
 #ifdef CONFIG_MSM_SLEEP_STATS_DEVICE
 	&kgsl_pwrscale_policy_idlestats,
+#endif
+#ifdef CONFIG_MSM_DCVS
+	&kgsl_pwrscale_policy_msm,
 #endif
 	NULL
 };
@@ -81,10 +87,14 @@ static ssize_t pwrscale_policy_show(struct kgsl_device *device, char *buf)
 {
 	int ret;
 
-	if (device->pwrscale.policy)
-		ret = snprintf(buf, PAGE_SIZE, "%s\n",
+	if (device->pwrscale.policy) {
+		ret = snprintf(buf, PAGE_SIZE, "%s",
 			       device->pwrscale.policy->name);
-	else
+		if (device->pwrscale.enabled == 0)
+			ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				" (disabled)");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	} else
 		ret = snprintf(buf, PAGE_SIZE, "none\n");
 
 	return ret;
@@ -242,6 +252,18 @@ void kgsl_pwrscale_idle(struct kgsl_device *device, unsigned int ignore_idle)
 }
 EXPORT_SYMBOL(kgsl_pwrscale_idle);
 
+void kgsl_pwrscale_disable(struct kgsl_device *device)
+{
+	device->pwrscale.enabled = 0;
+}
+EXPORT_SYMBOL(kgsl_pwrscale_disable);
+
+void kgsl_pwrscale_enable(struct kgsl_device *device)
+{
+	device->pwrscale.enabled = 1;
+}
+EXPORT_SYMBOL(kgsl_pwrscale_enable);
+
 int kgsl_pwrscale_policy_add_files(struct kgsl_device *device,
 				   struct kgsl_pwrscale *pwrscale,
 				   struct attribute_group *attr_group)
@@ -310,6 +332,9 @@ int kgsl_pwrscale_attach_policy(struct kgsl_device *device,
 		_kgsl_pwrscale_detach_policy(device);
 
 	device->pwrscale.policy = policy;
+
+	/* Pwrscale is enabled by default at attach time */
+	kgsl_pwrscale_enable(device);
 
 	if (policy) {
 		ret = device->pwrscale.policy->init(device, &device->pwrscale);

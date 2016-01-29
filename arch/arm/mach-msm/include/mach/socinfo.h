@@ -130,9 +130,30 @@ static inline int cpu_is_msm8960(void)
 	return 0;
 }
 
+static inline int cpu_is_apq8064(void)
+{
+#ifdef CONFIG_ARCH_APQ8064
+	return read_msm_cpu_type() == MSM_CPU_8064;
+#else
+	return 0;
+#endif
+}
+
 static inline int cpu_is_msm8930(void)
 {
 	return 0;
+}
+
+static inline int cpu_is_msm8625(void)
+{
+#ifdef CONFIG_ARCH_MSM8625
+	enum msm_cpu cpu = socinfo_get_msm_cpu();
+
+	BUG_ON(cpu == MSM_CPU_UNKNOWN);
+	return cpu == MSM_CPU_8625;
+#else
+	return 0;
+#endif
 }
 
 #endif

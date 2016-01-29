@@ -19,6 +19,7 @@
 #include <linux/platform_device.h>
 
 #include <linux/dma-mapping.h>
+#include <mach/kgsl.h>
 #include <mach/msm_iomap.h>
 #include <mach/dma.h>
 #include "gpio_chip.h"
@@ -125,7 +126,7 @@ static struct platform_device ram_console_device = {
 	.resource       = ram_console_resource,
 };
 
-#ifdef CONFIG_MSM_CAMERA_V4L2
+#ifdef CONFIG_MSMB_CAMERA
 static struct resource msm_csic_resources[] = {
 	{
 		.name	= "csic",
@@ -168,6 +169,11 @@ struct platform_device msm_device_vpe = {
 	.id		= 0,
 	.num_resources	= ARRAY_SIZE(msm_vpe_resources),
 	.resource	= msm_vpe_resources,
+};
+
+struct platform_device msm_device_cam = {
+	.name		= "msm",
+	.id		= 0,
 };
 #endif
 
@@ -256,6 +262,7 @@ static struct kgsl_device_platform_data kgsl_2d0_pdata = {
 	.set_grp_async = NULL,
 	.idle_timeout = HZ/10,
 	.nap_allowed = true,
+	.idle_needed = true,
 	.clk = {
 		.clk = "grp_2d_clk",
 		.pclk = "grp_2d_pclk",

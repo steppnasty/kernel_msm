@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -8,11 +8,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA.
  *
  */
 
@@ -30,14 +25,15 @@
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
-#include <linux/android_pmem.h>
+
 #include <linux/clk.h>
 #include <linux/timer.h>
-
-#include "vidc_type.h"
-#include "vcd_api.h"
+#include <media/msm/vidc_type.h>
+#include <media/msm/vcd_api.h>
+#include <media/msm/vidc_init.h>
+#include <mach/iommu_domains.h>
+#include "vcd_res_tracker_api.h"
 #include "vdec_internal.h"
-#include "vidc_init.h"
 
 
 
@@ -45,11 +41,13 @@
 #define INFO(x...) pr_info(x)
 #define ERR(x...) pr_err(x)
 
-#define VID_DEC_NAME		"msm_vidc_dec"
+#define VID_DEC_NAME "msm_vidc_dec"
 
+static char *node_name[2] = {"", "_sec"};
 static struct vid_dec_dev *vid_dec_device_p;
 static dev_t vid_dec_dev_num;
 static struct class *vid_dec_class;
+
 static s32 vid_dec_get_empty_client_index(void)
 {
 	u32 i, found = false;
@@ -187,6 +185,10 @@ static void vid_dec_input_frame_done(struct video_client_ctx *client_ctx,
 		return;
 	}
 
+	kfree(vcd_frame_data->desc_buf);
+	vcd_frame_data->desc_buf = NULL;
+	vcd_frame_data->desc_size = 0;
+
 	vdec_msg = kzalloc(sizeof(struct vid_dec_msg), GFP_KERNEL);
 	if (!vdec_msg) {
 		ERR("vid_dec_input_frame_done(): cannot allocate vid_dec_msg "
@@ -205,8 +207,9 @@ static void vid_dec_input_frame_done(struct video_client_ctx *client_ctx,
 		vdec_msg->vdec_msg_info.msgcode = VDEC_MSG_RESP_INPUT_FLUSHED;
 		DBG("Send INPUT_FLUSHED message to client = %p\n", client_ctx);
 	} else {
-		ERR("vid_dec_input_frame_done(): invalid event type\n");
-		return;
+		ERR("vid_dec_input_frame_done(): invalid event type: "
+			"%d\n", event);
+		vdec_msg->vdec_msg_info.msgcode = VDEC_MSG_INVALID;
 	}
 
 	vdec_msg->vdec_msg_info.msgdata.input_frame_clientdata =
@@ -230,6 +233,9 @@ static void vid_dec_output_frame_done(struct video_client_ctx *client_ctx,
 	struct file *file;
 	s32 buffer_index = -1;
 	enum vdec_picture pic_type;
+	u32 ion_flag = 0;
+	struct ion_handle *buff_handle = NULL;
+	struct vdec_output_frameinfo  *output_frame;
 
 	if (!client_ctx || !vcd_frame_data) {
 		ERR("vid_dec_input_frame_done() NULL pointer\n");
@@ -248,12 +254,12 @@ static void vid_dec_output_frame_done(struct video_client_ctx *client_ctx,
 	if (event == VCD_EVT_RESP_OUTPUT_DONE)
 		vdec_msg->vdec_msg_info.msgcode =
 		    VDEC_MSG_RESP_OUTPUT_BUFFER_DONE;
-
 	else if (event == VCD_EVT_RESP_OUTPUT_FLUSHED)
 		vdec_msg->vdec_msg_info.msgcode = VDEC_MSG_RESP_OUTPUT_FLUSHED;
 	else {
-		ERR("QVD: vid_dec_output_frame_done invalid cmd type\n");
-		return;
+		ERR("QVD: vid_dec_output_frame_done invalid cmd type: "
+			"%d\n", event);
+		vdec_msg->vdec_msg_info.msgcode = VDEC_MSG_INVALID;
 	}
 
 	kernel_vaddr = (unsigned long)vcd_frame_data->virtual;
@@ -263,6 +269,37 @@ static void vid_dec_output_frame_done(struct video_client_ctx *client_ctx,
 				      &phy_addr, &pmem_fd, &file,
 				      &buffer_index) ||
 		(vcd_frame_data->flags & VCD_FRAME_FLAG_EOS)) {
+
+		if (res_trk_check_for_sec_session() &&
+				event == VCD_EVT_RESP_OUTPUT_DONE) {
+			DBG("Buffer Index = %d", buffer_index);
+			if (buffer_index != -1) {
+				if (client_ctx->meta_addr_table[buffer_index].
+					kernel_vir_addr_iommu &&
+					client_ctx->
+					meta_addr_table[buffer_index].
+					kernel_vir_addr) {
+
+					memcpy(client_ctx->
+						meta_addr_table[buffer_index].
+						kernel_vir_addr_iommu,
+						client_ctx->
+						meta_addr_table[buffer_index].
+						kernel_vir_addr,
+						client_ctx->meta_buf_size);
+					DBG("Copying Meta Buffer from "\
+						"secure memory"
+						"kernel_virt_iommu = %p "
+						"kernel_virt = %p",
+						client_ctx->
+						meta_addr_table[buffer_index].
+						kernel_vir_addr_iommu,
+						client_ctx->
+						meta_addr_table[buffer_index].
+						kernel_vir_addr);
+				}
+			}
+		}
 
 		/* Buffer address in user space */
 		vdec_msg->vdec_msg_info.msgdata.output_frame.bufferaddr =
@@ -323,13 +360,36 @@ static void vid_dec_output_frame_done(struct video_client_ctx *client_ctx,
 		}
 		vdec_msg->vdec_msg_info.msgdata.output_frame.pic_type =
 			pic_type;
+		output_frame = &vdec_msg->vdec_msg_info.msgdata.output_frame;
+		output_frame->aspect_ratio_info.aspect_ratio =
+			vcd_frame_data->aspect_ratio_info.aspect_ratio;
+		output_frame->aspect_ratio_info.par_width =
+			vcd_frame_data->aspect_ratio_info.par_width;
+		output_frame->aspect_ratio_info.par_height =
+			vcd_frame_data->aspect_ratio_info.par_height;
 		vdec_msg->vdec_msg_info.msgdatasize =
 		    sizeof(struct vdec_output_frameinfo);
 	} else {
 		ERR("vid_dec_output_frame_done UVA can not be found\n");
 		vdec_msg->vdec_msg_info.status_code = VDEC_S_EFATAL;
 	}
-
+	if (vcd_frame_data->data_len > 0) {
+		ion_flag = vidc_get_fd_info(client_ctx, BUFFER_TYPE_OUTPUT,
+				pmem_fd, kernel_vaddr, buffer_index,
+				&buff_handle);
+		if (ion_flag == ION_FLAG_CACHED && buff_handle) {
+			DBG("%s: Cache invalidate: vaddr (%p), "\
+				"size %u\n", __func__,
+				(void *)kernel_vaddr,
+				vcd_frame_data->alloc_len);
+			msm_ion_do_cache_op(client_ctx->user_ion_client,
+					buff_handle,
+					(unsigned long *) kernel_vaddr,
+					(unsigned long)vcd_frame_data->\
+					alloc_len,
+					ION_IOC_INV_CACHES);
+		}
+	}
 	mutex_lock(&client_ctx->msg_queue_lock);
 	list_add_tail(&vdec_msg->list, &client_ctx->msg_queue);
 	mutex_unlock(&client_ctx->msg_queue_lock);
@@ -611,6 +671,26 @@ static u32 vid_dec_set_frame_resolution(struct video_client_ctx *client_ctx,
 		return true;
 }
 
+static u32 vid_dec_set_turbo_clk(struct video_client_ctx *client_ctx)
+{
+	struct vcd_property_hdr vcd_property_hdr;
+	u32 vcd_status = VCD_ERR_FAIL;
+	u32 dummy = 0;
+
+	if (!client_ctx)
+		return false;
+	vcd_property_hdr.prop_id = VCD_I_SET_TURBO_CLK;
+	vcd_property_hdr.sz = sizeof(struct vcd_property_frame_size);
+
+	vcd_status = vcd_set_property(client_ctx->vcd_handle,
+				      &vcd_property_hdr, &dummy);
+
+	if (vcd_status)
+		return false;
+	else
+		return true;
+}
+
 static u32 vid_dec_get_frame_resolution(struct video_client_ctx *client_ctx,
 					struct vdec_picsize *video_resoultion)
 {
@@ -648,6 +728,57 @@ static u32 vid_dec_get_progressive_only(struct video_client_ctx *client_ctx,
 	vcd_property_hdr.sz = sizeof(u32);
 	if (vcd_get_property(client_ctx->vcd_handle, &vcd_property_hdr,
 						 progressive_only))
+		return false;
+	else
+		return true;
+}
+
+static u32 vid_dec_get_disable_dmx_support(struct video_client_ctx *client_ctx,
+					   u32 *disable_dmx)
+{
+
+	struct vcd_property_hdr vcd_property_hdr;
+	if (!client_ctx || !disable_dmx)
+		return false;
+	vcd_property_hdr.prop_id = VCD_I_DISABLE_DMX_SUPPORT;
+	vcd_property_hdr.sz = sizeof(u32);
+	if (vcd_get_property(client_ctx->vcd_handle, &vcd_property_hdr,
+						 disable_dmx))
+		return false;
+	else
+		return true;
+}
+static u32 vid_dec_get_disable_dmx(struct video_client_ctx *client_ctx,
+					   u32 *disable_dmx)
+{
+
+	struct vcd_property_hdr vcd_property_hdr;
+	if (!client_ctx || !disable_dmx)
+		return false;
+	vcd_property_hdr.prop_id = VCD_I_DISABLE_DMX;
+	vcd_property_hdr.sz = sizeof(u32);
+	if (vcd_get_property(client_ctx->vcd_handle, &vcd_property_hdr,
+						 disable_dmx))
+		return false;
+	else
+		return true;
+}
+
+static u32 vid_dec_set_disable_dmx(struct video_client_ctx *client_ctx)
+{
+
+	struct vcd_property_hdr vcd_property_hdr;
+	u32 vcd_disable_dmx;
+	if (!client_ctx)
+		return false;
+	vcd_property_hdr.prop_id = VCD_I_DISABLE_DMX;
+	vcd_property_hdr.sz = sizeof(u32);
+	vcd_disable_dmx = true;
+	DBG("%s() : Setting Disable DMX: %d\n",
+		__func__, vcd_disable_dmx);
+
+	if (vcd_set_property(client_ctx->vcd_handle, &vcd_property_hdr,
+						 &vcd_disable_dmx))
 		return false;
 	else
 		return true;
@@ -737,49 +868,335 @@ static u32 vid_dec_set_idr_only_decoding(struct video_client_ctx *client_ctx)
 		return false;
 	return true;
 }
+static u32 vid_dec_set_meta_buffers(struct video_client_ctx *client_ctx,
+					struct vdec_meta_buffers *meta_buffers)
+{
+	struct vcd_property_hdr vcd_property_hdr;
+	struct vcd_property_meta_buffer *vcd_meta_buffer = NULL;
+	u32 vcd_status = VCD_ERR_FAIL;
+	u32 len = 0, len_iommu = 0, buf_size = 0;
+	int rc = 0;
+	unsigned long ionflag = 0, ionflag_iommu = 0;
+	unsigned long buffer_size = 0, buffer_size_iommu = 0;
+	unsigned long iova = 0, iova_iommu = 0;
+	int index = -1, num_buffers = 0;
+	u8 *ker_vir_addr = NULL, *ker_vir_addr_iommu = NULL;
 
+	if (!client_ctx || !meta_buffers)
+		return false;
+
+	vcd_property_hdr.prop_id = VCD_I_SET_EXT_METABUFFER;
+	vcd_property_hdr.sz = sizeof(struct vcd_property_meta_buffer);
+	vcd_meta_buffer = &client_ctx->vcd_meta_buffer;
+
+	memset(&client_ctx->vcd_meta_buffer, 0,
+		   sizeof(struct vcd_property_meta_buffer));
+	vcd_meta_buffer->size = meta_buffers->size;
+	vcd_meta_buffer->count = meta_buffers->count;
+	vcd_meta_buffer->pmem_fd = meta_buffers->pmem_fd;
+	vcd_meta_buffer->offset = meta_buffers->offset;
+	vcd_meta_buffer->pmem_fd_iommu = meta_buffers->pmem_fd_iommu;
+
+	if (meta_buffers->count > MAX_META_BUFFERS) {
+		ERR("meta buffers maximum count reached, count = %d",
+			meta_buffers->count);
+		return false;
+	}
+
+	if (!vcd_get_ion_status()) {
+		pr_err("PMEM Not available\n");
+		return false;
+	} else {
+		client_ctx->meta_buffer_ion_handle = ion_import_dma_buf(
+					client_ctx->user_ion_client,
+					vcd_meta_buffer->pmem_fd);
+		if (IS_ERR_OR_NULL(client_ctx->meta_buffer_ion_handle)) {
+			ERR("%s(): get_ION_handle failed\n", __func__);
+			goto import_ion_error;
+		}
+		rc = ion_handle_get_flags(client_ctx->user_ion_client,
+					client_ctx->meta_buffer_ion_handle,
+					&ionflag);
+		if (rc) {
+			ERR("%s():get_ION_flags fail\n",
+					 __func__);
+			goto import_ion_error;
+		}
+		vcd_meta_buffer->kernel_virtual_addr =
+			(u8 *) ion_map_kernel(
+			client_ctx->user_ion_client,
+			client_ctx->meta_buffer_ion_handle);
+		if (!vcd_meta_buffer->kernel_virtual_addr) {
+			ERR("%s(): get_ION_kernel virtual addr failed\n",
+				 __func__);
+			goto import_ion_error;
+		}
+		if (res_trk_check_for_sec_session() ||
+		   (res_trk_get_core_type() == (u32)VCD_CORE_720P)) {
+			rc = ion_phys(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_ion_handle,
+				(unsigned long *) (&(vcd_meta_buffer->
+				physical_addr)), &len);
+			if (rc) {
+				ERR("%s():get_ION_kernel physical addr fail\n",
+					__func__);
+				goto ion_map_error;
+			}
+			vcd_meta_buffer->client_data = NULL;
+			vcd_meta_buffer->dev_addr = (u8 *)
+				vcd_meta_buffer->physical_addr;
+		} else {
+			rc = ion_map_iommu(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_ion_handle,
+				VIDEO_DOMAIN, VIDEO_MAIN_POOL,
+				SZ_4K, 0, (unsigned long *)&iova,
+				(unsigned long *)&buffer_size,
+				0, 0);
+			if (rc || !iova) {
+				ERR("%s():get_ION_kernel physical addr fail,"\
+					" rc = %d iova = 0x%lx\n",
+					__func__, rc, iova);
+				goto ion_map_error;
+			}
+			vcd_meta_buffer->physical_addr = (u8 *) iova;
+			vcd_meta_buffer->client_data = NULL;
+			vcd_meta_buffer->dev_addr = (u8 *) iova;
+		}
+
+		client_ctx->meta_buffer_iommu_ion_handle = ion_import_dma_buf(
+					client_ctx->user_ion_client,
+					vcd_meta_buffer->pmem_fd_iommu);
+		if (IS_ERR_OR_NULL(client_ctx->meta_buffer_iommu_ion_handle)) {
+			ERR("%s(): get_ION_handle failed\n", __func__);
+			goto import_ion_error;
+		}
+		rc = ion_handle_get_flags(client_ctx->user_ion_client,
+					client_ctx->
+					meta_buffer_iommu_ion_handle,
+					&ionflag_iommu);
+		if (rc) {
+			ERR("%s():get_ION_flags fail\n",
+					 __func__);
+			goto import_ion_error;
+		}
+		vcd_meta_buffer->kernel_virt_addr_iommu =
+			(u8 *) ion_map_kernel(
+			client_ctx->user_ion_client,
+			client_ctx->meta_buffer_iommu_ion_handle);
+		if (!vcd_meta_buffer->kernel_virt_addr_iommu) {
+			ERR("%s(): get_ION_kernel virtual addr failed\n",
+				 __func__);
+			goto import_ion_error;
+		}
+		if (res_trk_get_core_type() == (u32)VCD_CORE_720P) {
+			rc = ion_phys(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_iommu_ion_handle,
+				(unsigned long *) (&(vcd_meta_buffer->
+				physical_addr_iommu)), &len_iommu);
+			if (rc) {
+				ERR("%s():get_ION_kernel physical addr fail\n",
+					__func__);
+				goto ion_map_error_iommu;
+			}
+			vcd_meta_buffer->client_data_iommu = NULL;
+			vcd_meta_buffer->dev_addr_iommu = (u8 *)
+				vcd_meta_buffer->physical_addr_iommu;
+		} else {
+			rc = ion_map_iommu(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_iommu_ion_handle,
+				VIDEO_DOMAIN, VIDEO_MAIN_POOL,
+				SZ_4K, 0, (unsigned long *)&iova_iommu,
+				(unsigned long *)&buffer_size_iommu,
+				0, 0);
+			if (rc || !iova_iommu) {
+				ERR("%s():get_ION_kernel physical addr fail, "\
+					"rc = %d iova = 0x%lx\n",
+					__func__, rc, iova);
+				goto ion_map_error_iommu;
+			}
+			vcd_meta_buffer->physical_addr_iommu =
+						(u8 *) iova_iommu;
+			vcd_meta_buffer->client_data_iommu = NULL;
+			vcd_meta_buffer->dev_addr_iommu = (u8 *) iova_iommu;
+		}
+	}
+
+	/*fill the meta addr table*/
+	num_buffers = vcd_meta_buffer->count;
+	buf_size = vcd_meta_buffer->size/num_buffers;
+	ker_vir_addr = vcd_meta_buffer->kernel_virtual_addr;
+	ker_vir_addr_iommu = vcd_meta_buffer->kernel_virt_addr_iommu;
+	client_ctx->meta_buf_size = buf_size;
+	for (index = 0; index < num_buffers; index++) {
+		client_ctx->meta_addr_table[index].kernel_vir_addr =
+			ker_vir_addr;
+		client_ctx->meta_addr_table[index].kernel_vir_addr_iommu =
+			ker_vir_addr_iommu;
+		DBG("[%d] kernel_virtual = %p kernel_vir_iommu = %p",
+			index, ker_vir_addr, ker_vir_addr_iommu);
+		ker_vir_addr += buf_size;
+		ker_vir_addr_iommu += buf_size;
+	}
+
+	DBG("Meta Buffer: Virt: %p, Phys %p, fd: %d",
+			vcd_meta_buffer->kernel_virtual_addr,
+			vcd_meta_buffer->physical_addr,
+			vcd_meta_buffer->pmem_fd);
+	DBG("IOMMU Meta Buffer: Virt: %p, Phys %p, fd: %d",
+			vcd_meta_buffer->kernel_virt_addr_iommu,
+			vcd_meta_buffer->physical_addr_iommu,
+			vcd_meta_buffer->pmem_fd_iommu);
+	DBG("Meta_buffer: Dev addr %p", vcd_meta_buffer->dev_addr);
+	DBG("IOMMU Meta_buffer: Dev addr %p",
+			vcd_meta_buffer->dev_addr_iommu);
+	vcd_status = vcd_set_property(client_ctx->vcd_handle,
+					  &vcd_property_hdr,
+					  vcd_meta_buffer);
+
+	if (vcd_status)
+		return false;
+	else
+		return true;
+ion_map_error_iommu:
+	if (vcd_meta_buffer->kernel_virt_addr_iommu) {
+		ion_unmap_kernel(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_iommu_ion_handle);
+		vcd_meta_buffer->kernel_virt_addr_iommu = NULL;
+	}
+	if (!IS_ERR_OR_NULL(client_ctx->meta_buffer_iommu_ion_handle)) {
+		ion_free(client_ctx->user_ion_client,
+			client_ctx->meta_buffer_iommu_ion_handle);
+		 client_ctx->meta_buffer_iommu_ion_handle = NULL;
+	}
+ion_map_error:
+	if (vcd_meta_buffer->kernel_virtual_addr) {
+		ion_unmap_kernel(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_ion_handle);
+		vcd_meta_buffer->kernel_virtual_addr = NULL;
+	}
+	if (!IS_ERR_OR_NULL(client_ctx->meta_buffer_ion_handle)) {
+		ion_free(client_ctx->user_ion_client,
+			client_ctx->meta_buffer_ion_handle);
+		 client_ctx->meta_buffer_ion_handle = NULL;
+	}
+import_ion_error:
+	return false;
+}
 static u32 vid_dec_set_h264_mv_buffers(struct video_client_ctx *client_ctx,
 					struct vdec_h264_mv *mv_data)
 {
 	struct vcd_property_hdr vcd_property_hdr;
-	struct vcd_property_h264_mv_buffer vcd_h264_mv_buffer;
+	struct vcd_property_h264_mv_buffer *vcd_h264_mv_buffer = NULL;
 	u32 vcd_status = VCD_ERR_FAIL;
-	u32 len;
-	struct file *file;
+	u32 len = 0;
+	int rc = 0;
+	unsigned long ionflag = 0;
+	unsigned long buffer_size = 0;
+	unsigned long iova = 0;
 
 	if (!client_ctx || !mv_data)
 		return false;
 
 	vcd_property_hdr.prop_id = VCD_I_H264_MV_BUFFER;
 	vcd_property_hdr.sz = sizeof(struct vcd_property_h264_mv_buffer);
+	vcd_h264_mv_buffer = &client_ctx->vcd_h264_mv_buffer;
 
-	memset(&vcd_h264_mv_buffer, 0,
+	memset(&client_ctx->vcd_h264_mv_buffer, 0,
 		   sizeof(struct vcd_property_h264_mv_buffer));
-	vcd_h264_mv_buffer.size = mv_data->size;
-	vcd_h264_mv_buffer.count = mv_data->count;
-	vcd_h264_mv_buffer.pmem_fd = mv_data->pmem_fd;
-	vcd_h264_mv_buffer.offset = mv_data->offset;
+	vcd_h264_mv_buffer->size = mv_data->size;
+	vcd_h264_mv_buffer->count = mv_data->count;
+	vcd_h264_mv_buffer->pmem_fd = mv_data->pmem_fd;
+	vcd_h264_mv_buffer->offset = mv_data->offset;
 
-	if (get_pmem_file(vcd_h264_mv_buffer.pmem_fd,
-		(unsigned long *) (&(vcd_h264_mv_buffer.physical_addr)),
-		(unsigned long *) (&vcd_h264_mv_buffer.kernel_virtual_addr),
-		(unsigned long *) (&len), &file)) {
-		ERR("%s(): get_pmem_file failed\n", __func__);
+	if (mv_data->count > MAX_MV_BUFFERS) {
+		ERR("MV buffers maximum count reached, count = %d",
+			mv_data->count);
 		return false;
 	}
-	put_pmem_file(file);
 
-	DBG("Virt: %p, Phys %p, fd: %d\n", vcd_h264_mv_buffer.
-		kernel_virtual_addr, vcd_h264_mv_buffer.physical_addr,
-		vcd_h264_mv_buffer.pmem_fd);
-
+	if (!vcd_get_ion_status()) {
+		pr_err("PMEM not available\n");
+		return false;
+	} else {
+		client_ctx->h264_mv_ion_handle = ion_import_dma_buf(
+					client_ctx->user_ion_client,
+					vcd_h264_mv_buffer->pmem_fd);
+		if (IS_ERR_OR_NULL(client_ctx->h264_mv_ion_handle)) {
+			ERR("%s(): get_ION_handle failed\n", __func__);
+			goto import_ion_error;
+		}
+		rc = ion_handle_get_flags(client_ctx->user_ion_client,
+					client_ctx->h264_mv_ion_handle,
+					&ionflag);
+		if (rc) {
+			ERR("%s():get_ION_flags fail\n",
+					 __func__);
+			goto import_ion_error;
+		}
+		vcd_h264_mv_buffer->kernel_virtual_addr = (u8 *) ion_map_kernel(
+			client_ctx->user_ion_client,
+			client_ctx->h264_mv_ion_handle);
+		if (!vcd_h264_mv_buffer->kernel_virtual_addr) {
+			ERR("%s(): get_ION_kernel virtual addr failed\n",
+				 __func__);
+			goto import_ion_error;
+		}
+		if (res_trk_check_for_sec_session() ||
+		   (res_trk_get_core_type() == (u32)VCD_CORE_720P)) {
+			rc = ion_phys(client_ctx->user_ion_client,
+				client_ctx->h264_mv_ion_handle,
+				(unsigned long *) (&(vcd_h264_mv_buffer->
+				physical_addr)), &len);
+			if (rc) {
+				ERR("%s():get_ION_kernel physical addr fail\n",
+					__func__);
+				goto ion_map_error;
+			}
+			vcd_h264_mv_buffer->client_data = NULL;
+			vcd_h264_mv_buffer->dev_addr = (u8 *)
+				vcd_h264_mv_buffer->physical_addr;
+		} else {
+			rc = ion_map_iommu(client_ctx->user_ion_client,
+					client_ctx->h264_mv_ion_handle,
+					VIDEO_DOMAIN, VIDEO_MAIN_POOL,
+					SZ_4K, 0, (unsigned long *)&iova,
+					(unsigned long *)&buffer_size,
+					0, 0);
+			if (rc || !iova) {
+				ERR(
+				"%s():get_ION_kernel physical addr fail, rc = %d iova = 0x%lx\n",
+					__func__, rc, iova);
+				goto ion_map_error;
+			}
+			vcd_h264_mv_buffer->physical_addr = (u8 *) iova;
+			vcd_h264_mv_buffer->client_data = NULL;
+			vcd_h264_mv_buffer->dev_addr = (u8 *) iova;
+		}
+	}
+	DBG("Virt: %p, Phys %p, fd: %d", vcd_h264_mv_buffer->
+		kernel_virtual_addr, vcd_h264_mv_buffer->physical_addr,
+		vcd_h264_mv_buffer->pmem_fd);
+	DBG("Dev addr %p", vcd_h264_mv_buffer->dev_addr);
 	vcd_status = vcd_set_property(client_ctx->vcd_handle,
-				      &vcd_property_hdr, &vcd_h264_mv_buffer);
+				      &vcd_property_hdr, vcd_h264_mv_buffer);
 
 	if (vcd_status)
 		return false;
 	else
 		return true;
+ion_map_error:
+	if (vcd_h264_mv_buffer->kernel_virtual_addr) {
+		ion_unmap_kernel(client_ctx->user_ion_client,
+				client_ctx->h264_mv_ion_handle);
+		vcd_h264_mv_buffer->kernel_virtual_addr = NULL;
+	}
+	if (!IS_ERR_OR_NULL(client_ctx->h264_mv_ion_handle)) {
+		ion_free(client_ctx->user_ion_client,
+			client_ctx->h264_mv_ion_handle);
+		 client_ctx->h264_mv_ion_handle = NULL;
+	}
+import_ion_error:
+	return false;
 }
 
 static u32 vid_dec_set_cont_on_reconfig(struct video_client_ctx *client_ctx)
@@ -828,6 +1245,58 @@ static u32 vid_dec_get_h264_mv_buffer_size(struct video_client_ctx *client_ctx,
 		return true;
 }
 
+static u32 vid_dec_free_meta_buffers(struct video_client_ctx *client_ctx)
+{
+	struct vcd_property_hdr vcd_property_hdr;
+	struct vcd_property_buffer_size meta_buffer_size;
+	u32 vcd_status = VCD_ERR_FAIL;
+
+	if (!client_ctx)
+		return false;
+
+	vcd_property_hdr.prop_id = VCD_I_FREE_EXT_METABUFFER;
+	vcd_property_hdr.sz = sizeof(struct vcd_property_buffer_size);
+
+	vcd_status = vcd_set_property(client_ctx->vcd_handle,
+				      &vcd_property_hdr, &meta_buffer_size);
+
+	if (!IS_ERR_OR_NULL(client_ctx->meta_buffer_ion_handle)) {
+		ion_unmap_kernel(client_ctx->user_ion_client,
+					client_ctx->meta_buffer_ion_handle);
+		if (!res_trk_check_for_sec_session() &&
+		   (res_trk_get_core_type() != (u32)VCD_CORE_720P)) {
+			ion_unmap_iommu(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_ion_handle,
+				VIDEO_DOMAIN,
+				VIDEO_MAIN_POOL);
+		}
+		ion_free(client_ctx->user_ion_client,
+					client_ctx->meta_buffer_ion_handle);
+		client_ctx->meta_buffer_ion_handle = NULL;
+	}
+
+	if (!IS_ERR_OR_NULL(client_ctx->meta_buffer_iommu_ion_handle)) {
+		ion_unmap_kernel(client_ctx->user_ion_client,
+			client_ctx->meta_buffer_iommu_ion_handle);
+		if (res_trk_check_for_sec_session() &&
+		   (res_trk_get_core_type() != (u32)VCD_CORE_720P)) {
+			ion_unmap_iommu(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_iommu_ion_handle,
+				VIDEO_DOMAIN,
+				VIDEO_MAIN_POOL);
+		}
+		ion_free(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_iommu_ion_handle);
+		client_ctx->meta_buffer_iommu_ion_handle = NULL;
+	}
+
+	if (vcd_status)
+		return false;
+	else
+		return true;
+}
+
+
 static u32 vid_dec_free_h264_mv_buffers(struct video_client_ctx *client_ctx)
 {
 	struct vcd_property_hdr vcd_property_hdr;
@@ -842,6 +1311,22 @@ static u32 vid_dec_free_h264_mv_buffers(struct video_client_ctx *client_ctx)
 
 	vcd_status = vcd_set_property(client_ctx->vcd_handle,
 				      &vcd_property_hdr, &h264_mv_buffer_size);
+
+	if (!IS_ERR_OR_NULL(client_ctx->h264_mv_ion_handle)) {
+		ion_unmap_kernel(client_ctx->user_ion_client,
+					client_ctx->h264_mv_ion_handle);
+		if (!res_trk_check_for_sec_session() &&
+		   (res_trk_get_core_type() != (u32)VCD_CORE_720P)) {
+			ion_unmap_iommu(client_ctx->user_ion_client,
+				client_ctx->h264_mv_ion_handle,
+				VIDEO_DOMAIN,
+				VIDEO_MAIN_POOL);
+		}
+		ion_free(client_ctx->user_ion_client,
+					client_ctx->h264_mv_ion_handle);
+		 client_ctx->h264_mv_ion_handle = NULL;
+	}
+
 	if (vcd_status)
 		return false;
 	else
@@ -876,6 +1361,7 @@ static u32 vid_dec_get_buffer_req(struct video_client_ctx *client_ctx,
 		vdec_buf_req->buffer_size = vcd_buf_req.sz;
 		vdec_buf_req->alignment = vcd_buf_req.align;
 		vdec_buf_req->buf_poolid = vcd_buf_req.buf_pool_id;
+		vdec_buf_req->meta_buffer_size = vcd_buf_req.meta_buffer_size;
 
 		return true;
 	}
@@ -887,7 +1373,7 @@ static u32 vid_dec_set_buffer(struct video_client_ctx *client_ctx,
 	enum vcd_buffer_type buffer = VCD_BUFFER_INPUT;
 	enum buffer_dir dir_buffer = BUFFER_TYPE_INPUT;
 	u32 vcd_status = VCD_ERR_FAIL;
-	unsigned long kernel_vaddr, buf_adr_offset = 0;
+	unsigned long kernel_vaddr, buf_adr_offset = 0, length;
 
 	if (!client_ctx || !buffer_info)
 		return false;
@@ -897,17 +1383,16 @@ static u32 vid_dec_set_buffer(struct video_client_ctx *client_ctx,
 		buffer = VCD_BUFFER_OUTPUT;
 		buf_adr_offset = (unsigned long)buffer_info->buffer.offset;
 	}
-
+	length = buffer_info->buffer.buffer_len;
 	/*If buffer cannot be set, ignore */
 	if (!vidc_insert_addr_table(client_ctx, dir_buffer,
 		(unsigned long)buffer_info->buffer.bufferaddr,
 		&kernel_vaddr, buffer_info->buffer.pmem_fd,
-		buf_adr_offset, MAX_VIDEO_NUM_OF_BUFF)) {
+		buf_adr_offset, MAX_VIDEO_NUM_OF_BUFF, length)) {
 		DBG("%s() : user_virt_addr = %p cannot be set.",
 		    __func__, buffer_info->buffer.bufferaddr);
 		return false;
 	}
-
 	vcd_status = vcd_set_buffer(client_ctx->vcd_handle,
 		buffer, (u8 *) kernel_vaddr,
 		buffer_info->buffer.buffer_len);
@@ -934,6 +1419,7 @@ static u32 vid_dec_free_buffer(struct video_client_ctx *client_ctx,
 		dir_buffer = BUFFER_TYPE_OUTPUT;
 		buffer = VCD_BUFFER_OUTPUT;
 	}
+
 	/*If buffer NOT set, ignore */
 	if (!vidc_delete_addr_table(client_ctx, dir_buffer,
 				(unsigned long)buffer_info->buffer.bufferaddr,
@@ -942,7 +1428,6 @@ static u32 vid_dec_free_buffer(struct video_client_ctx *client_ctx,
 		    __func__, buffer_info->buffer.bufferaddr);
 		return true;
 	}
-
 	vcd_status = vcd_free_buffer(client_ctx->vcd_handle, buffer,
 					 (u8 *)kernel_vaddr);
 
@@ -1044,7 +1529,8 @@ static u32 vid_dec_start_stop(struct video_client_ctx *client_ctx, u32 start)
 }
 
 static u32 vid_dec_decode_frame(struct video_client_ctx *client_ctx,
-				struct vdec_input_frameinfo *input_frame_info)
+				struct vdec_input_frameinfo *input_frame_info,
+				u8 *desc_buf, u32 desc_size)
 {
 	struct vcd_frame_data vcd_input_buffer;
 	unsigned long kernel_vaddr, phy_addr, user_vaddr;
@@ -1052,6 +1538,8 @@ static u32 vid_dec_decode_frame(struct video_client_ctx *client_ctx,
 	struct file *file;
 	s32 buffer_index = -1;
 	u32 vcd_status = VCD_ERR_FAIL;
+	u32 ion_flag = 0;
+	struct ion_handle *buff_handle = NULL;
 
 	if (!client_ctx || !input_frame_info)
 		return false;
@@ -1077,7 +1565,23 @@ static u32 vid_dec_decode_frame(struct video_client_ctx *client_ctx,
 		vcd_input_buffer.time_stamp = input_frame_info->timestamp;
 		/* Rely on VCD using the same flags as OMX */
 		vcd_input_buffer.flags = input_frame_info->flags;
-
+		vcd_input_buffer.desc_buf = desc_buf;
+		vcd_input_buffer.desc_size = desc_size;
+		if (vcd_input_buffer.data_len > 0) {
+			ion_flag = vidc_get_fd_info(client_ctx,
+						BUFFER_TYPE_INPUT,
+						pmem_fd,
+						kernel_vaddr,
+						buffer_index,
+						&buff_handle);
+			if (ion_flag == ION_FLAG_CACHED && buff_handle) {
+				msm_ion_do_cache_op(client_ctx->user_ion_client,
+				buff_handle,
+				(unsigned long *)kernel_vaddr,
+				(unsigned long) vcd_input_buffer.data_len,
+				ION_IOC_CLEAN_CACHES);
+			}
+		}
 		vcd_status = vcd_decode_frame(client_ctx->vcd_handle,
 					      &vcd_input_buffer);
 		if (!vcd_status)
@@ -1102,6 +1606,7 @@ static u32 vid_dec_fill_output_buffer(struct video_client_ctx *client_ctx,
 	struct file *file;
 	s32 buffer_index = -1;
 	u32 vcd_status = VCD_ERR_FAIL;
+	struct ion_handle *buff_handle = NULL;
 
 	struct vcd_frame_data vcd_frame;
 
@@ -1120,7 +1625,12 @@ static u32 vid_dec_fill_output_buffer(struct video_client_ctx *client_ctx,
 		vcd_frame.virtual = (u8 *) kernel_vaddr;
 		vcd_frame.frm_clnt_data = (u32) fill_buffer_cmd->client_data;
 		vcd_frame.alloc_len = fill_buffer_cmd->buffer.buffer_len;
-
+		vcd_frame.ion_flag = vidc_get_fd_info(client_ctx,
+						 BUFFER_TYPE_OUTPUT,
+						pmem_fd, kernel_vaddr,
+						buffer_index,
+						&buff_handle);
+		vcd_frame.buff_ion_handle = buff_handle;
 		vcd_status = vcd_fill_output_buffer(client_ctx->vcd_handle,
 						    &vcd_frame);
 		if (!vcd_status)
@@ -1229,16 +1739,18 @@ static int vid_dec_get_next_msg(struct video_client_ctx *client_ctx,
 	return 0;
 }
 
-static int vid_dec_ioctl(struct inode *inode, struct file *file,
+static long vid_dec_ioctl(struct file *file,
 			 unsigned cmd, unsigned long u_arg)
 {
 	struct video_client_ctx *client_ctx = NULL;
 	struct vdec_ioctl_msg vdec_msg;
 	u32 vcd_status;
 	unsigned long kernel_vaddr, phy_addr, len;
-	struct file *pmem_file;
+	unsigned long ker_vaddr;
 	u32 result = true;
 	void __user *arg = (void __user *)u_arg;
+	int rc = 0;
+	size_t ion_len;
 
 	DBG("%s\n", __func__);
 	if (_IOC_TYPE(cmd) != VDEC_IOCTL_MAGIC)
@@ -1439,17 +1951,43 @@ static int vid_dec_ioctl(struct inode *inode, struct file *file,
 	case VDEC_IOCTL_DECODE_FRAME:
 	{
 		struct vdec_input_frameinfo input_frame_info;
+		u8 *desc_buf = NULL;
+		u32 desc_size = 0;
 		DBG("VDEC_IOCTL_DECODE_FRAME\n");
 		if (copy_from_user(&vdec_msg, arg, sizeof(vdec_msg)))
 			return -EFAULT;
 		if (copy_from_user(&input_frame_info, vdec_msg.in,
 				   sizeof(input_frame_info)))
 			return -EFAULT;
+		if (client_ctx->dmx_disable) {
+			if (input_frame_info.desc_addr) {
+				desc_size = input_frame_info.desc_size;
+				desc_buf = kzalloc(desc_size, GFP_KERNEL);
+				if (desc_buf) {
+					if (copy_from_user(desc_buf,
+						input_frame_info.desc_addr,
+							desc_size)) {
+						kfree(desc_buf);
+						desc_buf = NULL;
+						return -EFAULT;
+					}
+				}
+			} else
+				return -EINVAL;
+		}
+		result = vid_dec_decode_frame(client_ctx, &input_frame_info,
+					desc_buf, desc_size);
 
-		result = vid_dec_decode_frame(client_ctx, &input_frame_info);
-
-		if (!result)
+		if (!result) {
+			kfree(desc_buf);
+			desc_buf = NULL;
 			return -EIO;
+		}
+		break;
+	}
+	case VDEC_IOCTL_SET_PERF_CLK:
+	{
+		vid_dec_set_turbo_clk(client_ctx);
 		break;
 	}
 	case VDEC_IOCTL_FILL_OUTPUT_BUFFER:
@@ -1506,6 +2044,7 @@ static int vid_dec_ioctl(struct inode *inode, struct file *file,
 	{
 		struct vdec_seqheader seq_header;
 		struct vcd_sequence_hdr vcd_seq_hdr;
+		unsigned long ionflag;
 		DBG("VDEC_IOCTL_SET_SEQUENCE_HEADER\n");
 		if (copy_from_user(&vdec_msg, arg, sizeof(vdec_msg))) {
 			ERR("Copy from user vdec_msg failed\n");
@@ -1521,13 +2060,52 @@ static int vid_dec_ioctl(struct inode *inode, struct file *file,
 			return -EFAULT;
 		}
 
-		if (get_pmem_file(seq_header.pmem_fd,
-				  &phy_addr, &kernel_vaddr, &len, &pmem_file)) {
-			ERR("%s(): get_pmem_file failed\n", __func__);
-			return false;
+		if (!vcd_get_ion_status()) {
+			pr_err("PMEM Not available\n");
+			return -EINVAL;
+		} else {
+			client_ctx->seq_hdr_ion_handle = ion_import_dma_buf(
+				client_ctx->user_ion_client,
+				seq_header.pmem_fd);
+			if (!client_ctx->seq_hdr_ion_handle) {
+				ERR("%s(): get_ION_handle failed\n", __func__);
+				return false;
+			}
+			rc = ion_handle_get_flags(client_ctx->user_ion_client,
+						client_ctx->seq_hdr_ion_handle,
+						&ionflag);
+			if (rc) {
+				ERR("%s():get_ION_flags fail\n",
+							 __func__);
+				ion_free(client_ctx->user_ion_client,
+					client_ctx->seq_hdr_ion_handle);
+				return false;
+			}
+			ker_vaddr = (unsigned long) ion_map_kernel(
+				client_ctx->user_ion_client,
+				client_ctx->seq_hdr_ion_handle);
+			if (!ker_vaddr) {
+				ERR("%s():get_ION_kernel virtual addr fail\n",
+							 __func__);
+				ion_free(client_ctx->user_ion_client,
+					client_ctx->seq_hdr_ion_handle);
+				return false;
+			}
+			kernel_vaddr = ker_vaddr;
+			rc = ion_phys(client_ctx->user_ion_client,
+					client_ctx->seq_hdr_ion_handle,
+					&phy_addr, &ion_len);
+			if (rc) {
+				ERR("%s():get_ION_kernel physical addr fail\n",
+						 __func__);
+				ion_unmap_kernel(client_ctx->user_ion_client,
+					client_ctx->seq_hdr_ion_handle);
+				ion_free(client_ctx->user_ion_client,
+					client_ctx->seq_hdr_ion_handle);
+				return false;
+			}
+			len = ion_len;
 		}
-		put_pmem_file(pmem_file);
-
 		vcd_seq_hdr.sequence_header_len = seq_header.seq_header_len;
 		kernel_vaddr += (unsigned long)seq_header.pmem_offset;
 		vcd_seq_hdr.sequence_header = (u8 *)kernel_vaddr;
@@ -1547,6 +2125,14 @@ static int vid_dec_ioctl(struct inode *inode, struct file *file,
 		if (client_ctx->event_status) {
 			ERR("Set Seq Header status is failed");
 			return -EFAULT;
+		}
+		if (vcd_get_ion_status()) {
+			if (client_ctx->seq_hdr_ion_handle) {
+				ion_unmap_kernel(client_ctx->user_ion_client,
+						client_ctx->seq_hdr_ion_handle);
+				ion_free(client_ctx->user_ion_client,
+					client_ctx->seq_hdr_ion_handle);
+			}
 		}
 		break;
 	}
@@ -1577,6 +2163,48 @@ static int vid_dec_ioctl(struct inode *inode, struct file *file,
 				return -EFAULT;
 		} else
 			return -EIO;
+		break;
+	}
+
+	case VDEC_IOCTL_GET_DISABLE_DMX_SUPPORT:
+	{
+		u32 disable_dmx;
+		DBG("VDEC_IOCTL_GET_DISABLE_DMX_SUPPORT\n");
+		if (copy_from_user(&vdec_msg, arg, sizeof(vdec_msg)))
+			return -EFAULT;
+		result = vid_dec_get_disable_dmx_support(client_ctx,
+					&disable_dmx);
+		if (result) {
+			if (copy_to_user(vdec_msg.out, &disable_dmx,
+					sizeof(u32)))
+				return -EFAULT;
+		} else
+			return -EIO;
+		break;
+	}
+	case VDEC_IOCTL_GET_DISABLE_DMX:
+	{
+		u32 disable_dmx;
+		DBG("VDEC_IOCTL_GET_DISABLE_DMX\n");
+		if (copy_from_user(&vdec_msg, arg, sizeof(vdec_msg)))
+			return -EFAULT;
+		result = vid_dec_get_disable_dmx(client_ctx,
+					&disable_dmx);
+		if (result) {
+			if (copy_to_user(vdec_msg.out, &disable_dmx,
+					sizeof(u32)))
+				return -EFAULT;
+		} else
+			return -EIO;
+		break;
+	}
+	case VDEC_IOCTL_SET_DISABLE_DMX:
+	{
+		DBG("VDEC_IOCTL_SET_DISABLE_DMX\n");
+		result =  vid_dec_set_disable_dmx(client_ctx);
+		if (!result)
+			return -EIO;
+		client_ctx->dmx_disable = 1;
 		break;
 	}
 	case VDEC_IOCTL_SET_PICTURE_ORDER:
@@ -1617,6 +2245,29 @@ static int vid_dec_ioctl(struct inode *inode, struct file *file,
 						   sizeof(u32)))
 			return -EFAULT;
 		result = vid_dec_set_extradata(client_ctx, &extradata_flag);
+		if (!result)
+			return -EIO;
+		break;
+	}
+	case VDEC_IOCTL_SET_META_BUFFERS:
+	{
+		struct vdec_meta_buffers meta_buffers;
+		DBG("VDEC_IOCTL_SET_META_BUFFERS\n");
+		if (copy_from_user(&vdec_msg, arg, sizeof(vdec_msg)))
+			return -EFAULT;
+		if (copy_from_user(&meta_buffers, vdec_msg.in,
+						   sizeof(meta_buffers)))
+			return -EFAULT;
+		result = vid_dec_set_meta_buffers(client_ctx, &meta_buffers);
+
+		if (!result)
+			return -EIO;
+		break;
+	}
+	case VDEC_IOCTL_FREE_META_BUFFERS:
+	{
+		DBG("VDEC_IOCTL_FREE_META_BUFFERS\n");
+		result = vid_dec_free_meta_buffers(client_ctx);
 		if (!result)
 			return -EIO;
 		break;
@@ -1722,73 +2373,146 @@ static u32 vid_dec_close_client(struct video_client_ctx *client_ctx)
 	mutex_unlock(&client_ctx->msg_queue_lock);
 	vcd_status = vcd_close(client_ctx->vcd_handle);
 
-	if (vcd_status) {
-		mutex_unlock(&vid_dec_device_p->lock);
-		return false;
-	}
+	client_ctx->user_ion_client = NULL;
 	memset((void *)client_ctx, 0, sizeof(struct video_client_ctx));
 	vid_dec_device_p->num_clients--;
 	mutex_unlock(&vid_dec_device_p->lock);
 	return true;
 }
 
-static int vid_dec_open(struct inode *inode, struct file *file)
+int vid_dec_open_client(struct video_client_ctx **vid_clnt_ctx, int flags)
 {
+	int rc = 0;
 	s32 client_index;
-	struct video_client_ctx *client_ctx;
-	u32 vcd_status = VCD_ERR_FAIL;
-	u8 client_count = 0;
+	struct video_client_ctx *client_ctx = NULL;
+	u8 client_count;
 
-	DBG("msm_vidc_dec: Inside %s()", __func__);
-	mutex_lock(&vid_dec_device_p->lock);
-
+	if (!vid_clnt_ctx) {
+		ERR("Invalid input\n");
+		return -EINVAL;
+	}
+	*vid_clnt_ctx = NULL;
 	client_count = vcd_get_num_of_clients();
 	if (client_count == VIDC_MAX_NUM_CLIENTS) {
 		ERR("ERROR : vid_dec_open() max number of clients"
-		    "limit reached\n");
-		mutex_unlock(&vid_dec_device_p->lock);
-		return -ENODEV;
+			"limit reached\n");
+		rc = -ENOMEM;
+		goto client_failure;
 	}
 
 	DBG(" Virtual Address of ioremap is %p\n", vid_dec_device_p->virt_base);
 	if (!vid_dec_device_p->num_clients) {
-		if (!vidc_load_firmware())
-			return -ENODEV;
+		if (!vidc_load_firmware()) {
+			rc = -ENOMEM;
+			goto client_failure;
+		}
 	}
 
 	client_index = vid_dec_get_empty_client_index();
 	if (client_index < 0) {
 		ERR("%s() : No free clients client_index == -1\n", __func__);
-		return -ENODEV;
+		rc = -ENOMEM;
+		goto client_failure;
 	}
 	client_ctx = &vid_dec_device_p->vdec_clients[client_index];
 	vid_dec_device_p->num_clients++;
 	init_completion(&client_ctx->event);
 	mutex_init(&client_ctx->msg_queue_lock);
+	mutex_init(&client_ctx->enrty_queue_lock);
 	INIT_LIST_HEAD(&client_ctx->msg_queue);
 	init_waitqueue_head(&client_ctx->msg_wait);
 	client_ctx->stop_msg = 0;
 	client_ctx->stop_called = false;
 	client_ctx->stop_sync_cb = false;
-	vcd_status = vcd_open(vid_dec_device_p->device_handle, true,
-			      vid_dec_vcd_cb, client_ctx);
-	if (!vcd_status) {
+	client_ctx->dmx_disable = 0;
+	if (vcd_get_ion_status()) {
+		client_ctx->user_ion_client = vcd_get_ion_client();
+		if (!client_ctx->user_ion_client) {
+			ERR("vcd_open ion client get failed");
+			rc = -ENOMEM;
+			goto client_failure;
+		}
+	}
+	rc = vcd_open(vid_dec_device_p->device_handle, true,
+				  vid_dec_vcd_cb, client_ctx, flags);
+	if (!rc) {
 		wait_for_completion(&client_ctx->event);
 		if (client_ctx->event_status) {
 			ERR("callback for vcd_open returned error: %u",
 				client_ctx->event_status);
-			mutex_unlock(&vid_dec_device_p->lock);
-			return -EFAULT;
+			rc = -ENODEV;
+			goto client_failure;
 		}
 	} else {
-		ERR("vcd_open returned error: %u", vcd_status);
-		mutex_unlock(&vid_dec_device_p->lock);
-		return -EFAULT;
+		ERR("vcd_open returned error: %u", rc);
+		goto client_failure;
+	}
+	client_ctx->seq_header_set = false;
+	*vid_clnt_ctx = client_ctx;
+client_failure:
+	return rc;
+}
+
+static int vid_dec_open_secure(struct inode *inode, struct file *file)
+{
+	int rc = 0;
+	struct video_client_ctx *client_ctx;
+	mutex_lock(&vid_dec_device_p->lock);
+	rc = vid_dec_open_client(&client_ctx, VCD_CP_SESSION);
+	if (rc)
+		goto error;
+	if (!client_ctx) {
+		rc = -ENOMEM;
+		goto error;
 	}
 
-	client_ctx->seq_header_set = false;
+	file->private_data = client_ctx;
+	if (res_trk_open_secure_session()) {
+		ERR("Secure session operation failure\n");
+		rc = -EACCES;
+		goto error;
+	}
+	mutex_unlock(&vid_dec_device_p->lock);
+	return 0;
+error:
+	mutex_unlock(&vid_dec_device_p->lock);
+	return rc;
+}
+
+static int vid_dec_open(struct inode *inode, struct file *file)
+{
+	int rc = 0;
+	struct video_client_ctx *client_ctx;
+	INFO("msm_vidc_dec: Inside %s()", __func__);
+	mutex_lock(&vid_dec_device_p->lock);
+	rc = vid_dec_open_client(&client_ctx, 0);
+	if (rc) {
+		mutex_unlock(&vid_dec_device_p->lock);
+		return rc;
+	}
+	if (!client_ctx) {
+		mutex_unlock(&vid_dec_device_p->lock);
+		return -ENOMEM;
+	}
+
 	file->private_data = client_ctx;
 	mutex_unlock(&vid_dec_device_p->lock);
+	return rc;
+}
+
+static int vid_dec_release_secure(struct inode *inode, struct file *file)
+{
+	struct video_client_ctx *client_ctx = file->private_data;
+
+	INFO("msm_vidc_dec: Inside %s()", __func__);
+	vidc_cleanup_addr_table(client_ctx, BUFFER_TYPE_OUTPUT);
+	vidc_cleanup_addr_table(client_ctx, BUFFER_TYPE_INPUT);
+	vid_dec_close_client(client_ctx);
+	vidc_release_firmware();
+#ifndef USE_RES_TRACKER
+	vidc_disable_clk();
+#endif
+	INFO("msm_vidc_dec: Return from %s()", __func__);
 	return 0;
 }
 
@@ -1796,21 +2520,32 @@ static int vid_dec_release(struct inode *inode, struct file *file)
 {
 	struct video_client_ctx *client_ctx = file->private_data;
 
-	DBG("msm_vidc_dec: Inside %s()", __func__);
+	INFO("msm_vidc_dec: Inside %s()", __func__);
+	vidc_cleanup_addr_table(client_ctx, BUFFER_TYPE_OUTPUT);
+	vidc_cleanup_addr_table(client_ctx, BUFFER_TYPE_INPUT);
 	vid_dec_close_client(client_ctx);
 	vidc_release_firmware();
 #ifndef USE_RES_TRACKER
 	vidc_disable_clk();
 #endif
-	DBG("msm_vidc_dec: Return from %s()", __func__);
+	INFO("msm_vidc_dec: Return from %s()", __func__);
 	return 0;
 }
 
-static const struct file_operations vid_dec_fops = {
-	.owner = THIS_MODULE,
-	.open = vid_dec_open,
-	.release = vid_dec_release,
-	.ioctl = vid_dec_ioctl,
+static const struct file_operations vid_dec_fops[2] = {
+	{
+		.owner = THIS_MODULE,
+		.open = vid_dec_open,
+		.release = vid_dec_release,
+		.unlocked_ioctl = vid_dec_ioctl,
+	},
+	{
+		.owner = THIS_MODULE,
+		.open = vid_dec_open_secure,
+		.release = vid_dec_release_secure,
+		.unlocked_ioctl = vid_dec_ioctl,
+	},
+
 };
 
 void vid_dec_interrupt_deregister(void)
@@ -1876,7 +2611,7 @@ static int vid_dec_vcd_init(void)
 
 static int __init vid_dec_init(void)
 {
-	int rc = 0;
+	int rc = 0, i = 0, j = 0;
 	struct device *class_devp;
 
 	DBG("msm_vidc_dec: Inside %s()", __func__);
@@ -1887,7 +2622,8 @@ static int __init vid_dec_init(void)
 		return -ENOMEM;
 	}
 
-	rc = alloc_chrdev_region(&vid_dec_dev_num, 0, 1, VID_DEC_NAME);
+	rc = alloc_chrdev_region(&vid_dec_dev_num, 0, NUM_OF_DRIVER_NODES,
+		VID_DEC_NAME);
 	if (rc < 0) {
 		ERR("%s: alloc_chrdev_region Failed rc = %d\n",
 		       __func__, rc);
@@ -1902,49 +2638,59 @@ static int __init vid_dec_init(void)
 
 		goto error_vid_dec_class_create;
 	}
+	for (i = 0; i < NUM_OF_DRIVER_NODES; i++) {
+		class_devp = device_create(vid_dec_class, NULL,
+						(vid_dec_dev_num + i),
+						NULL, VID_DEC_NAME "%s",
+						node_name[i]);
 
-	class_devp = device_create(vid_dec_class, NULL, vid_dec_dev_num, NULL,
-				   VID_DEC_NAME);
+		if (IS_ERR(class_devp)) {
+			rc = PTR_ERR(class_devp);
+			ERR("%s: class device_create failed %d\n",
+				   __func__, rc);
+			if (!i)
+				goto error_vid_dec_class_device_create;
+			else
+				goto error_vid_dec_cdev_add;
+		}
 
-	if (IS_ERR(class_devp)) {
-		rc = PTR_ERR(class_devp);
-		ERR("%s: class device_create failed %d\n",
-		       __func__, rc);
-		goto error_vid_dec_class_device_create;
-	}
+	  vid_dec_device_p->device[i] = class_devp;
 
-  vid_dec_device_p->device = class_devp;
+		cdev_init(&vid_dec_device_p->cdev[i], &vid_dec_fops[i]);
+		vid_dec_device_p->cdev[i].owner = THIS_MODULE;
+		rc = cdev_add(&(vid_dec_device_p->cdev[i]),
+				(vid_dec_dev_num+i), 1);
 
-	cdev_init(&vid_dec_device_p->cdev, &vid_dec_fops);
-	vid_dec_device_p->cdev.owner = THIS_MODULE;
-	rc = cdev_add(&(vid_dec_device_p->cdev), vid_dec_dev_num, 1);
-
-	if (rc < 0) {
-		ERR("%s: cdev_add failed %d\n", __func__, rc);
-		goto error_vid_dec_cdev_add;
+		if (rc < 0) {
+			ERR("%s: cdev_add failed %d\n", __func__, rc);
+			goto error_vid_dec_cdev_add;
+		}
 	}
 	vid_dec_vcd_init();
 	return 0;
 
 error_vid_dec_cdev_add:
+	for (j = i-1; j >= 0; j--)
+		cdev_del(&(vid_dec_device_p->cdev[j]));
 	device_destroy(vid_dec_class, vid_dec_dev_num);
 error_vid_dec_class_device_create:
 	class_destroy(vid_dec_class);
 error_vid_dec_class_create:
-	unregister_chrdev_region(vid_dec_dev_num, 1);
+	unregister_chrdev_region(vid_dec_dev_num, NUM_OF_DRIVER_NODES);
 error_vid_dec_alloc_chrdev_region:
 	kfree(vid_dec_device_p);
-
 	return rc;
 }
 
 static void __exit vid_dec_exit(void)
 {
-	DBG("msm_vidc_dec: Inside %s()", __func__);
-	cdev_del(&(vid_dec_device_p->cdev));
+	int i = 0;
+	INFO("msm_vidc_dec: Inside %s()", __func__);
+	for (i = 0; i < NUM_OF_DRIVER_NODES; i++)
+		cdev_del(&(vid_dec_device_p->cdev[i]));
 	device_destroy(vid_dec_class, vid_dec_dev_num);
 	class_destroy(vid_dec_class);
-	unregister_chrdev_region(vid_dec_dev_num, 1);
+	unregister_chrdev_region(vid_dec_dev_num, NUM_OF_DRIVER_NODES);
 	kfree(vid_dec_device_p);
 	DBG("msm_vidc_dec: Return from %s()", __func__);
 }

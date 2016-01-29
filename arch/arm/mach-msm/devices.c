@@ -40,6 +40,7 @@
 #include <mach/msm_rpcrouter.h>
 #include <mach/msm_hsusb_hw.h>
 #include <linux/msm_rotator.h>
+#include <linux/msm_ion.h>
 #ifdef CONFIG_USB_FUNCTION
 #include <linux/usb/mass_storage_function.h>
 #endif
@@ -1266,11 +1267,21 @@ static struct resource msm_vidc_720p_resources[] = {
 	},
 };
 
+struct msm_vidc_platform_data msm_vidc_platform_data = {
+	.memtype = ION_CAMERA_HEAP_ID,
+	.enable_ion = 1,
+	.disable_dmx = 0,
+	.cont_mode_dpb_count = 8
+};
+
 struct platform_device msm_device_vidc_720p = {
 	.name = "msm_vidc",
 	.id = 0,
 	.num_resources = ARRAY_SIZE(msm_vidc_720p_resources),
 	.resource = msm_vidc_720p_resources,
+	.dev = {
+		.platform_data = &msm_vidc_platform_data,
+	},
 };
 #endif
 

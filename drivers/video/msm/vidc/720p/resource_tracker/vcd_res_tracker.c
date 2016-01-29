@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -9,25 +9,19 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA.
- *
  */
 #include <linux/firmware.h>
-#include <linux/pm_qos.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <mach/internal_power_rail.h>
 #include <mach/clk.h>
-#include <mach/msm_reqs.h>
 #include <linux/interrupt.h>
-#include "vidc_type.h"
+#include <media/msm/vidc_init.h>
+#include <media/msm/vidc_type.h>
 #include "vcd_res_tracker.h"
-#include "vidc_init.h"
 
 #define MSM_AXI_QOS_NAME "msm_vidc_reg"
+#define AXI_CLK_SCALING
 
 #define QVGA_PERF_LEVEL (300 * 30)
 #define VGA_PERF_LEVEL (1200 * 30)
@@ -37,23 +31,12 @@ static unsigned int mfc_clk_freq_table[3] = {
 	61440000, 122880000, 170667000
 };
 
-#ifndef CONFIG_MSM_NPA_SYSTEM_BUS
 static unsigned int axi_clk_freq_table_enc[2] = {
 	122880, 192000
 };
 static unsigned int axi_clk_freq_table_dec[2] = {
 	122880, 192000
 };
-#else
-static unsigned int axi_clk_freq_table_enc[2] = {
-	MSM_AXI_FLOW_VIDEO_RECORDING_720P,
-	MSM_AXI_FLOW_VIDEO_RECORDING_720P
-};
-static unsigned int axi_clk_freq_table_dec[2] = {
-	MSM_AXI_FLOW_VIDEO_PLAYBACK_720P,
-	MSM_AXI_FLOW_VIDEO_PLAYBACK_720P
-};
-#endif
 
 static struct res_trk_context resource_context;
 
@@ -109,17 +92,17 @@ static u32 res_trk_disable_videocore(void)
 			goto bail_out;
 		}
 
-		if (clk_enable(resource_context.pclk)) {
+		if (clk_prepare_enable(resource_context.pclk)) {
 			VCDRES_MSG_ERROR("vidc pclk Enable failed\n");
 			goto bail_out;
 		}
 
-		if (clk_enable(resource_context.hclk)) {
+		if (clk_prepare_enable(resource_context.hclk)) {
 			VCDRES_MSG_ERROR("vidc hclk Enable failed\n");
 			goto disable_pclk;
 		}
 
-		if (clk_enable(resource_context.hclk_div2)) {
+		if (clk_prepare_enable(resource_context.hclk_div2)) {
 			VCDRES_MSG_ERROR("vidc hclk_div2 Enable failed\n");
 			goto disable_hclk;
 		}
@@ -144,9 +127,9 @@ static u32 res_trk_disable_videocore(void)
 		return false;
 	}
 
-	clk_disable(resource_context.pclk);
-	clk_disable(resource_context.hclk);
-	clk_disable(resource_context.hclk_div2);
+	clk_disable_unprepare(resource_context.pclk);
+	clk_disable_unprepare(resource_context.hclk);
+	clk_disable_unprepare(resource_context.hclk_div2);
 
 	clk_put(resource_context.hclk_div2);
 	clk_put(resource_context.hclk);
@@ -161,9 +144,9 @@ static u32 res_trk_disable_videocore(void)
 	return true;
 
 disable_hclk:
-	clk_disable(resource_context.hclk);
+	clk_disable_unprepare(resource_context.hclk);
 disable_pclk:
-	clk_disable(resource_context.pclk);
+	clk_disable_unprepare(resource_context.pclk);
 bail_out:
 	if (resource_context.pclk) {
 		clk_put(resource_context.pclk);
@@ -192,7 +175,7 @@ u32 res_trk_enable_clocks(void)
 
 		VCDRES_MSG_LOW("%s(): Enabling the clocks ...\n", __func__);
 
-		if (clk_enable(resource_context.pclk)) {
+		if (clk_prepare_enable(resource_context.pclk)) {
 			VCDRES_MSG_ERROR("vidc pclk Enable failed\n");
 
 			clk_put(resource_context.hclk);
@@ -201,7 +184,7 @@ u32 res_trk_enable_clocks(void)
 			return false;
 		}
 
-		if (clk_enable(resource_context.hclk)) {
+		if (clk_prepare_enable(resource_context.hclk)) {
 			VCDRES_MSG_ERROR("vidc  hclk Enable failed\n");
 			clk_put(resource_context.pclk);
 			clk_put(resource_context.hclk_div2);
@@ -209,7 +192,7 @@ u32 res_trk_enable_clocks(void)
 			return false;
 		}
 
-		if (clk_enable(resource_context.hclk_div2)) {
+		if (clk_prepare_enable(resource_context.hclk_div2)) {
 			VCDRES_MSG_ERROR("vidc  hclk Enable failed\n");
 			clk_put(resource_context.hclk);
 			clk_put(resource_context.pclk);
@@ -270,9 +253,9 @@ u32 res_trk_disable_clocks(void)
 	VCDRES_MSG_LOW("%s(): Disabling the clocks ...\n", __func__);
 
 	resource_context.clock_enabled = 0;
-	clk_disable(resource_context.hclk);
-	clk_disable(resource_context.hclk_div2);
-	clk_disable(resource_context.pclk);
+	clk_disable_unprepare(resource_context.hclk);
+	clk_disable_unprepare(resource_context.hclk_div2);
+	clk_disable_unprepare(resource_context.pclk);
 	mutex_unlock(&resource_context.lock);
 
 	return true;
@@ -329,17 +312,17 @@ static u32 res_trk_enable_videocore(void)
 			goto release_all_clks;
 		}
 
-		if (clk_enable(resource_context.pclk)) {
+		if (clk_prepare_enable(resource_context.pclk)) {
 			VCDRES_MSG_ERROR("vidc pclk Enable failed\n");
 			goto release_all_clks;
 		}
 
-		if (clk_enable(resource_context.hclk)) {
+		if (clk_prepare_enable(resource_context.hclk)) {
 			VCDRES_MSG_ERROR("vidc hclk Enable failed\n");
 			goto disable_pclk;
 		}
 
-		if (clk_enable(resource_context.hclk_div2)) {
+		if (clk_prepare_enable(resource_context.hclk_div2)) {
 			VCDRES_MSG_ERROR("vidc hclk_div2 Enable failed\n");
 			goto disable_hclk_pclk;
 		}
@@ -361,9 +344,9 @@ static u32 res_trk_enable_videocore(void)
 		}
 		msleep(20);
 
-		clk_disable(resource_context.pclk);
-		clk_disable(resource_context.hclk);
-		clk_disable(resource_context.hclk_div2);
+		clk_disable_unprepare(resource_context.pclk);
+		clk_disable_unprepare(resource_context.hclk);
+		clk_disable_unprepare(resource_context.hclk_div2);
 
 	}
 	resource_context.rail_enabled = 1;
@@ -371,11 +354,11 @@ static u32 res_trk_enable_videocore(void)
 	return true;
 
 disable_and_release_all_clks:
-	clk_disable(resource_context.hclk_div2);
+	clk_disable_unprepare(resource_context.hclk_div2);
 disable_hclk_pclk:
-	clk_disable(resource_context.hclk);
+	clk_disable_unprepare(resource_context.hclk);
 disable_pclk:
-	clk_disable(resource_context.pclk);
+	clk_disable_unprepare(resource_context.pclk);
 release_all_clks:
 	clk_put(resource_context.hclk_div2);
 	resource_context.hclk_div2 = NULL;
@@ -423,9 +406,7 @@ static u32 res_trk_convert_perf_lvl_to_freq(u64 perf_lvl)
 	return (u32)freq;
 }
 
-#ifdef AXI_CLK_SCALING
-static struct pm_qos_request_list *qos_req_list;
-#endif
+static struct clk *ebi1_clk;
 
 u32 res_trk_power_up(void)
 {
@@ -435,12 +416,12 @@ u32 res_trk_power_up(void)
 {
 	VCDRES_MSG_MED("\n res_trk_power_up():: "
 		"Calling AXI add requirement\n");
-	qos_req_list = pm_qos_add_request(PM_QOS_SYSTEM_BUS_FREQ,
-		PM_QOS_DEFAULT_VALUE);
-	if (IS_ERR_OR_NULL(qos_req_list)) {
+	ebi1_clk = clk_get(resource_context.device, "ebi1_clk");
+	if (IS_ERR(ebi1_clk)) {
 		VCDRES_MSG_ERROR("Request AXI bus QOS fails.");
 		return false;
 	}
+	clk_prepare_enable(ebi1_clk);
 }
 #endif
 
@@ -455,7 +436,8 @@ u32 res_trk_power_down(void)
 #ifdef AXI_CLK_SCALING
 	VCDRES_MSG_MED("\n res_trk_power_down()::"
 		"Calling AXI remove requirement\n");
-	pm_qos_remove_request(qos_req_list);
+	clk_disable_unprepare(ebi1_clk);
+	clk_put(ebi1_clk);
 #endif
 	VCDRES_MSG_MED("\n res_trk_power_down():: Calling "
 		"res_trk_disable_videocore()\n");
@@ -548,8 +530,7 @@ u32 res_trk_set_perf_level(u32 req_perf_lvl, u32 *pn_set_perf_lvl,
     if (req_perf_lvl != VCD_RESTRK_MIN_PERF_LEVEL) {
 		VCDRES_MSG_MED("\n %s(): Setting AXI freq to %u",
 			__func__, axi_freq);
-		pm_qos_update_request(qos_req_list,
-			axi_freq);	
+		clk_set_rate(ebi1_clk, axi_freq * 1000);
 	}
 #endif
 
@@ -705,8 +686,20 @@ boot_fw_free:
 	return false;
 }
 
+static struct ion_client *res_trk_create_ion_client(void){
+	struct ion_client *video_client;
+	VCDRES_MSG_LOW("%s", __func__);
+	video_client = msm_ion_client_create(-1, "video_client");
+	if (IS_ERR_OR_NULL(video_client)) {
+		VCDRES_MSG_ERROR("%s: Unable to create ION client\n", __func__);
+		video_client = NULL;
+	}
+	return video_client;
+}
+
 void res_trk_init(struct device *device, u32 irq)
 {
+	VCDRES_MSG_LOW("%s", __func__);
 	if (resource_context.device || resource_context.irq_num ||
 		!device) {
 		VCDRES_MSG_ERROR("%s() Resource Tracker Init error\n",
@@ -718,8 +711,109 @@ void res_trk_init(struct device *device, u32 irq)
 	resource_context.device = device;
 	resource_context.irq_num = irq;
 	resource_context.core_type = VCD_CORE_720P;
+	resource_context.vidc_platform_data =
+		(struct msm_vidc_platform_data *) device->platform_data;
+	if (resource_context.vidc_platform_data) {
+		resource_context.memtype =
+			resource_context.vidc_platform_data->memtype;
+		VCDRES_MSG_LOW("%s(): resource_context.memtype = 0x%x",
+			__func__, (u32)resource_context.memtype);
+		if (resource_context.vidc_platform_data->enable_ion) {
+			resource_context.res_ion_client =
+				res_trk_create_ion_client();
+			if (!(resource_context.res_ion_client)) {
+				VCDRES_MSG_ERROR("%s()ION createfail\n",
+						__func__);
+				return;
+			}
+			VCDRES_MSG_LOW("%s(): ion_client = 0x%x", __func__,
+				(u32)resource_context.res_ion_client);
+		} else {
+			VCDRES_MSG_ERROR("%s(): ION not disabled\n",
+					__func__);
+		}
+	} else {
+		resource_context.memtype = -1;
+		VCDRES_MSG_ERROR("%s(): vidc_platform_data is NULL",
+			__func__);
+	}
 }
 
 u32 res_trk_get_core_type(void){
 	return resource_context.core_type;
 }
+
+u32 res_trk_get_enable_ion(void)
+{
+	if (resource_context.vidc_platform_data->enable_ion)
+		return 1;
+	else
+		return 0;
+}
+
+struct ion_client *res_trk_get_ion_client(void)
+{
+	return resource_context.res_ion_client;
+}
+
+u32 res_trk_get_mem_type(void)
+{
+	u32 mem_type = ION_HEAP(resource_context.memtype);
+	return mem_type;
+}
+
+void res_trk_set_mem_type(enum ddl_mem_area mem_type)
+{
+	return;
+}
+
+u32 res_trk_get_disable_fullhd(void)
+{
+	return 0;
+}
+
+u32 res_trk_get_ion_flags(void)
+{
+	return 0;
+}
+
+int res_trk_check_for_sec_session()
+{
+	return 0;
+}
+
+void res_trk_secure_unset(void)
+{
+	return;
+}
+
+void res_trk_secure_set(void)
+{
+	return;
+}
+
+int res_trk_open_secure_session()
+{
+	return -EINVAL;
+}
+
+int res_trk_close_secure_session()
+{
+	return 0;
+}
+u32 get_res_trk_perf_level(enum vcd_perf_level perf_level)
+{
+	return -ENOTSUPP;
+}
+u32 res_trk_is_cp_enabled(void)
+{
+	if (resource_context.vidc_platform_data->cp_enabled)
+		return 1;
+	else
+		return 0;
+}
+u32 res_trk_estimate_perf_level(u32 pn_perf_lvl)
+{
+	return 0;
+}
+
