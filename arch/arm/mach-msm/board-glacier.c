@@ -1723,13 +1723,22 @@ static struct msm_camera_device_platform_data msm_camera_device_data = {
 
 };
 
-static struct msm_camera_device_platform_data glacier_s5k4e1gx_platform_data = {
-	.camera_gpio_on = config_glacier_camera_on_gpios,
-	.camera_gpio_off = config_glacier_camera_off_gpios,
-	.csid_core = 0,
-	.ioclk = {
-		.vfe_clk_rate = 122880000,
-	},
+static void glacier_mt9v113_clk_switch(void){
+	int rc = 0;
+	pr_info("doing clk switch (glacier)(mt9v113)\n");
+	rc = gpio_request(GLACIER_CLK_SWITCH, "mt9v113");
+	if (rc < 0)
+		pr_err("GPIO (%d) request fail\n", GLACIER_CLK_SWITCH);
+	else
+		gpio_direction_output(GLACIER_CLK_SWITCH, 1);
+	gpio_free(GLACIER_CLK_SWITCH);
+
+	return;
+}
+
+#ifdef CONFIG_MSMB_CAMERA
+static struct msm_camera_sensor_platform_info s5k4e1gx_sensor_platform_info = {
+	.mount_angle = 90
 };
 
 static void glacier_s5k4e1gx_clk_switch(void){
@@ -1745,33 +1754,13 @@ static void glacier_s5k4e1gx_clk_switch(void){
 	return;
 }
 
-static void glacier_mt9v113_clk_switch(void){
-	int rc = 0;
-	pr_info("doing clk switch (glacier)(mt9v113)\n");
-	rc = gpio_request(GLACIER_CLK_SWITCH, "mt9v113");
-	if (rc < 0)
-		pr_err("GPIO (%d) request fail\n", GLACIER_CLK_SWITCH);
-	else
-		gpio_direction_output(GLACIER_CLK_SWITCH, 1);
-	gpio_free(GLACIER_CLK_SWITCH);
-
-	return;
-}
-
-static int flashlight_control(int mode)
-{
-	return aat1271_flashlight_control(mode);
-}
-
-static struct msm_camera_sensor_platform_info s5k4e1gx_sensor_platform_info = {
-	.mount_angle = 90
-};
-
-static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
-	.camera_flash		= flashlight_control,
-	.num_flash_levels	= FLASHLIGHT_NUM,
-	.low_temp_limit		= 5,
-	.low_cap_limit		= 15,
+static struct msm_camera_device_platform_data glacier_s5k4e1gx_platform_data = {
+	.camera_gpio_on = config_glacier_camera_on_gpios,
+	.camera_gpio_off = config_glacier_camera_off_gpios,
+	.csid_core = 0,
+	.ioclk = {
+		.vfe_clk_rate = 122880000,
+	},
 };
 
 static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_info = {
@@ -1787,7 +1776,6 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_info = {
 	.camera_power_on = glacier_sensor_vreg_on,
 	.camera_power_off = glacier_sensor_vreg_off,
 	.pdata          = &glacier_s5k4e1gx_platform_data,
-	.flash_cfg	= &msm_camera_sensor_flash_cfg,
 	.sensor_lc_disable = true, /* disable sensor lens correction */
 	.cam_select_pin = GLACIER_CLK_SWITCH,
 	.sensor_platform_info = &s5k4e1gx_sensor_platform_info,
@@ -1809,6 +1797,7 @@ static struct msm_camera_sensor_board_info msm_camera_sensor_s5k4e1gx_data = {
 	.slave_info = &msm_camera_sensor_s5k4e1gx_slave_info,
 	.sensor_info = &msm_camera_sensor_s5k4e1gx_sensor_info,
 };
+
 
 static struct platform_device msm_camera_sensor_s5k4e1gx = {
 	.name      = "msm_camera_s5k4e1gx",
@@ -1838,17 +1827,13 @@ static struct resource glacier_vfe_resources[] = {
 	},
 };
 
-static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data;
-
 static struct platform_device msm_device_vfe = {
 	.name		= "msm_vfe31",
 	.id		= 0,
 	.resource	= glacier_vfe_resources,
 	.num_resources	= ARRAY_SIZE(glacier_vfe_resources),
-	.dev = {
-		.platform_data = &msm_camera_sensor_mt9v113_data,
-	},
 };
+#endif
 
 #ifdef CONFIG_MSM_GEMINI
 static struct resource msm_gemini_resources[] = {
@@ -1897,6 +1882,7 @@ static struct platform_device msm_camera_sensor_mt9v113 = {
 	},
 };
 
+#ifdef CONFIG_MSMB_CAMERA
 void __init glacier_init_cam(void)
 {
 	platform_device_register(&msm_device_cam);
@@ -1904,6 +1890,7 @@ void __init glacier_init_cam(void)
 	platform_device_register(&msm_device_csic0);
 	//platform_device_register(&msm_device_vpe);
 }
+#endif
 
 static struct platform_device glacier_rfkill = {
 	.name = "glacier_rfkill",
@@ -2142,14 +2129,18 @@ static struct platform_device *devices[] __initdata = {
 	&msm_kgsl_2d0,
 #endif
 #endif
+#ifdef CONFIG_MSM_VIDC_720P
 	&msm_device_vidc_720p,
+#endif
 #ifdef CONFIG_MSM_GEMINI
 	&msm_gemini_device,
 #endif
 #ifdef CONFIG_MSM7KV2_1X_AUDIO
 	&msm_aux_pcm_device,
 #endif
+#ifdef CONFIG_MSMB_CAMERA
 	&msm_camera_sensor_s5k4e1gx,
+#endif
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
 #endif

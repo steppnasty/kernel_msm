@@ -203,14 +203,6 @@ struct msm_camera_sensor_flash_data {
 	struct msm_camera_sensor_flash_src *flash_src;
 };
 
-struct camera_flash_cfg {
-	int num_flash_levels;
-	int (*camera_flash)(int level);
-	uint16_t low_temp_limit;
-	uint16_t low_cap_limit;
-	uint8_t postpone_led_mode;
-};
-
 struct msm_camera_sensor_strobe_flash_data {
 	int flash_charge; /* pin for charge */
 	uint32_t flash_recharge_duration;
@@ -341,7 +333,6 @@ struct msm_camera_sensor_info {
 	wait_queue_head_t event_wait;
 	uint32_t kpi_sensor_start;
 	uint32_t kpi_sensor_end;
-	struct camera_flash_cfg* flash_cfg;
 	struct msm_camera_sensor_flash_data *flash_data;
 	int csi_if;
 	struct msm_camera_csi_params csi_params;
