@@ -61,71 +61,6 @@ void __init msm_add_devices(void)
 }
 #endif
 
-static struct android_pmem_platform_data pmem_pdata = {
-	.name = "pmem",
-	.allocator_type = PMEM_ALLOCATORTYPE_ALLORNOTHING,
-	.cached = 1,
-};
-
-static struct android_pmem_platform_data pmem_adsp_pdata = {
-	.name = "pmem_adsp",
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-#if defined(CONFIG_ARCH_MSM7227)
-	.cached = 1,
-#else
-	.cached = 0,
-#endif
-};
-
-static struct android_pmem_platform_data pmem_audio_pdata = {
-	.name = "pmem_audio",
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-	.cached = 0,
-};
-
-static struct android_pmem_platform_data pmem_camera_pdata = {
-	.name = "pmem_camera",
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-	.cached = 0,
-};
-
-static struct platform_device pmem_device = {
-	.name = "android_pmem",
-	.id = 0,
-	.dev = { .platform_data = &pmem_pdata },
-};
-
-static struct platform_device pmem_adsp_device = {
-	.name = "android_pmem",
-	.id = 1,
-	.dev = { .platform_data = &pmem_adsp_pdata },
-};
-
-static struct platform_device pmem_audio_device = {
-	.name = "android_pmem",
-	.id = 5,
-	.dev = { .platform_data = &pmem_audio_pdata },
-};
-
-static struct platform_device pmem_camera_device = {
-	.name = "android_pmem",
-	.id = 4,
-	.dev = { .platform_data = &pmem_camera_pdata },
-};
-
-static struct resource ram_console_resource[] = {
-	{
-		.flags	= IORESOURCE_MEM,
-	}
-};
-
-static struct platform_device ram_console_device = {
-	.name = "ram_console",
-	.id = -1,
-	.num_resources  = ARRAY_SIZE(ram_console_resource),
-	.resource       = ram_console_resource,
-};
-
 #ifdef CONFIG_MSMB_CAMERA
 static struct resource msm_csic_resources[] = {
 	{
@@ -279,48 +214,6 @@ struct platform_device msm_kgsl_2d0 = {
 };
 #endif
 #endif
-
-void __init msm_add_mem_devices(struct msm_pmem_setting *setting)
-{
-	if (setting->pmem_size) {
-		pmem_pdata.start = setting->pmem_start;
-		pmem_pdata.size = setting->pmem_size;
-		platform_device_register(&pmem_device);
-	}
-
-	if (setting->pmem_adsp_size) {
-		pmem_adsp_pdata.start = setting->pmem_adsp_start;
-		pmem_adsp_pdata.size = setting->pmem_adsp_size;
-		platform_device_register(&pmem_adsp_device);
-	}
-
-	if (setting->pmem_audio_size) {
-		pmem_audio_pdata.start = setting->pmem_audio_start;
-		pmem_audio_pdata.size = setting->pmem_audio_size;
-		platform_device_register(&pmem_audio_device);
-	}
-
-	if (setting->pmem_camera_size) {
-		pmem_camera_pdata.start = setting->pmem_camera_start;
-		pmem_camera_pdata.size = setting->pmem_camera_size;
-		platform_device_register(&pmem_camera_device);
-	}
-
-	if (setting->ram_console_size) {
-		ram_console_resource[0].start = setting->ram_console_start;
-		ram_console_resource[0].end = setting->ram_console_start
-			+ setting->ram_console_size - 1;
-		platform_device_register(&ram_console_device);
-	}
-
-#ifdef CONFIG_MSM_KGSL
-	platform_device_register(&msm_kgsl_3d0);
-#ifdef CONFIG_MSM_KGSL_2D
-	platform_device_register(&msm_kgsl_2d0);
-#endif
-#endif
-	platform_device_register(&msm_device_vpe);
-}
 
 #define PM_LIBPROG      0x30000061
 #if (CONFIG_MSM_AMSS_VERSION == 6220) || (CONFIG_MSM_AMSS_VERSION == 6225)

@@ -1923,19 +1923,6 @@ static struct platform_device glacier_fmtx_rfkill = {
 	},
 };
 
-static struct android_pmem_platform_data android_pmem_kernel_ebi1_pdata = {
-        .name           = PMEM_KERNEL_EBI1_DATA_NAME,
-        .start		= PMEM_KERNEL_EBI1_BASE,
-        .size		= PMEM_KERNEL_EBI1_SIZE,
-        .cached         = 0,
-};
-
-static struct platform_device android_pmem_kernel_ebi1_devices = {
-	.name		= "android_pmem",
-	.id = 2,
-	.dev = {.platform_data = &android_pmem_kernel_ebi1_pdata },
-};
-
 #ifdef CONFIG_ION_MSM
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 static struct ion_co_heap_pdata co_ion_pdata = {
@@ -2149,11 +2136,6 @@ static struct platform_device *devices[] __initdata = {
 	&msm_lpa_device,
 	&msm_device_adspdec,
 #endif
-#ifdef CONFIG_ANDROID_PMEM
-#ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
-	&android_pmem_kernel_ebi1_devices,
-#endif
-#endif
 #ifdef CONFIG_MSM_KGSL
 	&msm_kgsl_3d0,
 #ifdef CONFIG_MSM_KGSL_2D
@@ -2223,24 +2205,6 @@ static void __init qup_device_i2c_init(void)
 	qup_device_i2c.dev.platform_data = &qup_i2c_pdata;
 
 }
-
-
-static struct msm_pmem_setting pmem_setting = {
-//	.pmem_start = MSM_PMEM_MDP_BASE,
-//	.pmem_size = MSM_PMEM_MDP_SIZE,
-//	.pmem_adsp_start = MSM_PMEM_ADSP_BASE,
-//	.pmem_adsp_size = MSM_PMEM_ADSP_SIZE,
-//	.pmem_gpu0_start = MSM_PMEM_GPU0_BASE,
-//	.pmem_gpu0_size = MSM_PMEM_GPU0_SIZE,
-//	.pmem_gpu1_start = MSM_PMEM_GPU1_BASE,
-//	.pmem_gpu1_size = MSM_PMEM_GPU1_SIZE,
-	.pmem_camera_start = MSM_PMEM_CAMERA_BASE,
-	.pmem_camera_size = MSM_PMEM_CAMERA_SIZE,
-//	.ram_console_start = MSM_RAM_CONSOLE_BASE,
-//	.ram_console_size = MSM_RAM_CONSOLE_SIZE,
-//	.kgsl_start = MSM_GPU_MEM_BASE,
-//	.kgsl_size = MSM_GPU_MEM_SIZE,
-};
 
 static struct msm_acpu_clock_platform_data glacier_clock_data = {
 	.acpu_switch_time_us = 50,
@@ -2425,14 +2389,7 @@ static void __init glacier_init(void)
 #ifdef CONFIG_MICROP_COMMON
 	glacier_microp_init();
 #endif
-
 	qup_device_i2c_init();
-#ifdef CONFIG_ANDROID_PMEM
-#ifndef CONFIG_ION_MSM
-	msm_add_mem_devices(&pmem_setting);
-#endif
-#endif
-
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 #ifdef CONFIG_MSMB_CAMERA
 	glacier_init_cam();
