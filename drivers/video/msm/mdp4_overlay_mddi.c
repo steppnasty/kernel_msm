@@ -548,6 +548,9 @@ void mdp4_dmap_done_mddi(int cndx)
 		vctrl->dmap_done);
 	complete(&vctrl->dmap_comp);
 
+	if (mdp_rev <= MDP_REV_41)
+		mdp4_mixer_blend_cfg(MDP4_MIXER0);
+
 	if (diff <= 0) {
 		if (vctrl->blt_wait)
 			vctrl->blt_wait = 0;
