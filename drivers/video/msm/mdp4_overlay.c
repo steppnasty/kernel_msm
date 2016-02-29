@@ -886,8 +886,6 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 
 #ifdef MDP4_IGC_LUT_ENABLE
 	pipe->op_mode |= MDP4_OP_IGC_LUT_EN;
-#else
-	pipe->op_mode = 0;
 #endif
 
 #ifdef CONFIG_MACH_GLACIER
