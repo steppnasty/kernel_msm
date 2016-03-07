@@ -98,6 +98,7 @@ static struct adreno_device device_3d0 = {
 		},
 		.pwrctrl = {
 			.irq_name = KGSL_3D0_IRQ,
+			.src_clk_name = "grp_src_clk",
 		},
 		.iomemname = KGSL_3D0_REG_MEMORY,
 		.ftbl = &adreno_functable,
