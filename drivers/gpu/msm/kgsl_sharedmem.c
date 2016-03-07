@@ -624,10 +624,10 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 		/* Very, very, very slow path */
 
 		for (j = 0; j < i; j++) {
-			ptr = kmap_atomic(pages[j], KM_USER0);
+			ptr = kmap_atomic(pages[j]);
 			memset(ptr, 0, PAGE_SIZE);
 			dmac_flush_range(ptr, ptr + PAGE_SIZE);
-			kunmap_atomic(ptr, KM_USER0);
+			kunmap_atomic(ptr);
 		}
 	}
 

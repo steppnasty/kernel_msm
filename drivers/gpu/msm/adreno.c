@@ -21,10 +21,8 @@
 #include <mach/socinfo.h>
 #include <mach/msm_bus_board.h>
 #include <mach/msm_bus.h>
-#ifdef CONFIG_MSM_DCVS
 #include <mach/msm_dcvs.h>
 #include <mach/msm_dcvs_scm.h>
-#endif
 
 #include "kgsl.h"
 #include "kgsl_pwrscale.h"
@@ -278,7 +276,6 @@ error:
 	return result;
 }
 
-#ifdef CONFIG_MSM_IOMMU
 static void adreno_iommu_setstate(struct kgsl_device *device,
 					unsigned int context_id,
 					uint32_t flags)
@@ -435,7 +432,6 @@ done:
 		BUG();
 	}
 }
-#endif /* CONFIG_MSM_IOMMU */
 
 static void adreno_gpummu_setstate(struct kgsl_device *device,
 					unsigned int context_id,
@@ -552,10 +548,8 @@ static void adreno_setstate(struct kgsl_device *device,
 	/* call the mmu specific handler */
 	if (KGSL_MMU_TYPE_GPU == kgsl_mmu_get_mmutype())
 		return adreno_gpummu_setstate(device, context_id, flags);
-#ifdef CONFIG_MSM_IOMMU
 	else if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_get_mmutype())
 		return adreno_iommu_setstate(device, context_id, flags);
-#endif
 }
 
 static unsigned int
@@ -688,7 +682,6 @@ static struct of_device_id adreno_match_table[] = {
 	{}
 };
 
-#ifdef CONFIG_OF_DEVICE
 static inline int adreno_of_read_property(struct device_node *node,
 	const char *prop, unsigned int *ptr)
 {
@@ -867,7 +860,6 @@ err:
 	return ERR_PTR(ret);
 }
 
-#ifdef CONFIG_MSM_DCVS
 static struct msm_dcvs_core_info *adreno_of_get_dcvs(struct device_node *parent)
 {
 	struct device_node *node, *child;
@@ -967,7 +959,6 @@ err:
 
 	return ERR_PTR(ret);
 }
-#endif /* CONFIG_MSM_DCVS */
 
 static int adreno_of_get_iommu(struct device_node *parent,
 	struct kgsl_device_platform_data *pdata)
@@ -1100,13 +1091,11 @@ static int adreno_of_get_pdata(struct platform_device *pdev)
 		goto err;
 	}
 
-#ifdef CONFIG_MSM_DCVS
 	pdata->core_info = adreno_of_get_dcvs(pdev->dev.of_node);
 	if (IS_ERR_OR_NULL(pdata->core_info)) {
 		ret = PTR_ERR(pdata->core_info);
 		goto err;
 	}
-#endif
 
 	ret = adreno_of_get_iommu(pdev->dev.of_node, pdata);
 	if (ret)
@@ -1132,7 +1121,6 @@ err:
 
 	return ret;
 }
-#endif /* CONFIG_OF_DEVICE */
 
 #ifdef CONFIG_MSM_OCMEM
 static int
@@ -1187,7 +1175,6 @@ adreno_probe(struct platform_device *pdev)
 	struct kgsl_device *device;
 	struct adreno_device *adreno_dev;
 	int status = -EINVAL;
-#ifdef CONFIG_OF_DEVICE
 	bool is_dt;
 
 	is_dt = of_match_device(adreno_match_table, &pdev->dev);
@@ -1197,7 +1184,6 @@ adreno_probe(struct platform_device *pdev)
 		if (status)
 			goto error_return;
 	}
-#endif
 
 	device = (struct kgsl_device *)pdev->id_entry->driver_data;
 	adreno_dev = ADRENO_DEVICE(device);
@@ -1223,9 +1209,7 @@ error_close_rb:
 	adreno_ringbuffer_close(&adreno_dev->ringbuffer);
 error:
 	device->parentdev = NULL;
-#ifdef CONFIG_OF_DEVICE
 error_return:
-#endif
 	return status;
 }
 
