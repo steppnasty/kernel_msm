@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,7 +11,6 @@
  *
  */
 
-#include <linux/export.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/io.h>
@@ -114,24 +113,22 @@ static void tz_wake(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 {
 	struct tz_priv *priv = pwrscale->priv;
 	if (device->state != KGSL_STATE_NAP &&
-		priv->governor == TZ_GOVERNOR_ONDEMAND)
+		priv->governor == TZ_GOVERNOR_ONDEMAND &&
+		device->pwrctrl.restore_slumber == 0)
 		kgsl_pwrctrl_pwrlevel_change(device,
-					device->pwrctrl.default_pwrlevel);
+					     device->pwrctrl.thermal_pwrlevel);
 }
 
-static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale,
-						unsigned int ignore_idle)
+static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 {
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct tz_priv *priv = pwrscale->priv;
 	struct kgsl_power_stats stats;
 	int val, idle;
 
-	if (ignore_idle)
-		return;
-
 	/* In "performance" mode the clock speed always stays
 	   the same */
+
 	if (priv->governor == TZ_GOVERNOR_PERFORMANCE)
 		return;
 
@@ -183,8 +180,7 @@ static int tz_init(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 	struct tz_priv *priv;
 
 	/* Trustzone is only valid for some SOCs */
-	if (!(cpu_is_msm8x60() || cpu_is_msm8960() || cpu_is_apq8064() ||
-		cpu_is_msm8930() || cpu_is_msm8930aa() || cpu_is_msm8627()))
+	if (!(cpu_is_msm8x60() || cpu_is_msm8960() || cpu_is_msm8930()))
 		return -EINVAL;
 
 	priv = pwrscale->priv = kzalloc(sizeof(struct tz_priv), GFP_KERNEL);

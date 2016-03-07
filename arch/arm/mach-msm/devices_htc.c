@@ -19,7 +19,6 @@
 #include <linux/platform_device.h>
 
 #include <linux/dma-mapping.h>
-#include <mach/kgsl.h>
 #include <mach/msm_iomap.h>
 #include <mach/dma.h>
 #include "gpio_chip.h"
@@ -197,7 +196,6 @@ static struct kgsl_device_platform_data kgsl_2d0_pdata = {
 	.set_grp_async = NULL,
 	.idle_timeout = HZ/10,
 	.nap_allowed = true,
-	.idle_needed = true,
 	.clk = {
 		.clk = "grp_2d_clk",
 		.pclk = "grp_2d_pclk",
