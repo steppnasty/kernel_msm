@@ -19,6 +19,7 @@
 #include <linux/platform_device.h>
 
 #include <linux/dma-mapping.h>
+#include <mach/kgsl.h>
 #include <mach/msm_iomap.h>
 #include <mach/dma.h>
 #include "gpio_chip.h"
