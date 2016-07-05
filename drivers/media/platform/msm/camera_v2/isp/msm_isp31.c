@@ -271,12 +271,13 @@ static void msm_vfe31_init_hardware_reg(struct vfe_device *vfe_dev)
 	msm_camera_io_w(0, vfe_dev->vfe_base + 0x528);
 	msm_camera_io_w(0xFFFFFF, vfe_dev->vfe_base + 0x524);
 	/* stats UB config */
-	msm_camera_io_w(0x3980007, vfe_dev->vfe_base + 0xFC);
-	msm_camera_io_w(0x3A00007, vfe_dev->vfe_base + 0x108);
-	msm_camera_io_w(0x3A8000F, vfe_dev->vfe_base + 0x114);
-	msm_camera_io_w(0x3B80007, vfe_dev->vfe_base + 0x120);
-	msm_camera_io_w(0x3C0001F, vfe_dev->vfe_base + 0x12c);
-	msm_camera_io_w(0x3E0001F, vfe_dev->vfe_base + 0x138);
+	msm_camera_io_w(0x3900007, vfe_dev->vfe_base + 0xFC);
+	msm_camera_io_w(0x3980007, vfe_dev->vfe_base + 0x108);
+	msm_camera_io_w(0x3A0000F, vfe_dev->vfe_base + 0x114);
+	msm_camera_io_w(0x3B00007, vfe_dev->vfe_base + 0x120);
+	msm_camera_io_w(0x3B8001F, vfe_dev->vfe_base + 0x12c);
+	msm_camera_io_w(0x3D8001F, vfe_dev->vfe_base + 0x138);
+	msm_camera_io_w(0x3F80007, vfe_dev->vfe_base + 0x144);
 }
 
 static void msm_vfe31_process_reset_irq(struct vfe_device *vfe_dev,
