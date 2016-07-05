@@ -1518,18 +1518,6 @@ static struct platform_device glacier_oj = {
 	}
 };
 
-static struct msm_camera_sensor_board_info msm_camera_sensor_s5k4e1gx_data;
-static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
-	{
-		I2C_BOARD_INFO("s5k4e1gx", 0x20 >> 1),
-		.platform_data = &msm_camera_sensor_s5k4e1gx_data,
-	},
-	{
-		I2C_BOARD_INFO("mt9v113", 0x3C), /* 0x78: w, 0x79 :r */
-	},
-};
-
-
 static uint32_t camera_off_gpio_table[] = {
 /* parallel CAMERA interfaces */
 PCOM_GPIO_CFG(GLACIER_CAM_RST, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA),
@@ -1723,19 +1711,6 @@ static struct msm_camera_device_platform_data msm_camera_device_data = {
 
 };
 
-static void glacier_mt9v113_clk_switch(void){
-	int rc = 0;
-	pr_info("doing clk switch (glacier)(mt9v113)\n");
-	rc = gpio_request(GLACIER_CLK_SWITCH, "mt9v113");
-	if (rc < 0)
-		pr_err("GPIO (%d) request fail\n", GLACIER_CLK_SWITCH);
-	else
-		gpio_direction_output(GLACIER_CLK_SWITCH, 1);
-	gpio_free(GLACIER_CLK_SWITCH);
-
-	return;
-}
-
 #ifdef CONFIG_MSMB_CAMERA
 static struct msm_camera_sensor_platform_info s5k4e1gx_sensor_platform_info = {
 	.mount_angle = 90
@@ -1792,10 +1767,17 @@ static struct msm_camera_slave_info msm_camera_sensor_s5k4e1gx_slave_info = {
 	.sensor_id = 0x4E10,
 };
 
+static struct msm_sensor_init_params msm_camera_sensor_s5k4e1gx_init_params = {
+	.modes_supported = CAMERA_MODE_2D_B,
+	.position = BACK_CAMERA_B,
+	.sensor_mount_angle = 90,
+};
+
 static struct msm_camera_sensor_board_info msm_camera_sensor_s5k4e1gx_data = {
 	.sensor_name = "s5k4e1gx",
 	.slave_info = &msm_camera_sensor_s5k4e1gx_slave_info,
 	.sensor_info = &msm_camera_sensor_s5k4e1gx_sensor_info,
+	.sensor_init_params = &msm_camera_sensor_s5k4e1gx_init_params,
 };
 
 
@@ -1803,6 +1785,89 @@ static struct platform_device msm_camera_sensor_s5k4e1gx = {
 	.name      = "msm_camera_s5k4e1gx",
 	.dev       = {
 		.platform_data = &msm_camera_sensor_s5k4e1gx_info,
+	},
+};
+
+static struct msm_camera_sensor_platform_info mt9v113_sensor_platform_info = {
+	.mount_angle = 0
+};
+
+static void glacier_mt9v113_clk_switch(void){
+	int rc = 0;
+	pr_info("doing clk switch (glacier)(mt9v113)\n");
+	rc = gpio_request(GLACIER_CLK_SWITCH, "mt9v113");
+	if (rc < 0)
+		pr_err("GPIO (%d) request fail\n", GLACIER_CLK_SWITCH);
+	else
+		gpio_direction_output(GLACIER_CLK_SWITCH, 1);
+	gpio_free(GLACIER_CLK_SWITCH);
+
+	return;
+}
+
+static struct msm_camera_device_platform_data glacier_mt9v113_platform_data = {
+	.camera_gpio_on = config_glacier_camera_on_gpios,
+	.camera_gpio_off = config_glacier_camera_off_gpios,
+	.csid_core = 0,
+	.ioclk = {
+		.vfe_clk_rate = 122880000,
+	},
+};
+
+static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_info = {
+	.sensor_name	= "mt9v113",
+	.sensor_reset	= GLACIER_CAM2_RST,
+	.vcm_pwd		= GLACIER_CAM2_PWD,
+	.camera_clk_switch	= glacier_mt9v113_clk_switch,
+	.camera_power_on = glacier_sensor_vreg_on,
+	.camera_power_off = glacier_sensor_vreg_off,
+	.pdata		= &glacier_mt9v113_platform_data,
+	.flash_type     = MSM_CAMERA_FLASH_NONE,
+	.resource = msm_camera_resources,
+	.num_resources = ARRAY_SIZE(msm_camera_resources),
+	.cam_select_pin = GLACIER_CLK_SWITCH,
+	.sensor_platform_info = &mt9v113_sensor_platform_info,
+	.csi_if = 0,
+};
+
+static struct msm_sensor_info_t msm_camera_sensor_mt9v113_sensor_info = {
+	.sensor_name = "mt9v113",
+};
+
+static struct msm_camera_slave_info msm_camera_sensor_mt9v113_slave_info = {
+	.sensor_slave_addr = 0x3C << 1,
+	.sensor_id_reg_addr = 0x0000,
+	.sensor_id = 0x2280,
+};
+
+static struct msm_sensor_init_params msm_camera_sensor_mt9v113_init_params = {
+	.modes_supported = CAMERA_MODE_2D_B,
+	.position = FRONT_CAMERA_B,
+	.sensor_mount_angle = 0,
+};
+
+static struct msm_camera_sensor_board_info msm_camera_sensor_mt9v113_data = {
+	.sensor_name = "mt9v113",
+	.slave_info = &msm_camera_sensor_mt9v113_slave_info,
+	.sensor_info = &msm_camera_sensor_mt9v113_sensor_info,
+	.sensor_init_params = &msm_camera_sensor_mt9v113_init_params,
+};
+
+static struct platform_device msm_camera_sensor_mt9v113 = {
+	.name = "msm_camera_mt9v113",
+	.dev = {
+		.platform_data = &msm_camera_sensor_mt9v113_info,
+	},
+};
+
+static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
+	{
+		I2C_BOARD_INFO("s5k4e1gx", 0x20 >> 1),
+		.platform_data = &msm_camera_sensor_s5k4e1gx_data,
+	},
+	{
+		I2C_BOARD_INFO("mt9v113", 0x3C), /* 0x78: w, 0x79 :r */
+		.platform_data = &msm_camera_sensor_mt9v113_data,
 	},
 };
 
@@ -1855,32 +1920,6 @@ static struct platform_device msm_gemini_device = {
 	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
 };
 #endif
-
-static struct msm_camera_sensor_platform_info mt9v113_sensor_platform_info = {
-	.mount_angle = 0
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data = {
-	.sensor_name	= "mt9v113",
-	.sensor_reset	= GLACIER_CAM2_RST,
-	.vcm_pwd		= GLACIER_CAM2_PWD,
-	.camera_clk_switch	= glacier_mt9v113_clk_switch,
-	.camera_power_on = glacier_sensor_vreg_on,
-	.camera_power_off = glacier_sensor_vreg_off,
-	.pdata		= &msm_camera_device_data,
-	.flash_type     = MSM_CAMERA_FLASH_NONE,
-	.resource = msm_camera_resources,
-	.num_resources = ARRAY_SIZE(msm_camera_resources),
-	.cam_select_pin = GLACIER_CLK_SWITCH,
-	.sensor_platform_info = &mt9v113_sensor_platform_info,
-};
-
-static struct platform_device msm_camera_sensor_mt9v113 = {
-	.name	   = "msm_camera_mt9v113",
-	.dev	    = {
-		.platform_data = &msm_camera_sensor_mt9v113_data,
-	},
-};
 
 #ifdef CONFIG_MSMB_CAMERA
 void __init glacier_init_cam(void)
@@ -2416,8 +2455,10 @@ static void __init glacier_init(void)
 		glacier_ts_atmel_data[0].abs_y_max = 954;
 	}
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
+#ifdef CONFIG_MSMB_CAMERA
 	i2c_register_board_info(4 /* QUP ID */, msm_camera_boardinfo,
 				ARRAY_SIZE(msm_camera_boardinfo));
+#endif
 #ifdef CONFIG_I2C_SSBI
 	msm_device_ssbi6.dev.platform_data = &msm_i2c_ssbi6_pdata;
 

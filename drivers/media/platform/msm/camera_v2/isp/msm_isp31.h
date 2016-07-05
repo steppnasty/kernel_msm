@@ -16,4 +16,4 @@
 #include <linux/of_device.h>
 
 extern struct msm_vfe_hardware_info vfe31_hw_info;
-#endif /* __MSM_ISP32_H__ */
+#endif /* __MSM_ISP31_H__ */

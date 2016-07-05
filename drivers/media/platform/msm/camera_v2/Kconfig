@@ -184,7 +184,7 @@ config OV8825
 
 config S5K4E1GX
 	bool "Sensor s5k4e1gx (Samsung 5M)"
-	depends on MSM_CAMERA
+	depends on MSMB_CAMERA
 	default n
 	---help---
 	  Samsung 5M with Autofocus
