@@ -25,6 +25,7 @@
 
 /* handy sizes */
 #define SZ_16				0x00000010
+#define SZ_64				0x00000040
 #define SZ_256				0x00000100
 #define SZ_512				0x00000200
 
