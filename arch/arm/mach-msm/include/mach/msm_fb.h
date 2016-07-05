@@ -274,16 +274,6 @@ struct mdp_device {
 	int (*check_output_format)(struct mdp_device *mdp, int bpp);
 	int (*set_output_format)(struct mdp_device *mdp, int bpp);
 	void (*set_panel_size)(struct mdp_device *mdp, int width, int height);
-#if defined(CONFIG_FB_MSM_MDP_ABL)
-	int (*lut_update)(struct mdp_device *mdp, struct fb_info *fb,
-		    struct fb_cmap *cmap);
-	int (*do_histogram)(struct mdp_device *mdp, struct mdp_histogram *hist_in,
-		    struct mdp_histogram *hist_out);
-	int (*start_histogram)(struct mdp_device *mdp, struct fb_info *fb);
-	int (*stop_histogram)(struct mdp_device *mdp, struct fb_info *fb);
-	int (*get_gamma_curvy)(struct mdp_device *mdp, struct gamma_curvy *gc);
-	struct gamma_curvy *abl_gamma_tbl;
-#endif
 	unsigned color_format;
 	unsigned overrides;
 	uint32_t width;		/*panel width*/

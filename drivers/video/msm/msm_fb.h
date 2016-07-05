@@ -140,6 +140,8 @@ struct msm_fb_data_type {
 	int (*stop_histogram) (struct fb_info *info, uint32_t block);
 	void (*vsync_ctrl) (int enable);
 	void (*vsync_init) (int cndx);
+	void (*update_panel_info)(struct msm_fb_data_type *mfd);
+	bool (*is_panel_ready)(void);
 	void *vsync_show;
 	void *cursor_buf;
 	void *cursor_buf_phys;
@@ -182,7 +184,8 @@ struct msm_fb_data_type {
 	struct list_head writeback_register_queue;
 	wait_queue_head_t wait_q;
 	struct ion_client *iclient;
-	struct msm_mapped_buffer *map_buffer;
+	unsigned long display_iova;
+	unsigned long rotator_iova;
 	struct mdp_buf_type *ov0_wb_buf;
 	struct mdp_buf_type *ov1_wb_buf;
 	u32 ov_start;
@@ -191,6 +194,11 @@ struct msm_fb_data_type {
 	u32 writeback_state;
 	bool writeback_active_cnt;
 	int cont_splash_done;
+	void *copy_splash_buf;
+	unsigned char *copy_splash_phys;
+	void *cpu_pm_hdl;
+	u32 avtimer_phy;
+	int vsync_sysfs_created;
 	u32 acq_fen_cnt;
 	struct sync_fence *acq_fen[MDP_MAX_FENCE_FD];
 	int cur_rel_fen_fd;
@@ -206,13 +214,11 @@ struct msm_fb_data_type {
 	u32 is_committing;
 	struct work_struct commit_work;
 	void *msm_fb_backup;
-	boolean panel_driver_on;
-	struct mutex entry_mutex;
-	int vsync_sysfs_created;
 };
 struct msm_fb_backup_type {
 	struct fb_info info;
-	struct mdp_display_commit disp_commit;
+	struct fb_var_screeninfo var;
+	struct msm_fb_data_type mfd;
 };
 
 struct dentry *msm_fb_get_debugfs_root(void);
@@ -232,9 +238,8 @@ int msm_fb_writeback_stop(struct fb_info *info);
 int msm_fb_writeback_terminate(struct fb_info *info);
 int msm_fb_detect_client(const char *name);
 int calc_fb_offset(struct msm_fb_data_type *mfd, struct fb_info *fbi, int bpp);
-void msm_fb_wait_for_fence(struct msm_fb_data_type *mfd);
+int msm_fb_wait_for_fence(struct msm_fb_data_type *mfd);
 int msm_fb_signal_timeline(struct msm_fb_data_type *mfd);
-void msm_fb_release_timeline(struct msm_fb_data_type *mfd);
 #ifdef CONFIG_FB_BACKLIGHT
 void msm_fb_config_backlight(struct msm_fb_data_type *mfd);
 #endif

@@ -14,10 +14,10 @@
 #ifndef __MHL_API_H__
 #define __MHL_API_H__
 
-#ifdef CONFIG_FB_MSM_HDMI_MHL
-bool mhl_is_connected(void);
+#ifdef CONFIG_FB_MSM_HDMI_MHL_8334
+bool mhl_is_enabled(void);
 #else
-static bool mhl_is_connected(void)
+static bool mhl_is_enabled(void)
 {
 	return false;
 }

@@ -156,4 +156,16 @@ static inline int cpu_is_msm8625(void)
 #endif
 }
 
+static inline int cpu_is_msm8625q(void)
+{
+#ifdef CONFIG_ARCH_MSM8625
+	enum msm_cpu cpu = socinfo_get_msm_cpu();
+
+	BUG_ON(cpu == MSM_CPU_UNKNOWN);
+	return cpu == MSM_CPU_8625Q;
+#else
+	return 0;
+#endif
+}
+
 #endif

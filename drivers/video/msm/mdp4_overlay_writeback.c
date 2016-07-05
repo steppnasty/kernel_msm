@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -261,14 +261,12 @@ static int mdp4_overlay_writeback_update(struct msm_fb_data_type *mfd)
 	pipe->dst_x = 0;
 
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
-	if (mfd->map_buffer) {
-		pipe->srcp0_addr = (unsigned int)mfd->map_buffer->iova[0] + \
-			buf_offset;
-		pr_debug("start 0x%lx srcp0_addr 0x%x\n", mfd->
-			map_buffer->iova[0], pipe->srcp0_addr);
-	} else {
+	mdp4_calc_blt_mdp_bw(mfd, pipe);
+
+	if (mfd->display_iova)
+		pipe->srcp0_addr = mfd->display_iova + buf_offset;
+	else
 		pipe->srcp0_addr = (uint32)(buf + buf_offset);
-	}
 
 	mdp4_mixer_stage_up(pipe, 0);
 
@@ -346,11 +344,10 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	pipe = vctrl->base_pipe;
 	mixer = pipe->mixer_num;
 
-	/*
-	 * allow stage_commit without pipes queued
-	 * (vp->update_cnt == 0) to unstage pipes after
-	 * overlay_unset
-	 */
+	if (vp->update_cnt == 0) {
+		mutex_unlock(&vctrl->update_lock);
+		return cnt;
+	}
 
 	vctrl->update_ndx++;
 	vctrl->update_ndx &= 0x01;
@@ -365,7 +362,7 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	pipe = vp->plist;
 	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
 		if (pipe->pipe_used) {
-		  	cnt++;
+			cnt++;
 			real_pipe = mdp4_overlay_ndx2pipe(pipe->pipe_ndx);
 			if (real_pipe && real_pipe->pipe_used) {
 				/* pipe not unset */
@@ -513,6 +510,8 @@ static struct msmfb_writeback_data_list *get_if_registered(
 {
 	struct msmfb_writeback_data_list *temp;
 	bool found = false;
+	int domain;
+
 	if (!list_empty(&mfd->writeback_register_queue)) {
 		list_for_each_entry(temp,
 				&mfd->writeback_register_queue,
@@ -543,9 +542,14 @@ static struct msmfb_writeback_data_list *get_if_registered(
 				goto register_ion_fail;
 			}
 
+			if (mdp_iommu_split_domain)
+				domain = DISPLAY_WRITE_DOMAIN;
+			else
+				domain = DISPLAY_READ_DOMAIN;
+
 			if (ion_map_iommu(mfd->iclient,
 					  srcp_ihdl,
-					  DISPLAY_DOMAIN,
+					  domain,
 					  GEN_POOL,
 					  SZ_4K,
 					  0,
@@ -624,7 +628,7 @@ int mdp4_writeback_dequeue_buffer(struct fb_info *info, struct msmfb_data *data)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct msmfb_writeback_data_list *node = NULL;
-	int rc = 0;
+	int rc = 0, domain;
 
 	rc = wait_event_interruptible(mfd->wait_q, is_buffer_ready(mfd));
 	if (rc) {
@@ -646,9 +650,14 @@ int mdp4_writeback_dequeue_buffer(struct fb_info *info, struct msmfb_data *data)
 		memcpy(data, &node->buf_info, sizeof(struct msmfb_data));
 		if (!data->iova)
 			if (mfd->iclient && node->ihdl) {
+				if (mdp_iommu_split_domain)
+					domain = DISPLAY_WRITE_DOMAIN;
+				else
+					domain = DISPLAY_READ_DOMAIN;
+
 				ion_unmap_iommu(mfd->iclient,
 						node->ihdl,
-						DISPLAY_DOMAIN,
+						domain,
 						GEN_POOL);
 				ion_free(mfd->iclient,
 					 node->ihdl);
@@ -797,4 +806,24 @@ static void mdp4_wfd_queue_wakeup(struct msm_fb_data_type *mfd,
 	mfd->writeback_active_cnt--;
 	mutex_unlock(&mfd->writeback_mutex);
 	wake_up(&mfd->wait_q);
+}
+
+int mdp4_writeback_set_mirroring_hint(struct fb_info *info, int hint)
+{
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+
+	if (mfd->panel.type != WRITEBACK_PANEL)
+		return -ENOTSUPP;
+
+	switch (hint) {
+	case MDP_WRITEBACK_MIRROR_ON:
+	case MDP_WRITEBACK_MIRROR_PAUSE:
+	case MDP_WRITEBACK_MIRROR_RESUME:
+	case MDP_WRITEBACK_MIRROR_OFF:
+		pr_info("wfd state switched to %d\n", hint);
+		switch_set_state(&mfd->writeback_sdev, hint);
+		return 0;
+	default:
+		return -EINVAL;
+	}
 }

@@ -14,6 +14,7 @@
 #ifdef CONFIG_SPI_QUP
 #include <linux/spi/spi.h>
 #endif
+#include <linux/leds.h>
 #include "msm_fb.h"
 #include "mipi_dsi.h"
 #include "mipi_novatek.h"
@@ -25,6 +26,8 @@ static struct mipi_dsi_panel_platform_data *mipi_novatek_pdata;
 static struct dsi_buf novatek_tx_buf;
 static struct dsi_buf novatek_rx_buf;
 static int mipi_novatek_lcd_init(void);
+
+static int wled_trigger_initialized;
 
 #define MIPI_DSI_NOVATEK_SPI_DEVICE_NAME	"dsi_novatek_3d_panel_spi"
 #define HPCI_FPGA_READ_CMD	0x84
@@ -311,10 +314,12 @@ static uint32 mipi_novatek_manufacture_id(struct msm_fb_data_type *mfd)
 {
 	struct dcs_cmd_req cmdreq;
 
+	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &novatek_manufacture_id_cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
 	cmdreq.rlen = 3;
+	cmdreq.rbuf = NULL;
 	cmdreq.cb = mipi_novatek_manufacture_cb; /* call back */
 	mipi_dsi_cmdlist_put(&cmdreq);
 	/*
@@ -446,6 +451,13 @@ static int mipi_novatek_lcd_off(struct platform_device *pdev)
 	return 0;
 }
 
+static int mipi_novatek_lcd_late_init(struct platform_device *pdev)
+{
+	return 0;
+}
+
+DEFINE_LED_TRIGGER(bkl_led_trigger);
+
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc backlight_cmd = {
 	DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm1), led_pwm1};
@@ -455,11 +467,23 @@ static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 {
 	struct dcs_cmd_req cmdreq;
 
+	if (mipi_novatek_pdata &&
+	    mipi_novatek_pdata->gpio_set_backlight) {
+		mipi_novatek_pdata->gpio_set_backlight(mfd->bl_level);
+		return;
+	}
+
+	if ((mipi_novatek_pdata->enable_wled_bl_ctrl)
+	    && (wled_trigger_initialized)) {
+		led_trigger_event(bkl_led_trigger, mfd->bl_level);
+		return;
+	}
+
 	led_pwm1[1] = (unsigned char)mfd->bl_level;
 
 	cmdreq.cmds = &backlight_cmd;
 	cmdreq.cmds_cnt = 1;
-	cmdreq.flags = CMD_REQ_COMMIT;
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
@@ -536,6 +560,7 @@ static struct platform_driver this_driver = {
 static struct msm_fb_panel_data novatek_panel_data = {
 	.on		= mipi_novatek_lcd_on,
 	.off		= mipi_novatek_lcd_off,
+	.late_init	= mipi_novatek_lcd_late_init,
 	.set_backlight = mipi_novatek_set_backlight,
 };
 
@@ -652,6 +677,10 @@ static int mipi_novatek_lcd_init(void)
 	} else
 		pr_info("%s: SUCCESS (SPI)\n", __func__);
 #endif
+
+	led_trigger_register_simple("bkl_trigger", &bkl_led_trigger);
+	pr_info("%s: SUCCESS (WLED TRIGGER)\n", __func__);
+	wled_trigger_initialized = 1;
 
 	mipi_dsi_buf_alloc(&novatek_tx_buf, DSI_BUF_SIZE);
 	mipi_dsi_buf_alloc(&novatek_rx_buf, DSI_BUF_SIZE);

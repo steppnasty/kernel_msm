@@ -461,6 +461,8 @@ struct msm_panel_common_pdata {
 	char cont_splash_enabled;
 	u32 splash_screen_addr;
 	u32 splash_screen_size;
+	char mdp_iommu_split_domain;
+	u32 avtimer_phy;
 };
 
 struct lcdc_platform_data {
@@ -495,6 +497,7 @@ struct mipi_dsi_platform_data {
 struct msm_fb_platform_data {
 	int (*detect_client)(const char *name);
 	int mddi_prescan;
+	unsigned char ext_resolution;
 	int (*allow_set_offset)(void);
 	char prim_panel_name[PANEL_NAME_MAX_LEN];
 	char ext_panel_name[PANEL_NAME_MAX_LEN];
@@ -571,6 +574,13 @@ void __init msm_clock_init(void);
 #endif
 
 void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *);
+
+/* Dump debug info (states, rate, etc) of clocks */
+#if defined(CONFIG_ARCH_MSM7X27)
+void msm_clk_dump_debug_info(void);
+#else
+static inline void msm_clk_dump_debug_info(void) {}
+#endif
 
 struct msm_usb_host_platform_data;
 int __init msm_add_host(unsigned int host,
