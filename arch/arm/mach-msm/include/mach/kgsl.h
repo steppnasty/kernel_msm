@@ -63,6 +63,11 @@ struct kgsl_pwrlevel {
 	unsigned int io_fraction;
 };
 
+struct kgsl_grp_clk_name {
+	const char *clk;
+	const char *pclk;
+};
+
 struct kgsl_device_platform_data {
 	struct kgsl_pwrlevel pwrlevel[KGSL_MAX_PWRLEVELS];
 	int init_level;
@@ -72,6 +77,8 @@ struct kgsl_device_platform_data {
 	bool strtstp_sleepwake;
 	unsigned int nap_allowed;
 	unsigned int clk_map;
+	struct kgsl_grp_clk_name clk;
+	struct kgsl_grp_clk_name imem_clk_name;
 	unsigned int idle_needed;
 	unsigned int step_mul;
 	struct msm_bus_scale_pdata *bus_scale_table;

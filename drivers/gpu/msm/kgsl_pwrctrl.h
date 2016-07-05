@@ -85,6 +85,7 @@ struct kgsl_pwrctrl {
 	unsigned int nap_allowed;
 	unsigned int idle_needed;
 	const char *irq_name;
+	const char *src_clk_name;
 	s64 time;
 	unsigned int restore_slumber;
 	struct kgsl_clk_stats clk_stats;

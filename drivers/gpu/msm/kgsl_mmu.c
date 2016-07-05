@@ -27,6 +27,9 @@
 #include "kgsl_sharedmem.h"
 #include "adreno.h"
 
+#define KGSL_MMU_ALIGN_SHIFT    13
+#define KGSL_MMU_ALIGN_MASK     (~((1 << KGSL_MMU_ALIGN_SHIFT) - 1))
+
 static enum kgsl_mmutype kgsl_mmu_type;
 
 static void pagetable_remove_sysfs_objects(struct kgsl_pagetable *pagetable);
@@ -351,8 +354,10 @@ int kgsl_mmu_init(struct kgsl_device *device)
 		goto done;
 	} else if (KGSL_MMU_TYPE_GPU == kgsl_mmu_type)
 		mmu->mmu_ops = &gpummu_ops;
+#ifdef CONFIG_MSM_IOMMU
 	else if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_type)
 		mmu->mmu_ops = &iommu_ops;
+#endif
 
 	status =  mmu->mmu_ops->mmu_init(mmu);
 done:
@@ -460,10 +465,10 @@ static struct kgsl_pagetable *kgsl_mmu_createpagetableobject(
 		}
 	}
 
-	pagetable->pool = gen_pool_create(PAGE_SHIFT, -1);
+	pagetable->pool = gen_pool_create(KGSL_MMU_ALIGN_SHIFT, -1);
 	if (pagetable->pool == NULL) {
 		KGSL_CORE_ERR("gen_pool_create(%d) failed\n",
-			      PAGE_SHIFT);
+			      KGSL_MMU_ALIGN_SHIFT);
 		goto err_kgsl_pool;
 	}
 
@@ -475,8 +480,10 @@ static struct kgsl_pagetable *kgsl_mmu_createpagetableobject(
 
 	if (KGSL_MMU_TYPE_GPU == kgsl_mmu_type)
 		pagetable->pt_ops = &gpummu_pt_ops;
+#ifdef CONFIG_MSM_IOMMU
 	else if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_type)
 		pagetable->pt_ops = &iommu_pt_ops;
+#endif
 
 	pagetable->priv = pagetable->pt_ops->mmu_create_pagetable();
 	if (!pagetable->priv)
@@ -839,15 +846,19 @@ void kgsl_mmu_set_mmutype(char *mmutype)
 	kgsl_mmu_type =
 		cpu_is_apq8064() ? KGSL_MMU_TYPE_NONE : KGSL_MMU_TYPE_GPU;
 
+#ifdef CONFIG_MSM_IOMMU
 	/* Use the IOMMU if it is found */
 	if (iommu_present(&platform_bus_type))
 		kgsl_mmu_type = KGSL_MMU_TYPE_IOMMU;
+#endif
 
 	if (mmutype && !strncmp(mmutype, "gpummu", 6))
 		kgsl_mmu_type = KGSL_MMU_TYPE_GPU;
+#ifdef CONFIG_MSM_IOMMU
 	if (iommu_present(&platform_bus_type) && mmutype &&
 	    !strncmp(mmutype, "iommu", 5))
 		kgsl_mmu_type = KGSL_MMU_TYPE_IOMMU;
+#endif
 	if (mmutype && !strncmp(mmutype, "nommu", 5))
 		kgsl_mmu_type = KGSL_MMU_TYPE_NONE;
 }

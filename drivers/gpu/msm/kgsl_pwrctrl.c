@@ -33,34 +33,6 @@
 #define UPDATE_BUSY_VAL		1000000
 #define UPDATE_BUSY		50
 
-struct clk_pair {
-	const char *name;
-	uint map;
-};
-
-struct clk_pair clks[KGSL_MAX_CLKS] = {
-	{
-		.name = "src_clk",
-		.map = KGSL_CLK_SRC,
-	},
-	{
-		.name = "core_clk",
-		.map = KGSL_CLK_CORE,
-	},
-	{
-		.name = "iface_clk",
-		.map = KGSL_CLK_IFACE,
-	},
-	{
-		.name = "mem_clk",
-		.map = KGSL_CLK_MEM,
-	},
-	{
-		.name = "mem_iface_clk",
-		.map = KGSL_CLK_MEM_IFACE,
-	},
-};
-
 /* Update the elapsed time at a particular clock level
  * if the device is active(on_time = true).Otherwise
  * store it as sleep time.
@@ -799,6 +771,7 @@ void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
 					if (pwr->grp_clks[i])
 						clk_prepare(pwr->grp_clks[i]);
 			}
+
 			/* as last step, enable grp_clk
 			   this is to let GPU interrupt to come */
 			for (i = KGSL_MAX_CLKS - 1; i > 0; i--)
@@ -912,10 +885,18 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct kgsl_device_platform_data *pdata = pdev->dev.platform_data;
 
+	const char *clk_names[KGSL_MAX_CLKS] = {
+		pwr->src_clk_name,
+		pdata->clk.clk,
+		pdata->clk.pclk,
+		pdata->imem_clk_name.clk,
+		pdata->imem_clk_name.pclk
+	};
+
 	/*acquire clocks */
 	for (i = 0; i < KGSL_MAX_CLKS; i++) {
-		if (pdata->clk_map & clks[i].map) {
-			clk = clk_get(&pdev->dev, clks[i].name);
+		if (clk_names[i]) {
+			clk = clk_get(&pdev->dev, clk_names[i]);
 			if (IS_ERR(clk))
 				goto clk_err;
 			pwr->grp_clks[i] = clk;
@@ -979,7 +960,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	pwr->idle_needed = pdata->idle_needed;
 	pwr->interval_timeout = pdata->idle_timeout;
 	pwr->strtstp_sleepwake = pdata->strtstp_sleepwake;
-	pwr->ebi1_clk = clk_get(&pdev->dev, "bus_clk");
+	pwr->ebi1_clk = clk_get(&pdev->dev, "ebi1_kgsl_clk");
 	if (IS_ERR(pwr->ebi1_clk))
 		pwr->ebi1_clk = NULL;
 	else
@@ -1012,7 +993,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 clk_err:
 	result = PTR_ERR(clk);
 	KGSL_PWR_ERR(device, "clk_get(%s) failed: %d\n",
-				 clks[i].name, result);
+				 clk_names[i], result);
 
 done:
 	return result;
