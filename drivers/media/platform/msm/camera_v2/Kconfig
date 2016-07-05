@@ -189,6 +189,13 @@ config S5K4E1GX
 	---help---
 	  Samsung 5M with Autofocus
 
+config MT9V113
+	bool "Sensor mt9v113"
+	depends on MSMB_CAMERA
+	default n
+	---help---
+	  MICRON VGA YUV Sensor
+
 config MSM_V4L2_VIDEO_OVERLAY_DEVICE
 	tristate "Qualcomm MSM V4l2 video overlay device"
 	---help---
