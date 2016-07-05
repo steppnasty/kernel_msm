@@ -24,6 +24,7 @@ DEFINE_MSM_MUTEX(s5k4e1gx_mut);
 #define CDBG(fmt, args...) do { } while (0)
 #endif
 
+static int s5k4e1gx_probe_done = 0;
 static struct msm_sensor_ctrl_t s5k4e1gx_s_ctrl;
 
 static struct msm_sensor_power_setting s5k4e1gx_power_setting[] = {
@@ -91,7 +92,7 @@ static struct v4l2_subdev_info s5k4e1gx_subdev_info[] = {
 	/* more can be supported, to be added later */
 };
 
-int32_t s5k4e1gx_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
+static int32_t s5k4e1gx_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	void __user *argp)
 {
 	struct sensorb_cfg_data *cdata = (struct sensorb_cfg_data *)argp;
@@ -223,13 +224,13 @@ int32_t s5k4e1gx_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 
 static int32_t s5k4e1gx_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	int32_t rc = 0;
 	unsigned short reg_status;
 	struct msm_camera_sensor_info *sinfo = NULL;
 	struct msm_camera_device_platform_data *camdev = NULL;
 	struct msm_camera_i2c_client *client = s_ctrl->sensor_i2c_client;
 	struct msm_sensor_power_setting_array *power_setting_array = NULL;
 	struct msm_sensor_power_setting *power_setting = NULL;
+	enum msm_camera_i2c_reg_addr_type dt = MSM_CAMERA_I2C_BYTE_ADDR;
 
 	CDBG("%s:%d\n", __func__, __LINE__);
 	sinfo = s_ctrl->pdev->dev.platform_data;
@@ -243,56 +244,71 @@ static int32_t s5k4e1gx_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	power_setting_array = &s_ctrl->power_setting_array;
 	power_setting = &power_setting_array->power_setting[0];
 
-	rc = sinfo->camera_power_on();
-	if (rc < 0) {
-		pr_err("%s: ERROR %d\n", __func__, rc);
-		return rc;
-	}
+	if (sinfo->camera_power_on() < 0)
+		goto power_on_i2c_error;
+
+	if (camdev->camera_gpio_on)
+		camdev->camera_gpio_on();
 
 	/*switch PCLK and MCLK to Main cam*/
 	if (sinfo->camera_clk_switch) {
 		CDBG("%s: switch clk\n", __func__);
 		sinfo->camera_clk_switch();
-		msleep(10);
 	}
-	if (camdev->camera_gpio_on)
-		camdev->camera_gpio_on();
-	msm_cam_clk_enable(s_ctrl->dev, &s_ctrl->clk_info[0],
-		(struct clk **)&power_setting->data[0],
-		s_ctrl->clk_info_size, 1);
-	rc = gpio_request(sinfo->sensor_reset, "s5k4e1gx");
-	if (!rc) {
-		gpio_direction_output(sinfo->sensor_reset, 0);
-		mdelay(5);
-		gpio_direction_output(sinfo->sensor_reset, 1);
+
+	if (!s5k4e1gx_probe_done) {
+		msm_cam_clk_enable(s_ctrl->dev, &s_ctrl->clk_info[0],
+			(struct clk **)&power_setting->data[0],
+			s_ctrl->clk_info_size, 1);
+		mdelay(20);
+
+		if (!gpio_request(sinfo->sensor_reset, "s5k4e1gx")) {
+			gpio_direction_output(sinfo->sensor_reset, 0);
+			mdelay(5);
+			gpio_direction_output(sinfo->sensor_reset, 1);
+		} else {
+			pr_err("%s: gpio request failed\n", __func__);
+			goto power_on_i2c_error;
+		}
+		gpio_free(sinfo->sensor_reset);
+		mdelay(20);
+
+		/* Reset sensor */
+		if (client->i2c_func_tbl->i2c_write(client, 0x0103,
+			0x01, dt) < 0)
+			goto power_on_i2c_error;
+
+		if (client->i2c_func_tbl->i2c_write_conf_tbl(client,
+			&s5k4e1gx_probe_settings[0],
+			ARRAY_SIZE(s5k4e1gx_probe_settings), dt) < 0)
+			goto power_on_i2c_error;
+
+		if (client->i2c_func_tbl->i2c_read(client, 0x3110,
+			&reg_status, dt) < 0)
+			goto power_on_i2c_error;
+		reg_status |= 0x1;
+
+		if (client->i2c_func_tbl->i2c_write(client, 0x3110,
+			reg_status, dt) < 0)
+			goto power_on_i2c_error;
+
+		client->i2c_func_tbl->i2c_write(client, 0x100, 0, dt);
+
+		s5k4e1gx_probe_done = 1;
 	} else {
-		pr_err("%s: gpio request failed\n", __func__);
-		return rc;
+		msleep(10);
+		msm_cam_clk_enable(s_ctrl->dev, &s_ctrl->clk_info[0],
+			(struct clk **)&power_setting->data[0],
+			s_ctrl->clk_info_size, 1);
+		gpio_request(sinfo->vcm_pwd, "s5k4e1gx");
+		gpio_direction_output(sinfo->vcm_pwd, 1);
+		gpio_free(sinfo->vcm_pwd);
 	}
-	gpio_free(sinfo->sensor_reset);
 
-	/* Reset sensor */
-	if (client->i2c_func_tbl->i2c_write(client, 0x0103, 0x01,
-		MSM_CAMERA_I2C_BYTE_DATA) < 0)
-		goto power_on_i2c_error;
-	rc = client->i2c_func_tbl->i2c_write_conf_tbl(client,
-		&s5k4e1gx_probe_settings[0], ARRAY_SIZE(s5k4e1gx_probe_settings),
-		MSM_CAMERA_I2C_BYTE_DATA);
-	if (rc < 0)
-		goto power_on_i2c_error;
-	if (client->i2c_func_tbl->i2c_read(client, 0x3110, &reg_status,
-		MSM_CAMERA_I2C_BYTE_DATA) < 0)
-		goto power_on_i2c_error;
-	reg_status = (reg_status|0x01);
 
-	if (client->i2c_func_tbl->i2c_write(client, 0x3110, reg_status,
-		MSM_CAMERA_I2C_BYTE_DATA) < 0)
-		goto power_on_i2c_error;
-	client->i2c_func_tbl->i2c_write(client, 0x100, 0x0,
-		MSM_CAMERA_I2C_BYTE_DATA);
 	s_ctrl->sensor_state = MSM_SENSOR_POWER_UP;
 
-	return rc;
+	return 0;
 power_on_i2c_error:
 	pr_err("%s: i2c error\n", __func__);
 	return -EIO;
@@ -314,7 +330,6 @@ static int32_t s5k4e1gx_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 			0x3110, 0x11, MSM_CAMERA_I2C_BYTE_DATA);
 		mdelay(120);
 	}
-	rc = sinfo->camera_power_off();
 	s_ctrl->sensor_state = MSM_SENSOR_POWER_DOWN;
 	return rc;
 }
