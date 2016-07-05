@@ -49,7 +49,7 @@
 
 static struct clk *ebi1_clk;
 static struct msm_cam_clk_info msm_vfe31_clk_info[] = {
-	{"vfe_clk", 153600000},
+	{"vfe_clk", 122880000},
 	{"vfe_pclk", -1},
 	{"camif_pad_pclk", -1},
 	{"vfe_camif_clk", -1},
