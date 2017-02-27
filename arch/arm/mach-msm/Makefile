@@ -357,7 +357,7 @@ obj-$(CONFIG_ARCH_MSM7X00A) += msm_vibrator.o devices_htc.o
 obj-$(CONFIG_ARCH_MSM7225) += msm_vibrator.o devices_htc.o htc_wifi_nvs.o htc_awb_cal.o htc_bluetooth.o
 obj-$(CONFIG_ARCH_MSM7227) += msm_vibrator.o devices_htc.o htc_wifi_nvs.o htc_awb_cal.o
 obj-$(CONFIG_ARCH_QSD8X50) += msm_vibrator.o devices_htc.o
-obj-$(CONFIG_ARCH_MSM7X30) += msm_vibrator.o devices_htc.o
+obj-$(CONFIG_ARCH_MSM7X30) += msm_vibrator.o devices_htc.o devices-msm7x30.o
 obj-$(CONFIG_ARCH_MSM8X60) += devices_htc.o htc_wifi_nvs.o htc_awb_cal.o
 obj-$(CONFIG_ARCH_MSM_FLASHLIGHT) += msm_flashlight.o
 
