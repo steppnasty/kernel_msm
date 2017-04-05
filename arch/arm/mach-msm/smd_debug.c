@@ -341,7 +341,7 @@ static int debug_read_build_id(char *buf, int max)
 	unsigned size;
 	void *data;
 
-	data = smem_item(SMEM_HW_SW_BUILD_ID, &size);
+	data = smem_get_entry(SMEM_HW_SW_BUILD_ID, &size);
 	if (!data)
 		return 0;
 

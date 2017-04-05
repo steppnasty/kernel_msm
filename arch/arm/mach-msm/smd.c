@@ -69,7 +69,6 @@ module_param_named(ciq_info, msm_smd_ciq_info,
 module_param_named(debug_mask, msm_smd_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 
-void *smem_item(unsigned id, unsigned *size);
 static void smd_diag(void);
 
 static unsigned last_heap_free = 0xffffffff;
@@ -784,7 +783,7 @@ static int smd_alloc_v2(struct smd_channel *ch)
 		pr_err("[SMD]smd_alloc_v2: cid %d does not exist\n", ch->n);
 		return -1;
 	}
-	buffer = smem_item(SMEM_SMD_FIFO_BASE_ID + ch->n, &buffer_sz);
+	buffer = smem_get_entry(SMEM_SMD_FIFO_BASE_ID + ch->n, &buffer_sz);
 
 	if (!buffer) {
 		pr_err("[SMD]smd_alloc_v2: ch%d buffer allocate fail\n", ch->n);
@@ -1050,7 +1049,7 @@ void *smem_alloc(unsigned id, unsigned size)
 	return smem_find(id, size);
 }
 
-void *smem_item(unsigned id, unsigned *size)
+void *smem_get_entry(unsigned id, unsigned *size)
 {
 	struct smem_shared *shared = (void *) MSM_SHARED_RAM_BASE;
 	struct smem_heap_entry *toc = shared->heap_toc;
@@ -1073,7 +1072,7 @@ void *smem_find(unsigned id, unsigned size_in)
 	unsigned size;
 	void *ptr;
 
-	ptr = smem_item(id, &size);
+	ptr = smem_get_entry(id, &size);
 	if (!ptr)
 		return 0;
 
@@ -1217,7 +1216,7 @@ int smd_core_init(void)
 	for (;;) {
 		unsigned size;
 		void *state;
-		state = smem_item(SMEM_SMSM_SHARED_STATE, &size);
+		state = smem_get_entry(SMEM_SMSM_SHARED_STATE, &size);
 		if (size == SMSM_V1_SIZE || size == SMSM_V2_SIZE) {
 			smd_info.state = (unsigned)state;
 			pr_info("[SMD]phy addr of smd_info.state=0x%X\n",

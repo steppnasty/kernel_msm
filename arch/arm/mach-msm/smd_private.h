@@ -280,7 +280,7 @@ typedef enum {
 #define SMD_KIND_PACKET		0x200
 
 void *smem_find(unsigned id, unsigned size);
-void *smem_item(unsigned id, unsigned *size);
+void *smem_get_entry(unsigned id, unsigned *size);
 uint32_t raw_smsm_get_state(enum smsm_state_item item);
 
 #endif

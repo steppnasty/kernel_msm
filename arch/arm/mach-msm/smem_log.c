@@ -889,7 +889,7 @@ static void find_voters(void)
 	unsigned size;
 	int i = 0, j = 0;
 
-	x = smem_item(SMEM_SLEEP_STATIC, &size);
+	x = smem_get_entry(SMEM_SLEEP_STATIC, &size);
 	next = x;
 	while (next && (next < (x + size)) &&
 	       ((i + j) < (ARRAY_SIZE(voter_d3_syms) +

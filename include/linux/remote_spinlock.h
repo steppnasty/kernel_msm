@@ -1,35 +1,43 @@
-/* Copyright (c) 2008-2009, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2009, 2011, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of Code Aurora nor
- *       the names of its contributors may be used to endorse or promote
- *       products derived from this software without specific prior written
- *       permission.
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, and the entire permission notice in its entirety,
+ *    including the disclaimer of warranties.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior
+ *    written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NON-INFRINGEMENT ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * ALTERNATIVELY, this product may be distributed under the terms of
+ * the GNU General Public License, version 2, in which case the provisions
+ * of the GPL version 2 are required INSTEAD OF the BSD license.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, ALL OF
+ * WHICH ARE HEREBY DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+ * USE OF THIS SOFTWARE, EVEN IF NOT ADVISED OF THE POSSIBILITY OF SUCH
+ * DAMAGE.
  *
  */
 #ifndef __LINUX_REMOTE_SPINLOCK_H
 #define __LINUX_REMOTE_SPINLOCK_H
 
-#include <mach/remote_spinlock.h>
 #include <linux/spinlock.h>
+#include <linux/mutex.h>
+
+#include <asm/remote_spinlock.h>
 
 /* Grabbing a local spin lock before going for a remote lock has several
  * advantages:
@@ -78,8 +86,30 @@ typedef struct {
 		_remote_spin_unlock(&((lock)->remote)); \
 		spin_unlock_irqrestore(&((lock)->local), flags); \
 	} while (0)
+#define remote_spin_trylock(lock) \
+	({ \
+		spin_trylock(&((lock)->local)) \
+		? _remote_spin_trylock(&((lock)->remote)) \
+			? 1 \
+			: ({ spin_unlock(&((lock)->local)); 0; }) \
+		: 0; \
+	})
+#define remote_spin_trylock_irqsave(lock, flags) \
+	({ \
+		spin_trylock_irqsave(&((lock)->local), flags) \
+		? _remote_spin_trylock(&((lock)->remote)) \
+			? 1 \
+			: ({ spin_unlock_irqrestore(&((lock)->local), flags); \
+				0; }) \
+		: 0; \
+	})
 
-#if defined(CONFIG_ARCH_MSM7X30) || defined(CONFIG_ARCH_MSM8X60)
+#define remote_spin_release(lock, pid) \
+	_remote_spin_release(&((lock)->remote), pid)
+
+#define remote_spin_release_all(pid) \
+	_remote_spin_release_all(pid)
+
 typedef struct {
 	struct mutex local;
 	_remote_mutex_t remote;
@@ -108,6 +138,5 @@ typedef struct {
 		_remote_mutex_unlock(&((lock)->remote)); \
 		mutex_unlock(&((lock)->local)); \
 	} while (0)
-#endif
 
 #endif

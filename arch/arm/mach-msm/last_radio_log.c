@@ -26,7 +26,7 @@
 static void *radio_log_base;
 static size_t radio_log_size;
 
-extern void *smem_item(unsigned id, unsigned *size);
+extern void *smem_get_entry(unsigned id, unsigned *size);
 
 static ssize_t last_radio_log_read(struct file *file, char __user *buf,
 			size_t len, loff_t *offset)
@@ -60,7 +60,7 @@ void msm_init_last_radio_log(struct module *owner)
 		return;
 	}
 #ifdef CONFIG_MSM_N_WAY_SMD
-	radio_log_base = smem_item(SMEM_CLKREGIM_BSP, &radio_log_size);
+	radio_log_base = smem_get_entry(SMEM_CLKREGIM_BSP, &radio_log_size);
 #else
 	radio_log_base = NULL;
 #endif
