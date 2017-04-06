@@ -55,7 +55,7 @@ struct shared_info {
 	unsigned state;
 };
 
-static unsigned dummy_state[SMSM_STATE_COUNT];
+static unsigned dummy_state[SMSM_NUM_ENTRIES];
 
 static struct shared_info smd_info = {
 	.state = (unsigned) &dummy_state,
@@ -172,7 +172,7 @@ uint32_t raw_smsm_get_state(enum smsm_state_item item)
 
 static int check_for_modem_crash(void)
 {
-	if (raw_smsm_get_state(SMSM_STATE_MODEM) & SMSM_RESET) {
+	if (raw_smsm_get_state(SMSM_MODEM_STATE) & SMSM_RESET) {
 		dump_stack();
 		show_state_filter(TASK_UNINTERRUPTIBLE);
 		msm_pm_flush_console();
@@ -1093,8 +1093,8 @@ static irqreturn_t smsm_irq_handler(int irq, void *data)
 
 	spin_lock_irqsave(&smem_lock, flags);
 
-	apps = raw_smsm_get_state(SMSM_STATE_APPS);
-	modm = raw_smsm_get_state(SMSM_STATE_MODEM);
+	apps = raw_smsm_get_state(SMSM_APPS_STATE);
+	modm = raw_smsm_get_state(SMSM_MODEM_STATE);
 
 	if (msm_smd_debug_mask & MSM_SMSM_DEBUG)
 		pr_info("[SMD]<SM %08x %08x>\n", apps, modm);
@@ -1119,7 +1119,7 @@ int smsm_change_state(enum smsm_state_item item,
 
 	spin_lock_irqsave(&smem_lock, flags);
 
-	if (raw_smsm_get_state(SMSM_STATE_MODEM) & SMSM_RESET)
+	if (raw_smsm_get_state(SMSM_MODEM_STATE) & SMSM_RESET)
 		handle_modem_crash();
 
 	state = (readl(addr) & ~clear_mask) | set_mask;
@@ -1143,7 +1143,7 @@ uint32_t smsm_get_state(enum smsm_state_item item)
 
 	rv = readl(smd_info.state + item * 4);
 
-	if (item == SMSM_STATE_MODEM && (rv & SMSM_RESET))
+	if (item == SMSM_MODEM_STATE && (rv & SMSM_RESET))
 		handle_modem_crash();
 
 	spin_unlock_irqrestore(&smem_lock, flags);
@@ -1263,10 +1263,10 @@ int smd_core_init(void)
 	do_smd_probe();
 
 	/* indicate that we're up and running */
-	smsm_change_state(SMSM_STATE_APPS,
+	smsm_change_state(SMSM_APPS_STATE,
 			  ~0, SMSM_INIT | SMSM_SMDINIT | SMSM_RPCINIT | SMSM_RUN);
 #if defined(CONFIG_MSM_N_WAY_SMD)
-	smsm_change_state(SMSM_STATE_APPS_DEM, ~0, 0);
+	smsm_change_state(SMSM_APPS_DEM, ~0, 0);
 #endif
 
 	pr_info("[SMD]smd_core_init() done\n");

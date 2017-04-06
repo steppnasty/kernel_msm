@@ -240,11 +240,11 @@ static uint32_t msm_timer_sync_smem_clock(int exit_sleep)
 
 	timeout_delta = (clock->freq >> (7 - clock->shift)); /* 7.8ms */
 
-	last_state = state = smsm_get_state(SMSM_STATE_MODEM);
+	last_state = state = smsm_get_state(SMSM_MODEM_STATE);
 	if (*smem_clock) {
 		printk(KERN_INFO "get_smem_clock: invalid start state %x "
 		       "clock %u\n", state, *smem_clock);
-		smsm_change_state(SMSM_STATE_APPS, SMSM_TIMEWAIT, SMSM_TIMEINIT);
+		smsm_change_state(SMSM_APPS_STATE, SMSM_TIMEWAIT, SMSM_TIMEINIT);
 		entry_time = msm_read_timer_count(clock);
 		timeout = entry_time + timeout_delta;
 		while (*smem_clock != 0 && check_timeout(clock, timeout))
@@ -259,10 +259,10 @@ static uint32_t msm_timer_sync_smem_clock(int exit_sleep)
 	}
 	entry_time = msm_read_timer_count(clock);
 	timeout = entry_time + timeout_delta;
-	smsm_change_state(SMSM_STATE_APPS, SMSM_TIMEINIT, SMSM_TIMEWAIT);
+	smsm_change_state(SMSM_APPS_STATE, SMSM_TIMEINIT, SMSM_TIMEWAIT);
 	do {
 		smem_clock_val = *smem_clock;
-		state = smsm_get_state(SMSM_STATE_MODEM);
+		state = smsm_get_state(SMSM_MODEM_STATE);
 		if (state != last_state) {
 			last_state = state;
 			if (msm_timer_debug_mask & MSM_TIMER_DEBUG_SYNC_STATE)
@@ -294,16 +294,16 @@ static uint32_t msm_timer_sync_smem_clock(int exit_sleep)
 		       "in %d ticks\n", state, *smem_clock,
 		       msm_read_timer_count(clock) - entry_time);
 	}
-	smsm_change_state(SMSM_STATE_APPS, SMSM_TIMEWAIT, SMSM_TIMEINIT);
+	smsm_change_state(SMSM_APPS_STATE, SMSM_TIMEWAIT, SMSM_TIMEINIT);
 	entry_time = msm_read_timer_count(clock);
 	timeout = entry_time + timeout_delta;
 	while (*smem_clock != 0 && check_timeout(clock, timeout)) {
-		uint32_t astate = smsm_get_state(SMSM_STATE_APPS);
+		uint32_t astate = smsm_get_state(SMSM_APPS_STATE);
 		if ((astate & SMSM_TIMEWAIT) || !(astate & SMSM_TIMEINIT)) {
 			if (msm_timer_debug_mask & MSM_TIMER_DEBUG_SYNC_STATE)
 				pr_info("get_smem_clock: modem overwrote "
 					"apps state %x\n", astate);
-			smsm_change_state(SMSM_STATE_APPS,
+			smsm_change_state(SMSM_APPS_STATE,
 					  SMSM_TIMEWAIT, SMSM_TIMEINIT);
 		}
 	}
@@ -351,13 +351,13 @@ static uint32_t msm_timer_sync_smem_clock(int exit_sleep)
 	timeout_delta = (clock->freq >> (7 - clock->shift)); /* 7.8ms */
 
 	entry_time = msm_read_timer_count(clock);
-	last_state = state = smsm_get_state(SMSM_STATE_TIME_MASTER_DEM);
+	last_state = state = smsm_get_state(SMSM_TIME_MASTER_DEM);
 	timeout = entry_time + timeout_delta;
-	while ((smsm_get_state(SMSM_STATE_TIME_MASTER_DEM)
+	while ((smsm_get_state(SMSM_TIME_MASTER_DEM)
 		& DEM_TIME_MASTER_TIME_PENDING_APPS)
 		&& check_timeout(clock, timeout))
 		;
-	if ((smsm_get_state(SMSM_STATE_TIME_MASTER_DEM) &
+	if ((smsm_get_state(SMSM_TIME_MASTER_DEM) &
 				DEM_TIME_MASTER_TIME_PENDING_APPS)) {
 		printk(KERN_INFO "get_smem_clock: invalid start state %x "
 		       "clock %u in %d ticks\n",
@@ -367,13 +367,13 @@ static uint32_t msm_timer_sync_smem_clock(int exit_sleep)
 	}
 	entry_time = msm_read_timer_count(clock);
 	timeout = entry_time + timeout_delta;
-	smsm_change_state(SMSM_STATE_APPS_DEM,
+	smsm_change_state(SMSM_APPS_DEM,
 			DEM_TIME_SLAVE_TIME_INIT, DEM_TIME_SLAVE_TIME_REQUEST);
-	while (!(smsm_get_state(SMSM_STATE_TIME_MASTER_DEM)
+	while (!(smsm_get_state(SMSM_TIME_MASTER_DEM)
 		& DEM_TIME_MASTER_TIME_PENDING_APPS)
 		&& check_timeout(clock, timeout))
 		;
-	if (!(smsm_get_state(SMSM_STATE_TIME_MASTER_DEM) &
+	if (!(smsm_get_state(SMSM_TIME_MASTER_DEM) &
 					DEM_TIME_MASTER_TIME_PENDING_APPS)) {
 		printk(KERN_INFO "get_smem_clock: invalid start state %x "
 		       "clock %u in %d ticks\n",
@@ -381,11 +381,11 @@ static uint32_t msm_timer_sync_smem_clock(int exit_sleep)
 		       msm_read_timer_count(clock) - entry_time);
 		bad_clock = *smem_clock;
 	}
-	smsm_change_state(SMSM_STATE_APPS_DEM,
+	smsm_change_state(SMSM_APPS_DEM,
 		DEM_TIME_SLAVE_TIME_REQUEST, DEM_TIME_SLAVE_TIME_POLL);
 	do {
 		smem_clock_val = *smem_clock;
-		state = smsm_get_state(SMSM_STATE_TIME_MASTER_DEM);
+		state = smsm_get_state(SMSM_TIME_MASTER_DEM);
 		if (state != last_state) {
 			last_state = state;
 			if (msm_timer_debug_mask & MSM_TIMER_DEBUG_SYNC_STATE)
@@ -418,16 +418,16 @@ static uint32_t msm_timer_sync_smem_clock(int exit_sleep)
 		       "in %d ticks\n", state, *smem_clock,
 		       msm_read_timer_count(clock) - entry_time);
 	}
-	smsm_change_state(SMSM_STATE_APPS_DEM,
+	smsm_change_state(SMSM_APPS_DEM,
 		DEM_TIME_SLAVE_TIME_POLL, DEM_TIME_SLAVE_TIME_INIT);
 #if 1 /* debug */
 	entry_time = msm_read_timer_count(clock);
 	timeout = entry_time + timeout_delta;
-	while ((smsm_get_state(SMSM_STATE_TIME_MASTER_DEM)
+	while ((smsm_get_state(SMSM_TIME_MASTER_DEM)
 		& DEM_TIME_MASTER_TIME_PENDING_APPS)
 		&& check_timeout(clock, timeout))
 		;
-	if (smsm_get_state(SMSM_STATE_TIME_MASTER_DEM) &
+	if (smsm_get_state(SMSM_TIME_MASTER_DEM) &
 					DEM_TIME_MASTER_TIME_PENDING_APPS)
 		printk(KERN_INFO "get_smem_clock: exit timeout state %x "
 		       "clock %u in %d ticks\n", state, *smem_clock,

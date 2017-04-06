@@ -242,21 +242,21 @@ static int debug_read_stat(char *buf, int max)
 
 	msg = smem_find(ID_DIAG_ERR_MSG, SZ_DIAG_ERR_MSG);
 
-	if (raw_smsm_get_state(SMSM_STATE_MODEM) & SMSM_RESET)
+	if (raw_smsm_get_state(SMSM_MODEM_STATE) & SMSM_RESET)
 		i += scnprintf(buf + i, max - i,
 			       "smsm: ARM9 HAS CRASHED\n");
 
 	i += scnprintf(buf + i, max - i, "smsm: a9: %08x a11: %08x\n",
-		       raw_smsm_get_state(SMSM_STATE_MODEM),
-		       raw_smsm_get_state(SMSM_STATE_APPS));
+		       raw_smsm_get_state(SMSM_MODEM_STATE),
+		       raw_smsm_get_state(SMSM_APPS_STATE));
 #ifdef CONFIG_ARCH_MSM_SCORPION
 	i += scnprintf(buf + i, max - i, "smsm dem: apps: %08x modem: %08x "
 		       "qdsp6: %08x power: %08x time: %08x\n",
-		       raw_smsm_get_state(SMSM_STATE_APPS_DEM),
-		       raw_smsm_get_state(SMSM_STATE_MODEM_DEM),
-		       raw_smsm_get_state(SMSM_STATE_QDSP6_DEM),
-		       raw_smsm_get_state(SMSM_STATE_POWER_MASTER_DEM),
-		       raw_smsm_get_state(SMSM_STATE_TIME_MASTER_DEM));
+		       raw_smsm_get_state(SMSM_APPS_DEM),
+		       raw_smsm_get_state(SMSM_MODEM_DEM),
+		       raw_smsm_get_state(SMSM_Q6_DEM),
+		       raw_smsm_get_state(SMSM_POWER_MASTER_DEM),
+		       raw_smsm_get_state(SMSM_TIME_MASTER_DEM));
 #endif
 	if (msg) {
 		msg[SZ_DIAG_ERR_MSG - 1] = 0;
