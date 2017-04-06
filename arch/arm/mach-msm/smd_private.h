@@ -14,10 +14,6 @@
  *
  */
 
-#if defined(CONFIG_QCT_LTE)
-#include "lte/smd_private.h"
-#endif
-
 #ifndef _ARCH_ARM_MACH_MSM_MSM_SMD_PRIVATE_H_
 #define _ARCH_ARM_MACH_MSM_MSM_SMD_PRIVATE_H_
 

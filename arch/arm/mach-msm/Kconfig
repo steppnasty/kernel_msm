@@ -497,12 +497,6 @@ config MACH_MECHA
        help
          Support for the Qualcomm MSM7x30 Mecha board.
 
-config QCT_LTE
-       bool "Support QCT LTE function"
-       default n
-       help
-         For QCT LTE function, we need new rpcrouter and smd drivers.
-
 config MACH_GLACIER
        depends on ARCH_MSM7X30
        depends on !MSM_STACKED_MEMORY

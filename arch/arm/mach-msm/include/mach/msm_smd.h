@@ -14,10 +14,6 @@
  *
  */
 
-#if defined(CONFIG_QCT_LTE)
-#include <mach/lte/msm_smd.h>
-#endif
-
 #ifndef __ASM_ARCH_MSM_SMD_H
 #define __ASM_ARCH_MSM_SMD_H
 

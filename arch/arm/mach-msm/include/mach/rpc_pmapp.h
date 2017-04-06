@@ -26,10 +26,6 @@
  *
  */
 
-#if defined(CONFIG_QCT_LTE)
-#include <mach/lte/rpc_pmapp.h>
-#endif
-
 #ifndef __ASM_ARCH_MSM_RPC_PMAPP_H
 #define __ASM_ARCH_MSM_RPC_PMAPP_H
 

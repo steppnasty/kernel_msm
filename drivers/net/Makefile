@@ -292,11 +292,7 @@ obj-$(CONFIG_FS_ENET) += fs_enet/
 
 obj-$(CONFIG_NETXEN_NIC) += netxen/
 
-ifndef CONFIG_QCT_LTE
 obj-$(CONFIG_MSM_RMNET) += msm_rmnet.o
-else
-obj-$(CONFIG_QCT_LTE) += lte/
-endif
 
 obj-$(CONFIG_NIU) += niu.o
 obj-$(CONFIG_VIRTIO_NET) += virtio_net.o

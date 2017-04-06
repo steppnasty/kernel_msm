@@ -26,10 +26,6 @@
  *
  */
 
-#if defined(CONFIG_QCT_LTE)
-#include <mach/lte/smem_log.h>
-#endif
-
 #ifndef __ASM_ARCH_MSM_SMEM_LOG_H
 #define __ASM_ARCH_MSM_SMEM_LOG_H
 

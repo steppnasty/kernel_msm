@@ -50,7 +50,6 @@ obj-$(CONFIG_ARCH_MSM7X30) += rpc_hsusb.o
 obj-y += remote_spinlock.o
 
 obj-y += remote_spinlock.o
-ifndef CONFIG_QCT_LTE
 obj-$(CONFIG_MSM_SMD) += htc_port_list.o
 obj-$(CONFIG_ARCH_MSM7X30) += rpc_pmapp.o smd_rpcrouter_clients.o
 obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o
@@ -68,9 +67,6 @@ obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_xdr.o
 obj-$(CONFIG_MSM_RPCSERVERS) += rpc_server_dog_keepalive.o
 obj-$(CONFIG_MSM_RPCSERVERS) += rpc_server_time_remote.o
 obj-$(CONFIG_MSM_SMD) += smd_tty.o smd_qmi.o
-else
-obj-$(CONFIG_QCT_LTE) += lte/
-endif
 
 obj-$(CONFIG_MSM_DALRPC) += dal.o
 obj-$(CONFIG_MSM_DALRPC_TEST) += dal_remotetest.o

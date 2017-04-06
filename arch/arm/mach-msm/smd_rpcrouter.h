@@ -15,10 +15,6 @@
  *
  */
 
-#if defined(CONFIG_QCT_LTE)
-#include "lte/smd_rpcrouter.h"
-#endif
-
 #ifndef _ARCH_ARM_MACH_MSM_SMD_RPCROUTER_H
 #define _ARCH_ARM_MACH_MSM_SMD_RPCROUTER_H
 

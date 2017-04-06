@@ -15,10 +15,6 @@
  *
  */
 
-#if defined(CONFIG_QCT_LTE)
-#include <linux/lte/msm_rpcrouter.h>
-#endif
-
 #ifndef __LINUX_MSM_RPCROUTER_H
 #define __LINUX_MSM_RPCROUTER_H
 
