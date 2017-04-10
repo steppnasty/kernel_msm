@@ -45,6 +45,7 @@
 #include "clock.h"
 #include "spm.h"
 #include "idle.h"
+#include "irq.h"
 #include "gpio.h"
 #include "pm.h"
 #ifdef CONFIG_HAS_WAKELOCK
@@ -148,8 +149,6 @@ module_param_array_named(offalarm, offalarm, uint, &offalarm_size,
 
 int64_t msm_timer_enter_idle(void);
 void msm_timer_exit_idle(int low_power);
-int msm_irq_idle_sleep_allowed(void);
-int msm_irq_pending(void);
 int clks_allow_tcxo_locked_debug(void);
 extern int board_mfg_mode(void);
 extern char * board_get_mfg_sleep_gpio_table(void);
@@ -161,6 +160,24 @@ static int axi_rate;
 static int sleep_axi_rate;
 static struct clk *axi_clk;
 #endif
+
+struct smsm_interrupt_info_ext {
+	uint32_t aArm_sleep_time;
+	uint32_t aArm_en_mask;
+	uint32_t aArm_resources_used;
+	uint32_t aArm_reserved1;
+
+	uint32_t aArm_wakeup_reason;
+	uint32_t aArm_interrupts_pending;
+	uint32_t aArm_rpc_prog;
+	uint32_t aArm_rpc_proc;
+	char aArm_smd_port_name[20];
+	uint32_t aArm_reserved2;
+};
+static struct msm_pm_smem_addr_t {
+	struct smsm_interrupt_info_ext *int_info;
+} msm_pm_sma;
+
 static uint32_t *msm_pm_reset_vector;
 
 static uint32_t msm_pm_max_sleep_time;
@@ -344,11 +361,6 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay, int from_idle)
 {
 	uint32_t saved_vector[2];
 	int collapsed;
-	void msm_irq_enter_sleep1(bool arm9_wake, int from_idle);
-	int msm_irq_enter_sleep2(bool arm9_wake, int from_idle);
-	void msm_irq_exit_sleep1(void);
-	void msm_irq_exit_sleep2(void);
-	void msm_irq_exit_sleep3(void);
 	void smd_sleep_exit(void);
 	uint32_t enter_state;
 	uint32_t enter_wait_set = 0;
@@ -419,7 +431,9 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay, int from_idle)
 	}
 #endif
 	clk_enter_sleep(from_idle);
-	msm_irq_enter_sleep1(!!enter_state, from_idle);
+	memset(msm_pm_sma.int_info, 0, sizeof(*msm_pm_sma.int_info));
+	msm_irq_enter_sleep1(!!enter_state, from_idle,
+		&msm_pm_sma.int_info->aArm_en_mask);
 	msm_gpio_enter_sleep(from_idle);
 
 	if (enter_state) {
@@ -551,7 +565,9 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay, int from_idle)
 		       readl(A11S_CLK_SLEEP_EN), readl(A11S_PWRDOWN),
 		       smsm_get_state(PM_SMSM_READ_STATE));
 ramp_down_failed:
-	msm_irq_exit_sleep1();
+	msm_irq_exit_sleep1(msm_pm_sma.int_info->aArm_en_mask,
+		msm_pm_sma.int_info->aArm_wakeup_reason,
+		msm_pm_sma.int_info->aArm_interrupts_pending);
 enter_failed:
 	if (enter_state) {
 		msm_pm_exit_restore_hw();
@@ -567,7 +583,9 @@ enter_failed:
 		if (msm_pm_debug_mask & MSM_PM_DEBUG_WAKEUP_REASON && !from_idle)
 			smsm_print_sleep_info(1);
 	}
-	msm_irq_exit_sleep2();
+	msm_irq_exit_sleep2(msm_pm_sma.int_info->aArm_en_mask,
+		msm_pm_sma.int_info->aArm_wakeup_reason,
+		msm_pm_sma.int_info->aArm_interrupts_pending);
 	if (enter_state) {
 		smsm_change_state(PM_SMSM_WRITE_STATE, exit_state, PM_SMSM_WRITE_RUN);
 		msm_pm_wait_state(PM_SMSM_READ_RUN, 0, 0, 0);
@@ -577,7 +595,9 @@ enter_failed:
 			       "smsm_get_state %x\n", readl(A11S_CLK_SLEEP_EN),
 			       readl(A11S_PWRDOWN), smsm_get_state(PM_SMSM_READ_STATE));
 	}
-	msm_irq_exit_sleep3();
+	msm_irq_exit_sleep3(msm_pm_sma.int_info->aArm_en_mask,
+		msm_pm_sma.int_info->aArm_wakeup_reason,
+		msm_pm_sma.int_info->aArm_interrupts_pending);
 	msm_gpio_exit_sleep();
 	smd_sleep_exit();
 	clk_exit_sleep();
@@ -1119,6 +1139,15 @@ static int __init msm_pm_init(void)
 #endif
 
 	register_reboot_notifier(&msm_reboot_notifier);
+
+	msm_pm_sma.int_info = smem_alloc(SMEM_APPS_DEM_SLAVE_DATA,
+		sizeof(*msm_pm_sma.int_info));
+
+	if (msm_pm_sma.int_info == NULL) {
+		printk(KERN_ERR "msm_pm_init: failed get INT_INFO\n");
+		return -ENODEV;
+	}
+
 	msm_pm_reset_vector = ioremap(0x0, PAGE_SIZE);
 
 	if (msm_pm_reset_vector == NULL) {
