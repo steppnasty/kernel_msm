@@ -44,6 +44,7 @@
 #include "proc_comm.h"
 #include "clock.h"
 #include "spm.h"
+#include "idle.h"
 #include "gpio.h"
 #include "pm.h"
 #ifdef CONFIG_HAS_WAKELOCK
@@ -144,10 +145,6 @@ module_param_array_named(offalarm, offalarm, uint, &offalarm_size,
 #define PM_SMSM_WRITE_RUN       SMSM_RUN
 #define PM_SMSM_READ_RUN        SMSM_RUN
 #endif
-
-int msm_pm_collapse(void);
-int msm_arch_idle(void);
-void msm_pm_collapse_exit(void);
 
 int64_t msm_timer_enter_idle(void);
 void msm_timer_exit_idle(int low_power);
