@@ -80,6 +80,7 @@
 
 #include "board-glacier.h"
 #include "devices.h"
+#include "timer.h"
 #include "proc_comm.h"
 #include "smd_private.h"
 #include "spm.h"
@@ -2506,8 +2507,6 @@ static void __init glacier_map_io(void)
 
 	msm_map_common_io();
 }
-
-extern struct sys_timer msm_timer;
 
 MACHINE_START(GLACIER, "glacier")
 #ifdef CONFIG_MSM_DEBUG_UART

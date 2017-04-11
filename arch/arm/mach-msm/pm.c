@@ -47,6 +47,7 @@
 #include "idle.h"
 #include "irq.h"
 #include "gpio.h"
+#include "timer.h"
 #include "pm.h"
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
@@ -147,8 +148,6 @@ module_param_array_named(offalarm, offalarm, uint, &offalarm_size,
 #define PM_SMSM_READ_RUN        SMSM_RUN
 #endif
 
-int64_t msm_timer_enter_idle(void);
-void msm_timer_exit_idle(int low_power);
 int clks_allow_tcxo_locked_debug(void);
 extern int board_mfg_mode(void);
 extern char * board_get_mfg_sleep_gpio_table(void);
