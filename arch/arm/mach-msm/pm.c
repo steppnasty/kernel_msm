@@ -181,32 +181,25 @@ static uint32_t *msm_pm_reset_vector;
 
 static uint32_t msm_pm_max_sleep_time;
 static struct msm_pm_platform_data msm_pm_mode_default[MSM_PM_SLEEP_MODE_NR] = {
-	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE].supported = 1,
+	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE].idle_supported = 1,
+	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE].suspend_supported = 1,
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE].suspend_enabled = 1,
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE].idle_enabled = 1,
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE].latency = 8594,
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE].residency = 23740,
-	/*
-	[MSM_PM_SLEEP_MODE_APPS_SLEEP].supported = 1,
-	[MSM_PM_SLEEP_MODE_APPS_SLEEP].suspend_enabled = 1,
-	[MSM_PM_SLEEP_MODE_APPS_SLEEP].idle_enabled = 1,
-	[MSM_PM_SLEEP_MODE_APPS_SLEEP].latency = 8594,
-	[MSM_PM_SLEEP_MODE_APPS_SLEEP].residency = 23740,
 
-	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].supported = 1,
-	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].suspend_enabled = 0,
-	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].idle_enabled = 0,
-	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].latency = 500,
-	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].residency = 6000,
-	*/
-	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].supported = 1,
+	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].idle_supported
+		= 1,
+	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].suspend_supported
+		= 1,
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].suspend_enabled
 		= 1,
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].idle_enabled = 0,
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].latency = 443,
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].residency = 1098,
 
-	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT].supported = 1,
+	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT].idle_supported = 1,
+	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT].suspend_supported = 1,
 	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT].suspend_enabled = 1,
 	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT].idle_enabled = 1,
 	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT].latency = 2,
@@ -247,7 +240,8 @@ static struct msm_pm_time_stats {
 		"idle-failed-standalone-power-collapse",
 };
 
-void __init msm_pm_set_platform_data(struct msm_pm_platform_data *data)
+void __init msm_pm_set_platform_data(
+	struct msm_pm_platform_data *data, int count)
 {
 	msm_pm_modes = data;
 }
@@ -739,7 +733,7 @@ void arch_idle(void)
 
 	for (i = 0; i < MSM_PM_SLEEP_MODE_NR; i++) {
 		struct msm_pm_platform_data *mode = &msm_pm_modes[i];
-		if (!mode->supported || !mode->idle_enabled ||
+		if (!mode->idle_supported || !mode->idle_enabled ||
 			/*mode->latency >= latency_qos ||*/
 			mode->residency * 1000ULL >= sleep_time)
 			allow[i] = false;
@@ -747,11 +741,11 @@ void arch_idle(void)
 
 	if (msm_pm_debug_mask & MSM_PM_DEBUG_IDLE) {
 		pr_info("arch_idle: sleep_time %llu, wl %ld irq %d,"
-			" allow %d %d %d %d %d %d)\n",
+			" allow %d %d %d %d %d %d %d)\n",
 			sleep_time, has_wake_lock(WAKE_LOCK_IDLE),
 			msm_irq_idle_sleep_allowed(),
 			allow[0], allow[1], allow[2], allow[3],
-			allow[4], allow[5]);
+			allow[4], allow[5], allow[6]);
 	}
 
 	/* Enter one idle sleep mode. */
