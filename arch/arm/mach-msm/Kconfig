@@ -1054,6 +1054,14 @@ config MSM_N_WAY_SMD
 	  Supports APPS-QDSP SMD communication along with
 	  normal APPS-MODEM SMD communication.
 
+config MSM_N_WAY_SMSM
+	depends on (MSM_SMD && (ARCH_MSM_SCORPION || ARCH_MSM_SCORPIONMP || ARCH_MSM7X27))
+	default y
+	bool "MSM N-WAY SMSM support"
+	help
+	  Supports APPS-QDSP SMSM communication along with
+	  normal APPS-MODEM SMSM communication.
+
 config MSM_ONCRPCROUTER
 	depends on MSM_SMD
 	default y

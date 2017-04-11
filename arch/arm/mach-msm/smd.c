@@ -43,6 +43,8 @@ void (*msm_hw_reset_hook)(void);
 
 #define MODULE_NAME "msm_smd"
 
+uint32_t SMSM_NUM_ENTRIES = 8;
+
 enum {
 	MSM_SMD_DEBUG = 1U << 0,
 	MSM_SMSM_DEBUG = 1U << 0,
@@ -55,7 +57,7 @@ struct shared_info {
 	unsigned state;
 };
 
-static unsigned dummy_state[SMSM_NUM_ENTRIES];
+static unsigned dummy_state[8];
 
 static struct shared_info smd_info = {
 	.state = (unsigned) &dummy_state,
@@ -165,9 +167,9 @@ static void handle_modem_crash(void)
 
 extern int (*msm_check_for_modem_crash)(void);
 
-uint32_t raw_smsm_get_state(enum smsm_state_item item)
+uint32_t raw_smsm_get_state(uint32_t smsm_entry)
 {
-	return readl(smd_info.state + item * 4);
+	return readl(smd_info.state + smsm_entry * 4);
 }
 
 static int check_for_modem_crash(void)
@@ -1107,10 +1109,10 @@ static irqreturn_t smsm_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-int smsm_change_state(enum smsm_state_item item,
+int smsm_change_state(uint32_t smsm_entry,
 		      uint32_t clear_mask, uint32_t set_mask)
 {
-	unsigned long addr = smd_info.state + item * 4;
+	unsigned long addr = smd_info.state + smsm_entry * 4;
 	unsigned long flags;
 	unsigned state;
 
@@ -1126,7 +1128,7 @@ int smsm_change_state(enum smsm_state_item item,
 	writel(state, addr);
 
 	if (msm_smd_debug_mask & MSM_SMSM_DEBUG)
-		pr_info("[SMD]smsm_change_state %d %x\n", item, state);
+		pr_info("[SMD]smsm_change_state %d %x\n", smsm_entry, state);
 	notify_other_smsm();
 
 	spin_unlock_irqrestore(&smem_lock, flags);
@@ -1134,16 +1136,16 @@ int smsm_change_state(enum smsm_state_item item,
 	return 0;
 }
 
-uint32_t smsm_get_state(enum smsm_state_item item)
+uint32_t smsm_get_state(uint32_t smsm_entry)
 {
 	unsigned long flags;
 	uint32_t rv;
 
 	spin_lock_irqsave(&smem_lock, flags);
 
-	rv = readl(smd_info.state + item * 4);
+	rv = readl(smd_info.state + smsm_entry * 4);
 
-	if (item == SMSM_MODEM_STATE && (rv & SMSM_RESET))
+	if (smsm_entry == SMSM_MODEM_STATE && (rv & SMSM_RESET))
 		handle_modem_crash();
 
 	spin_unlock_irqrestore(&smem_lock, flags);

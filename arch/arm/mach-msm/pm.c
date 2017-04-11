@@ -160,6 +160,11 @@ static int sleep_axi_rate;
 static struct clk *axi_clk;
 #endif
 
+enum {
+	SLEEP_LIMIT_NONE = 0,
+	SLEEP_LIMIT_NO_TCXO_SHUTDOWN = 2
+};
+
 struct smsm_interrupt_info_ext {
 	uint32_t aArm_sleep_time;
 	uint32_t aArm_en_mask;
@@ -174,6 +179,8 @@ struct smsm_interrupt_info_ext {
 	uint32_t aArm_reserved2;
 };
 static struct msm_pm_smem_addr_t {
+	uint32_t *sleep_delay;
+	uint32_t *limit_sleep;
 	struct smsm_interrupt_info_ext *int_info;
 } msm_pm_sma;
 
@@ -350,7 +357,8 @@ static inline void msm_fiq_exit_sleep(void) { }
 #endif
 
 
-static int msm_sleep(int sleep_mode, uint32_t sleep_delay, int from_idle)
+static int msm_sleep(int sleep_mode, uint32_t sleep_delay,
+	uint32_t sleep_limit, int from_idle)
 {
 	uint32_t saved_vector[2];
 	int collapsed;
@@ -439,6 +447,9 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay, int from_idle)
 
 		if (sleep_delay == 0 && sleep_mode >= MSM_PM_SLEEP_MODE_APPS_SLEEP)
 			sleep_delay = 192000*5; /* APPS_SLEEP does not allow infinite timeout */
+
+		*msm_pm_sma.sleep_delay = sleep_delay;
+		*msm_pm_sma.limit_sleep = sleep_limit;
 		ret = smsm_set_sleep_duration(sleep_delay);
 		if (ret) {
 			printk(KERN_ERR "msm_sleep(): smsm_set_sleep_duration %x failed\n", enter_state);
@@ -490,7 +501,11 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay, int from_idle)
 
 	if (sleep_mode < MSM_PM_SLEEP_MODE_APPS_SLEEP) {
 		if (msm_pm_debug_mask & MSM_PM_DEBUG_SMSM_STATE)
-			smsm_print_sleep_info(0);
+			smsm_print_sleep_info(*msm_pm_sma.sleep_delay,
+				*msm_pm_sma.limit_sleep,
+				msm_pm_sma.int_info->aArm_en_mask,
+				msm_pm_sma.int_info->aArm_wakeup_reason,
+				msm_pm_sma.int_info->aArm_interrupts_pending);
 		saved_vector[0] = msm_pm_reset_vector[0];
 		saved_vector[1] = msm_pm_reset_vector[1];
 		msm_pm_reset_vector[0] = 0xE51FF004; /* ldr pc, 4 */
@@ -531,7 +546,11 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay, int from_idle)
 			printk(KERN_INFO "msm_pm_collapse(): returned %d\n",
 			       collapsed);
 		if (msm_pm_debug_mask & MSM_PM_DEBUG_SMSM_STATE)
-			smsm_print_sleep_info(0);
+			smsm_print_sleep_info(*msm_pm_sma.sleep_delay,
+				*msm_pm_sma.limit_sleep,
+				msm_pm_sma.int_info->aArm_en_mask,
+				msm_pm_sma.int_info->aArm_wakeup_reason,
+				msm_pm_sma.int_info->aArm_interrupts_pending);
 	} else {
 		msm_arch_idle();
 		rv = 0;
@@ -572,9 +591,11 @@ enter_failed:
 			       "smsm_get_state %x\n", readl(A11S_CLK_SLEEP_EN),
 			       readl(A11S_PWRDOWN), smsm_get_state(PM_SMSM_READ_STATE));
 		if (msm_pm_debug_mask & MSM_PM_DEBUG_SMSM_STATE)
-			smsm_print_sleep_info(0);
-		if (msm_pm_debug_mask & MSM_PM_DEBUG_WAKEUP_REASON && !from_idle)
-			smsm_print_sleep_info(1);
+			smsm_print_sleep_info(*msm_pm_sma.sleep_delay,
+				*msm_pm_sma.limit_sleep,
+				msm_pm_sma.int_info->aArm_en_mask,
+				msm_pm_sma.int_info->aArm_wakeup_reason,
+				msm_pm_sma.int_info->aArm_interrupts_pending);
 	}
 	msm_irq_exit_sleep2(msm_pm_sma.int_info->aArm_en_mask,
 		msm_pm_sma.int_info->aArm_wakeup_reason,
@@ -764,7 +785,8 @@ void arch_idle(void)
 			printk("sleep_time too big %lld\n", sleep_time);
 			sleep_time = 0x6DDD000;
 		}
-		ret = msm_sleep(msm_pm_idle_sleep_mode, sleep_time, 1);
+		ret = msm_sleep(msm_pm_idle_sleep_mode, sleep_time,
+			SLEEP_LIMIT_NONE, 1);
 #ifdef CONFIG_MSM_IDLE_STATS
 		if (ret)
 			exit_stat = MSM_PM_STAT_IDLE_FAILED_SLEEP;
@@ -831,7 +853,8 @@ abort_idle:
 
 static int msm_pm_enter(suspend_state_t state)
 {
-	msm_sleep(msm_pm_sleep_mode, msm_pm_max_sleep_time, 0);
+	msm_sleep(msm_pm_sleep_mode, msm_pm_max_sleep_time,
+		SLEEP_LIMIT_NONE, 0);
 	return 0;
 }
 
@@ -1132,6 +1155,20 @@ static int __init msm_pm_init(void)
 #endif
 
 	register_reboot_notifier(&msm_reboot_notifier);
+
+	msm_pm_sma.sleep_delay = smem_alloc(SMEM_SMSM_SLEEP_DELAY,
+		sizeof(*msm_pm_sma.sleep_delay));
+	if (msm_pm_sma.sleep_delay == NULL) {
+		printk(KERN_ERR "msm_pm_init: failed get SLEEP_DELAY\n");
+		return -ENODEV;
+	}
+
+	msm_pm_sma.limit_sleep = smem_alloc(SMEM_SMSM_LIMIT_SLEEP,
+		sizeof(*msm_pm_sma.limit_sleep));
+	if (msm_pm_sma.limit_sleep == NULL) {
+		printk(KERN_ERR "msm_pm_init: failed get LIMIT_SLEEP\n");
+		return -ENODEV;
+	}
 
 	msm_pm_sma.int_info = smem_alloc(SMEM_APPS_DEM_SLAVE_DATA,
 		sizeof(*msm_pm_sma.int_info));
