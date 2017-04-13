@@ -1980,7 +1980,6 @@ CONFIG_ANDROID_LOW_MEMORY_KILLER=y
 # CONFIG_TI_ST is not set
 # CONFIG_ST_BT is not set
 # CONFIG_ADIS16255 is not set
-# CONFIG_BTPORT is not set
 
 #
 # File systems
