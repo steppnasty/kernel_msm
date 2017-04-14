@@ -1,7 +1,7 @@
 /* linux/include/asm-arm/arch-msm/dma.h
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2011, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -15,9 +15,14 @@
  */
 
 #ifndef __ASM_ARCH_MSM_DMA_H
+#define __ASM_ARCH_MSM_DMA_H
 
 #include <linux/list.h>
 #include <mach/msm_iomap.h>
+
+#if defined(CONFIG_ARCH_FSM9XXX)
+#include <mach/dma-fsm9xxx.h>
+#endif
 
 struct msm_dmov_errdata {
 	uint32_t flush[6];
@@ -26,7 +31,6 @@ struct msm_dmov_errdata {
 struct msm_dmov_cmd {
 	struct list_head list;
 	unsigned int cmdptr;
-	unsigned int crci_mask;
 	void (*complete_func)(struct msm_dmov_cmd *cmd,
 			      unsigned int result,
 			      struct msm_dmov_errdata *err);
@@ -38,14 +42,7 @@ void msm_dmov_enqueue_cmd(unsigned id, struct msm_dmov_cmd *cmd);
 void msm_dmov_enqueue_cmd_ext(unsigned id, struct msm_dmov_cmd *cmd);
 void msm_dmov_stop_cmd(unsigned id, struct msm_dmov_cmd *cmd, int graceful);
 void msm_dmov_flush(unsigned int id);
-int msm_dmov_exec_cmd(unsigned id, unsigned int crci_mask, unsigned int cmdptr);
-unsigned int msm_dmov_build_crci_mask(int n, ...);
-
-#ifdef CONFIG_ARCH_MSM8X60
-#define DMOV_BASE_ADDR MSM_DMOV_ADM0_BASE
-#else
-#define DMOV_BASE_ADDR MSM_DMOV_BASE
-#endif
+int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr);
 
 #define DMOV_CRCIS_PER_CONF 10
 
@@ -58,18 +55,25 @@ unsigned int msm_dmov_build_crci_mask(int n, ...);
 #if defined(CONFIG_ARCH_MSM7X30)
 #define DMOV_SD_SIZE 0x400
 #define DMOV_SD_AARM 2
-#define DMOV_SD_AARM_ADDR DMOV_SD2
-#elif defined(CONFIG_ARCH_MSM8X60)
+#elif defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_MSM9615)
 #define DMOV_SD_SIZE 0x800
-#define DMOV_SD_MASTER 0
+#define DMOV_SD_AARM 1
+#elif defined(CONFIG_ARCH_APQ8064)
+#define DMOV_SD_SIZE 0x800
 #define DMOV_SD_AARM 0
+#elif defined(CONFIG_MSM_ADM3)
+#define DMOV_SD_SIZE 0x800
+#define DMOV_SD_MASTER 1
+#define DMOV_SD_AARM 1
 #define DMOV_SD_MASTER_ADDR(off, ch) DMOV_ADDR(off, ch, DMOV_SD_MASTER)
-#define DMOV_SD_AARM_ADDR(off, ch) DMOV_ADDR(off, ch, DMOV_SD_AARM)
+#elif defined(CONFIG_ARCH_FSM9XXX)
+/* defined in dma-fsm9xxx.h */
 #else
 #define DMOV_SD_SIZE 0x400
 #define DMOV_SD_AARM 3
-#define DMOV_SD_AARM_ADDR DMOV_SD3
 #endif
+
+#define DMOV_SD_AARM_ADDR(off, ch) DMOV_ADDR(off, ch, DMOV_SD_AARM)
 
 #define DMOV_CMD_PTR(ch)      DMOV_SD_AARM_ADDR(0x000, ch)
 #define DMOV_CMD_LIST         (0 << 29) /* does not work */
@@ -139,7 +143,7 @@ unsigned int msm_dmov_build_crci_mask(int n, ...);
  * Format of CRCI numbers: crci number + (muxsel << 4)
  */
 
-#ifdef CONFIG_ARCH_MSM8X60
+#if defined(CONFIG_ARCH_MSM8X60)
 #define DMOV_GP_CHAN           15
 
 #define DMOV_NAND_CHAN         17
@@ -148,13 +152,13 @@ unsigned int msm_dmov_build_crci_mask(int n, ...);
 #define DMOV_NAND_CRCI_CMD     15
 #define DMOV_NAND_CRCI_DATA    3
 
-#define DMOV_CE_IN_CHAN       5
-#define DMOV_CE_IN_CHAN_TZ     11
-#define DMOV_CE_IN_CRCI       1
+#define DMOV_CE_IN_CHAN        2
+#define DMOV_CE_IN_CRCI        4
 
-#define DMOV_CE_OUT_CHAN      6
-#define DMOV_CE_OUT_CHAN_TZ    12
-#define DMOV_CE_OUT_CRCI      2
+#define DMOV_CE_OUT_CHAN       3
+#define DMOV_CE_OUT_CRCI       5
+
+#define DMOV_CE_HASH_CRCI      15
 
 #define DMOV_SDC1_CHAN         18
 #define DMOV_SDC1_CRCI         1
@@ -185,6 +189,39 @@ unsigned int msm_dmov_build_crci_mask(int n, ...);
 
 #define DMOV_HSUART2_RX_CHAN   8
 #define DMOV_HSUART2_RX_CRCI   14
+
+#elif defined(CONFIG_ARCH_MSM8960)
+#define DMOV_GP_CHAN           9
+
+#define DMOV_CE_IN_CHAN        0
+#define DMOV_CE_IN_CRCI        2
+
+#define DMOV_CE_OUT_CHAN       1
+#define DMOV_CE_OUT_CRCI       3
+
+#define DMOV_HSUART_GSBI6_TX_CHAN	7
+#define DMOV_HSUART_GSBI6_TX_CRCI	6
+
+#define DMOV_HSUART_GSBI6_RX_CHAN	8
+#define DMOV_HSUART_GSBI6_RX_CRCI	11
+
+#elif defined(CONFIG_ARCH_MSM9615)
+
+#define DMOV_GP_CHAN          4
+
+#define DMOV_CE_IN_CHAN       0
+#define DMOV_CE_IN_CRCI       12
+
+#define DMOV_CE_OUT_CHAN      1
+#define DMOV_CE_OUT_CRCI      13
+
+#define DMOV_NAND_CHAN        3
+#define DMOV_NAND_CRCI_CMD    15
+#define DMOV_NAND_CRCI_DATA   3
+
+#elif defined(CONFIG_ARCH_FSM9XXX)
+/* defined in dma-fsm9xxx.h */
+
 #else
 #define DMOV_GP_CHAN          4
 
@@ -193,6 +230,8 @@ unsigned int msm_dmov_build_crci_mask(int n, ...);
 
 #define DMOV_CE_OUT_CHAN      6
 #define DMOV_CE_OUT_CRCI      2
+
+#define DMOV_CE_HASH_CRCI     3
 
 #define DMOV_NAND_CHAN        7
 #define DMOV_NAND_CRCI_CMD    5

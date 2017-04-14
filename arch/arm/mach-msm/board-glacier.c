@@ -2159,6 +2159,7 @@ static struct platform_device *devices[] __initdata = {
 	&glacier_bcm_bt_lpm_device,
 #endif
 	&msm_device_smd,
+	&msm_device_dmov,
 	&glacier_rfkill,
 	&glacier_fmtx_rfkill,
 #ifdef CONFIG_I2C_SSBI

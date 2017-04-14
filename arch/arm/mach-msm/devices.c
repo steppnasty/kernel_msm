@@ -1486,7 +1486,7 @@ struct clk msm_clocks[] = {
 
 	CLOCK(NULL, 0, NULL, 0, 0),
 #else /* 7x30 clock tbl */
-	CLK_PCOM("adm_clk", ADM_CLK, NULL, DEFER),
+	CLK_PCOM("core_clk", ADM_CLK, &msm_device_dmov.dev, DEFER),
 	CLK_PCOM("adsp_clk", ADSP_CLK, NULL, 0),
 	CLK_PCOM("cam_clk", CAM_M_CLK, NULL, 0),
 	CLK_PCOM("camif_pad_pclk", CAMIF_PAD_P_CLK, NULL, OFF),

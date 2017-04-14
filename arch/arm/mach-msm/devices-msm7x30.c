@@ -16,8 +16,24 @@
 #include <linux/platform_device.h>
 #include <mach/kgsl.h>
 #include <mach/irqs.h>
+#include <mach/msm_iomap.h>
 
 #include <mach/dal_axi.h>
+
+struct resource msm_dmov_resource[] = {
+	{
+		.start = INT_ADM_AARM,
+		.end = (resource_size_t)MSM_DMOV_BASE,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm_device_dmov = {
+	.name	= "msm_dmov",
+	.id	= -1,
+	.resource = msm_dmov_resource,
+	.num_resources = ARRAY_SIZE(msm_dmov_resource),
+};
 
 static struct resource kgsl_3d0_resources[] = {
 	{
