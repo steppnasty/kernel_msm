@@ -2137,7 +2137,23 @@ module_param_string(bt_fw_version, bt_fw_version, sizeof(bt_fw_version), S_IWUSR
 MODULE_PARM_DESC(bt_fw_version, "BT's fw version");
 #endif
 
+static struct resource ram_console_resources[] = {
+	{
+		.start	= MSM_RAM_CONSOLE_BASE,
+		.end	= MSM_RAM_CONSOLE_BASE + MSM_RAM_CONSOLE_SIZE -1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device ram_console_device = {
+	.name		= "ram_console",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(ram_console_resources),
+	.resource	= ram_console_resources,
+};
+
 static struct platform_device *devices[] __initdata = {
+	&ram_console_device,
 	&msm_device_uart2,
 #ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
 	&glacier_bcm_bt_lpm_device,
