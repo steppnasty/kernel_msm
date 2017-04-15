@@ -69,92 +69,6 @@ static void defer_clk_expired(unsigned long data)
 	spin_unlock_irqrestore(&clocks_lock, flags);
 }
 
-/*
- * glue for the proc_comm interface
- */
-static inline int pc_clk_enable(unsigned id)
-{
-	#if 0
-	/* gross hack to set axi clk rate when turning on uartdm clock */
-	if (id == UART1DM_CLK && axi_clk)
-		clk_set_rate_locked(axi_clk, 128000000);
-	#endif
-	return msm_proc_comm(PCOM_CLKCTL_RPC_ENABLE, &id, NULL);
-}
-
-static inline void pc_clk_disable(unsigned id)
-{
-	msm_proc_comm(PCOM_CLKCTL_RPC_DISABLE, &id, NULL);
-	#if 0
-	if (id == UART1DM_CLK && axi_clk)
-		clk_set_rate_locked(axi_clk, 0);
-	#endif
-}
-
-static int pc_clk_reset(unsigned id, enum clk_reset_action action)
-{
-	int rc;
-
-	if (action == CLK_RESET_ASSERT)
-		rc = msm_proc_comm(PCOM_CLKCTL_RPC_RESET_ASSERT, &id, NULL);
-	else
-		rc = msm_proc_comm(PCOM_CLKCTL_RPC_RESET_DEASSERT, &id, NULL);
-
-	if (rc < 0)
-		return rc;
-	else
-		return (int)id < 0 ? -EINVAL : 0;
-}
-
-static inline int pc_clk_set_rate(unsigned id, unsigned rate)
-{
-	return msm_proc_comm(PCOM_CLKCTL_RPC_SET_RATE, &id, &rate);
-}
-
-static unsigned ebi1_min_rate = 0;	/* Last EBI1 min rate */
-static spinlock_t ebi1_rate_lock;	/* Avoid race conditions */
-static int pc_clk_set_min_rate(unsigned id, unsigned rate)
-{
-	/* Do not set the same EBI1 min rate via proc comm */
-	if (id == EBI1_CLK) {
-		spin_lock(&ebi1_rate_lock);
-		if (rate == ebi1_min_rate) {
-			spin_unlock(&ebi1_rate_lock);
-			return 0;	/* Return success */
-		}
-		else
-			ebi1_min_rate = rate;
-		spin_unlock(&ebi1_rate_lock);
-	}
-	return msm_proc_comm(PCOM_CLKCTL_RPC_MIN_RATE, &id, &rate);
-}
-
-static inline int pc_clk_set_max_rate(unsigned id, unsigned rate)
-{
-	return msm_proc_comm(PCOM_CLKCTL_RPC_MAX_RATE, &id, &rate);
-}
-
-static inline int pc_clk_set_flags(unsigned id, unsigned flags)
-{
-	return msm_proc_comm(PCOM_CLKCTL_RPC_SET_FLAGS, &id, &flags);
-}
-
-static inline unsigned pc_clk_get_rate(unsigned id)
-{
-	if (msm_proc_comm(PCOM_CLKCTL_RPC_RATE, &id, NULL))
-		return 0;
-	else
-		return id;
-}
-
-static inline unsigned pc_clk_is_enabled(unsigned id)
-{
-	if (msm_proc_comm(PCOM_CLKCTL_RPC_ENABLED, &id, NULL))
-		return 0;
-	else
-		return id;
-}
-
 static inline int pc_pll_request(unsigned id, unsigned on)
 {
 	on = !!on;
@@ -267,8 +181,6 @@ EXPORT_SYMBOL(clk_disable);
 
 int clk_reset(struct clk *clk, enum clk_reset_action action)
 {
-	if (!clk->ops->reset)
-		clk->ops->reset = &pc_clk_reset;
 	return clk->ops->reset(clk->remote_id, action);
 }
 EXPORT_SYMBOL(clk_reset);
@@ -441,18 +353,6 @@ EXPORT_SYMBOL(clks_print_running);
 
 static unsigned __initdata local_count;
 
-struct clk_ops clk_ops_pcom = {
-	.enable = pc_clk_enable,
-	.disable = pc_clk_disable,
-	.reset = pc_clk_reset,
-	.set_rate = pc_clk_set_rate,
-	.set_min_rate = pc_clk_set_min_rate,
-	.set_max_rate = pc_clk_set_max_rate,
-	.set_flags = pc_clk_set_flags,
-	.get_rate = pc_clk_get_rate,
-	.is_enabled = pc_clk_is_enabled,
-};
-
 static void __init set_clock_ops(struct clk *clk)
 {
 #if defined(CONFIG_ARCH_MSM7X30)
@@ -480,7 +380,6 @@ void __init msm_clock_init(void)
 	clk_7x30_init();
 #endif
 	spin_lock_init(&clocks_lock);
-	spin_lock_init(&ebi1_rate_lock);
 	mutex_lock(&clocks_mutex);
 	for (clk = msm_clocks; clk && clk->name; clk++) {
 		set_clock_ops(clk);
@@ -665,7 +564,7 @@ static int __init clock_late_init(void)
 			spin_lock_irqsave(&clocks_lock, flags);
 			if (!clk->count) {
 				count++;
-				pc_clk_disable(clk->id);
+				clk->ops->auto_off(clk->id);
 			}
 			spin_unlock_irqrestore(&clocks_lock, flags);
 		}

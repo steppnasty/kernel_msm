@@ -8,7 +8,8 @@ endif
 obj-y += subsystem_map.o
 
 ifndef CONFIG_ARCH_MSM8X60
-obj-y += devices.o pmic.o pwrtest.o
+	obj-$(CONFIG_MSM_PROC_COMM) += clock-pcom.o
+	obj-y += devices.o pmic.o pwrtest.o
 endif
 
 obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o internal_power_rail.o
