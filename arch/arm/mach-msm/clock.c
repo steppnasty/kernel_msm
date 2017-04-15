@@ -439,20 +439,6 @@ int clks_print_running(void)
 }
 EXPORT_SYMBOL(clks_print_running);
 
-int clks_allow_tcxo_locked(void)
-{
-	struct clk *clk;
-	struct hlist_node *pos;
-
-	hlist_for_each_entry(clk, pos, &clocks, list) {
-		if (clk->count)
-			return 0;
-	}
-
-	return 1;
-}
-EXPORT_SYMBOL(clks_allow_tcxo_locked);
-
 static unsigned __initdata local_count;
 
 struct clk_ops clk_ops_pcom = {
