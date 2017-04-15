@@ -453,24 +453,6 @@ int clks_allow_tcxo_locked(void)
 }
 EXPORT_SYMBOL(clks_allow_tcxo_locked);
 
-int clks_allow_tcxo_locked_debug(void)
-{
-	struct clk *clk;
-	int clk_on_count = 0;
-	struct hlist_node *pos;
-
-	hlist_for_each_entry(clk, pos, &clocks, list) {
-		if (clk->count) {
-			pr_info("%s: '%s(%d)' not off.\n", __func__, clk->name, clk->id);
-			clk_on_count++;
-		}
-	}
-	pr_info("%s: %d clks are on.\n", __func__, clk_on_count);
-
-	return !clk_on_count;
-}
-EXPORT_SYMBOL(clks_allow_tcxo_locked_debug);
-
 static unsigned __initdata local_count;
 
 struct clk_ops clk_ops_pcom = {

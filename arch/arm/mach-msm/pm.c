@@ -148,7 +148,6 @@ module_param_array_named(offalarm, offalarm, uint, &offalarm_size,
 #define PM_SMSM_READ_RUN        SMSM_RUN
 #endif
 
-int clks_allow_tcxo_locked_debug(void);
 extern int board_mfg_mode(void);
 extern char * board_get_mfg_sleep_gpio_table(void);
 extern void gpio_set_diag_gpio_table(unsigned long * dwMFG_gpio_table);
@@ -456,10 +455,6 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay,
 			enter_state = 0;
 			exit_state = 0;
 		}
-		if ((!from_idle && (msm_pm_debug_mask & MSM_PM_DEBUG_CLOCK_VOTE)) ||
-			(from_idle && (msm_pm_debug_mask & MSM_PM_DEBUG_IDLE)))
-			clks_allow_tcxo_locked_debug();
-
 		ret = smsm_change_state(PM_SMSM_WRITE_STATE, PM_SMSM_WRITE_RUN, enter_state);
 		if (ret) {
 			printk(KERN_ERR "msm_sleep(): smsm_change_state %x failed\n", enter_state);
