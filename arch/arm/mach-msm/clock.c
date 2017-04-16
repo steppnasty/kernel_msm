@@ -38,6 +38,8 @@
 static DEFINE_MUTEX(clocks_mutex);
 static DEFINE_SPINLOCK(clocks_lock);
 static HLIST_HEAD(clocks);
+struct clk *msm_clocks;
+unsigned msm_num_clocks;
 
 #if defined(CONFIG_ARCH_MSM7X30)
 static struct notifier_block axi_freq_notifier_block;
@@ -341,23 +343,25 @@ static void __init set_clock_ops(struct clk *clk)
 #endif
 }
 
-void __init msm_clock_init(void)
+void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks)
 {
-	struct clk *clk;
+	unsigned n;
 
 #if defined(CONFIG_ARCH_MSM7X30)
 	clk_7x30_init();
 #endif
 	spin_lock_init(&clocks_lock);
 	mutex_lock(&clocks_mutex);
-	for (clk = msm_clocks; clk && clk->name; clk++) {
-		set_clock_ops(clk);
-		if (clk->flags & CLKFLAG_DEFER) {
-			init_timer(&clk->defer_clk_timer);
-			clk->defer_clk_timer.data = (unsigned long)clk;
-			clk->defer_clk_timer.function = defer_clk_expired;
+	msm_clocks = clock_tbl;
+	msm_num_clocks = num_clocks;
+	for (n = 0; n < msm_num_clocks; n++) {
+		set_clock_ops(&msm_clocks[n]);
+		if (msm_clocks[n].flags & CLKFLAG_DEFER) {
+			init_timer(&msm_clocks[n].defer_clk_timer);
+			msm_clocks[n].defer_clk_timer.data = (unsigned long)&msm_clocks[n];
+			msm_clocks[n].defer_clk_timer.function = defer_clk_expired;
 		}
-		hlist_add_head(&clk->list, &clocks);
+		hlist_add_head(&msm_clocks[n].list, &clocks);
 	}
 	mutex_unlock(&clocks_mutex);
 	if (local_count)

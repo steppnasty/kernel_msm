@@ -2408,7 +2408,7 @@ static void __init glacier_init(void)
 	if (socinfo_init() < 0)
 		printk(KERN_ERR "%s: socinfo_init() failed!\n", __func__);
 
-	msm_clock_init();
+	msm_clock_init(msm_clocks_7x30, msm_num_clocks_7x30);
 
 	/* for bcm */
 	bt_export_bd_address();

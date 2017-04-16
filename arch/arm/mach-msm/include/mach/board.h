@@ -564,13 +564,11 @@ void __init msm_map_msm7x30_io(void);
 void __init msm_map_comet_io(void);
 void __init msm_init_irq(void);
 
+void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks);
 #ifdef CONFIG_ARCH_MSM8X60
-void __init msm_clock_init(struct clk_lookup *clock_tbl, unsigned num_clocks);
 struct mmc_platform_data;
 int __init msm_add_sdcc(unsigned int controller,
 		struct mmc_platform_data *plat);
-#else
-void __init msm_clock_init(void);
 #endif
 
 void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *);

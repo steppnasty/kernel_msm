@@ -219,12 +219,20 @@ struct clk_handle {
 #define CLK_MAX CLKFLAG_MAX
 #define CLK_MINMAX (CLK_MIN | CLK_MAX)
 
-#ifndef CONFIG_ARCH_MSM8X60
-extern struct clk msm_clocks[];
-#endif
-
 void clk_enter_sleep(int from_idle);
 void clk_exit_sleep(void);
+
+#define CLOCK(clk_name, clk_id, clk_dev, clk_flags, clk_arch) {	\
+	.name = clk_name, \
+	.id = clk_id, \
+	.flags = (clk_flags) | ((clk_arch) & CLKFLAG_ARCH_ALL), \
+	.dev = clk_dev, \
+	}
+
+#define OFF CLKFLAG_AUTO_OFF
+#define MINMAX (CLKFLAG_USE_MIN_TO_SET | CLKFLAG_USE_MAX_TO_SET)
+#define USE_MIN (CLKFLAG_USE_MIN_TO_SET | CLKFLAG_SHARED)
+#define DEFER CLKFLAG_DEFER
 
 #if defined(CONFIG_ARCH_MSM7X30)
 enum {
