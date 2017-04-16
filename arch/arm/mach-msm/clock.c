@@ -33,43 +33,18 @@
 #include "clock.h"
 #include "proc_comm.h"
 
-#define DEFERCLK_TIMEOUT (HZ/2)
-
 static DEFINE_MUTEX(clocks_mutex);
 static DEFINE_SPINLOCK(clocks_lock);
 static HLIST_HEAD(clocks);
 struct clk *msm_clocks;
 unsigned msm_num_clocks;
 
-#if defined(CONFIG_ARCH_MSM7X30)
 static struct notifier_block axi_freq_notifier_block;
 static struct clk *pbus_clk;
-#endif
 
 struct clk* axi_clk;  /* hack */
 
 static int clk_set_rate_locked(struct clk *clk, unsigned long rate);
-
-static inline void defer_disable_clocks(struct clk *clk, int deferr)
-{
-	if (deferr) {
-		mod_timer(&clk->defer_clk_timer, jiffies + DEFERCLK_TIMEOUT);
-	} else {
-		if (del_timer_sync(&clk->defer_clk_timer) && clk->count == 0)
-			clk->ops->disable(clk->id);
-	}
-}
-
-static void defer_clk_expired(unsigned long data)
-{
-	unsigned long flags;
-	struct clk *clk = (struct clk *)data;
-
-	spin_lock_irqsave(&clocks_lock, flags);
-	if (clk->count == 0)
-		clk->ops->disable(clk->id);
-	spin_unlock_irqrestore(&clocks_lock, flags);
-}
 
 static inline int pc_pll_request(unsigned id, unsigned on)
 {
@@ -172,10 +147,7 @@ void clk_disable(struct clk *clk)
 	BUG_ON(clk->count == 0);
 	clk->count--;
 	if (clk->count == 0) {
-		if (clk->flags & CLKFLAG_DEFER)
-			defer_disable_clocks(clk, 1);
-		else
-			clk->ops->disable(clk->id);
+		clk->ops->disable(clk->id);
 	}
 	spin_unlock_irqrestore(&clocks_lock, flags);
 }
@@ -287,7 +259,6 @@ int clk_set_flags(struct clk *clk, unsigned long flags)
 }
 EXPORT_SYMBOL(clk_set_flags);
 
-#if defined(CONFIG_ARCH_MSM7X30)
 static int axi_freq_notifier_handler(struct notifier_block *block,
 				unsigned long min_freq, void *v)
 {
@@ -302,31 +273,11 @@ static int axi_freq_notifier_handler(struct notifier_block *block,
 		return clk_set_rate(pbus_clk, min_freq/2);
 	return 0;
 }
-#endif
-
-void clk_enter_sleep(int from_idle)
-{
-	if (!from_idle) {
-		struct clk *clk;
-		struct hlist_node *pos;
-		hlist_for_each_entry(clk, pos, &clocks, list) {
-			if (clk->flags & CLKFLAG_DEFER) {
-				clk = source_clk(clk);
-				defer_disable_clocks(clk, 0);
-			}
-		}
-	}
-}
-
-void clk_exit_sleep(void)
-{
-}
 
 static unsigned __initdata local_count;
 
 static void __init set_clock_ops(struct clk *clk)
 {
-#if defined(CONFIG_ARCH_MSM7X30)
 	if (!clk->ops) {
 		struct clk_ops *ops = clk_7x30_is_local(clk->id);
 		if (ops) {
@@ -337,30 +288,19 @@ static void __init set_clock_ops(struct clk *clk)
 			clk->id = clk->remote_id;
 		}
 	}
-#else
-	if (!clk->ops)
-		clk->ops = &clk_ops_pcom;
-#endif
 }
 
 void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks)
 {
 	unsigned n;
 
-#if defined(CONFIG_ARCH_MSM7X30)
 	clk_7x30_init();
-#endif
 	spin_lock_init(&clocks_lock);
 	mutex_lock(&clocks_mutex);
 	msm_clocks = clock_tbl;
 	msm_num_clocks = num_clocks;
 	for (n = 0; n < msm_num_clocks; n++) {
 		set_clock_ops(&msm_clocks[n]);
-		if (msm_clocks[n].flags & CLKFLAG_DEFER) {
-			init_timer(&msm_clocks[n].defer_clk_timer);
-			msm_clocks[n].defer_clk_timer.data = (unsigned long)&msm_clocks[n];
-			msm_clocks[n].defer_clk_timer.function = defer_clk_expired;
-		}
 		hlist_add_head(&msm_clocks[n].list, &clocks);
 	}
 	mutex_unlock(&clocks_mutex);
@@ -368,7 +308,6 @@ void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks)
 		pr_info("%u clock%s locally owned\n", local_count,
 			local_count > 1 ? "s are" : " is");
 
-#if defined(CONFIG_ARCH_MSM7X30)
 	if (cpu_is_msm7x30() || cpu_is_msm8x55()) {
 		pbus_clk = clk_get(NULL, "pbus_clk");
 		BUG_ON(IS_ERR(pbus_clk));
@@ -376,7 +315,6 @@ void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks)
 
 	axi_freq_notifier_block.notifier_call = axi_freq_notifier_handler;
 	pm_qos_add_notifier(PM_QOS_SYSTEM_BUS_FREQ, &axi_freq_notifier_block);
-#endif
 }
 
 #if defined(CONFIG_MSM_CLOCK_CTRL_DEBUG)

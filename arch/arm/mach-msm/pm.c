@@ -430,7 +430,6 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay,
 		exit_state = 0;
 	}
 #endif
-	clk_enter_sleep(from_idle);
 	memset(msm_pm_sma.int_info, 0, sizeof(*msm_pm_sma.int_info));
 	msm_irq_enter_sleep1(!!enter_state, from_idle,
 		&msm_pm_sma.int_info->aArm_en_mask);
@@ -609,7 +608,6 @@ enter_failed:
 		msm_pm_sma.int_info->aArm_interrupts_pending);
 	msm_gpio_exit_sleep();
 	smd_sleep_exit();
-	clk_exit_sleep();
 	return rv;
 }
 

@@ -36,7 +36,6 @@
 #define CLKFLAG_USE_MIN_TO_SET		(0x00000004)
 #define CLKFLAG_SHARED			(0x00000008)
 #define CLKFLAG_HANDLE			(0x00000010)
-#define CLKFLAG_DEFER			(0x00000020)
 
 #define CLKFLAG_ARCH_MSM7X00A		(0x00010000)
 #define CLKFLAG_ARCH_QSD8X50		(0x00020000)
@@ -91,7 +90,6 @@ struct clk {
 	struct hlist_head voters;
 	const char *aggregator;
 	struct hlist_head handles;
-	struct timer_list defer_clk_timer;
 };
 
 struct clk_handle {
@@ -232,7 +230,6 @@ void clk_exit_sleep(void);
 #define OFF CLKFLAG_AUTO_OFF
 #define MINMAX (CLKFLAG_USE_MIN_TO_SET | CLKFLAG_USE_MAX_TO_SET)
 #define USE_MIN (CLKFLAG_USE_MIN_TO_SET | CLKFLAG_SHARED)
-#define DEFER CLKFLAG_DEFER
 
 #if defined(CONFIG_ARCH_MSM7X30)
 enum {
