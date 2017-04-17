@@ -31,8 +31,6 @@
 
 #define CLKFLAG_USE_MAX_TO_SET		(0x00000001)
 #define CLKFLAG_USE_MIN_TO_SET		(0x00000004)
-#define CLKFLAG_SHARED			(0x00000008)
-#define CLKFLAG_HANDLE			(0x00000010)
 
 #define CLKFLAG_ARCH_MSM7X00A		(0x00010000)
 #define CLKFLAG_ARCH_QSD8X50		(0x00020000)
@@ -86,13 +84,6 @@ struct clk {
 	struct device *dev;
 	struct hlist_head voters;
 	const char *aggregator;
-	struct hlist_head handles;
-};
-
-struct clk_handle {
-	struct clk clk;
-	struct clk *source;
-	unsigned long rate;
 };
 
 #define A11S_CLK_CNTL_ADDR		(MSM_CSR_BASE + 0x100)
@@ -226,7 +217,7 @@ void clk_exit_sleep(void);
 
 #define OFF CLKFLAG_AUTO_OFF
 #define MINMAX (CLKFLAG_USE_MIN_TO_SET | CLKFLAG_USE_MAX_TO_SET)
-#define USE_MIN (CLKFLAG_USE_MIN_TO_SET | CLKFLAG_SHARED)
+#define USE_MIN (CLKFLAG_USE_MIN_TO_SET)
 
 #if defined(CONFIG_ARCH_MSM7X30)
 unsigned long clk_get_max_axi_khz(void);
