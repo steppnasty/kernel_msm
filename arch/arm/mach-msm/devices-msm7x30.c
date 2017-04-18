@@ -168,8 +168,8 @@ struct clk msm_clocks_7x30[] = {
 	CLK_PCOM("mdp_clk", MDP_CLK, NULL, OFF),
 	CLK_PCOM("mdp_pclk", MDP_P_CLK, NULL, 0),
 	/*Original is mdp_lcdc_pclk_clk and mdp_lcdc_pad_pclk_clk*/
-	CLK_PCOM("lcdc_pclk_clk", MDP_LCDC_PCLK_CLK, NULL, OFF),
-	CLK_PCOM("lcdc_pad_pclk_clk", MDP_LCDC_PAD_PCLK_CLK, NULL, OFF),
+	CLK_PCOM("mdp_lcdc_pclk_clk", MDP_LCDC_PCLK_CLK, NULL, OFF),
+	CLK_PCOM("mdp_lcdc_pad_pclk_clk", MDP_LCDC_PAD_PCLK_CLK, NULL, OFF),
 	CLK_PCOM("mdp_vsync_clk", MDP_VSYNC_CLK, NULL, 0),
 	CLK_PCOM("mfc_clk", MFC_CLK, NULL, 0),
 	CLK_PCOM("mfc_div2_clk", MFC_DIV2_CLK, NULL, 0),
