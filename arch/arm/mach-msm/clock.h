@@ -76,11 +76,7 @@ struct clk {
 	const char *name;
 	struct clk_ops *ops;
 	const char *dbg_name;
-#if defined (CONFIG_ARCH_MSM8X60)
 	struct list_head list;
-#else
-	struct hlist_node list;
-#endif
 	struct device *dev;
 	struct hlist_head voters;
 	const char *aggregator;

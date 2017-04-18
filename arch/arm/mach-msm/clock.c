@@ -35,7 +35,7 @@
 
 static DEFINE_MUTEX(clocks_mutex);
 static DEFINE_SPINLOCK(clocks_lock);
-static HLIST_HEAD(clocks);
+static LIST_HEAD(clocks);
 struct clk *msm_clocks;
 unsigned msm_num_clocks;
 
@@ -58,15 +58,14 @@ static inline int pc_pll_request(unsigned id, unsigned on)
 struct clk *clk_get(struct device *dev, const char *id)
 {
 	struct clk *clk;
-	struct hlist_node *pos;
 
 	mutex_lock(&clocks_mutex);
 
-	hlist_for_each_entry(clk, pos, &clocks, list)
+	list_for_each_entry(clk, &clocks, list)
 		if (!strcmp(id, clk->name) && clk->dev == dev)
 			goto found_it;
 
-	hlist_for_each_entry(clk, pos, &clocks, list)
+	list_for_each_entry(clk, &clocks, list)
 		if (!strcmp(id, clk->name) && clk->dev == NULL)
 			goto found_it;
 
@@ -226,7 +225,7 @@ void __init msm_clock_init(struct clk *clock_tbl, unsigned num_clocks)
 	msm_num_clocks = num_clocks;
 	for (n = 0; n < msm_num_clocks; n++) {
 		msm_clk_soc_set_ops(&msm_clocks[n]);
-		hlist_add_head(&msm_clocks[n].list, &clocks);
+		list_add_tail(&msm_clocks[n].list, &clocks);
 	}
 	mutex_unlock(&clocks_mutex);
 
@@ -284,7 +283,6 @@ static void __init clock_debug_init(void)
 {
 	struct dentry *dent;
 	struct clk *clk;
-	struct hlist_node *pos;
 
 	dent = debugfs_create_dir("clk", 0);
 	if (IS_ERR(dent)) {
@@ -294,7 +292,7 @@ static void __init clock_debug_init(void)
 	}
 
 	mutex_lock(&clocks_mutex);
-	hlist_for_each_entry(clk, pos, &clocks, list) {
+	list_for_each_entry(clk, &clocks, list) {
 		debugfs_create_file(clk->name, 0644, dent, clk,
 				    &clk_debug_fops);
 	}
@@ -337,11 +335,10 @@ static int __init clock_late_init(void)
 {
 	unsigned long flags;
 	struct clk *clk;
-	struct hlist_node *pos;
 	unsigned count = 0;
 
 	mutex_lock(&clocks_mutex);
-	hlist_for_each_entry(clk, pos, &clocks, list) {
+	list_for_each_entry(clk, &clocks, list) {
 		if (clk->flags & CLKFLAG_AUTO_OFF) {
 			spin_lock_irqsave(&clocks_lock, flags);
 			if (!clk->count) {
