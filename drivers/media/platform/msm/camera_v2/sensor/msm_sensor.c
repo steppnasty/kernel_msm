@@ -948,17 +948,17 @@ int32_t msm_sensor_free_sensor_data(struct msm_sensor_ctrl_t *s_ctrl)
 }
 
 static struct msm_cam_clk_info cam_8960_clk_info[] = {
-	[SENSOR_CAM_MCLK] = {"cam_clk", 24000000},
+	[SENSOR_CAM_MCLK] = {"cam_m_clk", 24000000},
 };
 
 static struct msm_cam_clk_info cam_8610_clk_info[] = {
 	[SENSOR_CAM_MCLK] = {"cam_src_clk", 24000000},
-	[SENSOR_CAM_CLK] = {"cam_clk", 0},
+	[SENSOR_CAM_CLK] = {"cam_m_clk", 0},
 };
 
 static struct msm_cam_clk_info cam_8974_clk_info[] = {
 	[SENSOR_CAM_MCLK] = {"cam_src_clk", 24000000},
-	[SENSOR_CAM_CLK] = {"cam_clk", 0},
+	[SENSOR_CAM_CLK] = {"cam_m_clk", 0},
 };
 
 int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)

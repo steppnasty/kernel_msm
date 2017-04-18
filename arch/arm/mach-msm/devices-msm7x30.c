@@ -140,7 +140,7 @@ struct platform_device msm_kgsl_2d0 = {
 struct clk msm_clocks_7x30[] = {
 	CLK_PCOM("core_clk", ADM_CLK, &msm_device_dmov.dev, 0),
 	CLK_PCOM("adsp_clk", ADSP_CLK, NULL, 0),
-	CLK_PCOM("cam_clk", CAM_M_CLK, NULL, 0),
+	CLK_PCOM("cam_m_clk", CAM_M_CLK, NULL, 0),
 	CLK_PCOM("camif_pad_pclk", CAMIF_PAD_P_CLK, NULL, OFF),
 	CLK_PCOM("codec_ssbi_clk", CODEC_SSBI_CLK, NULL, 0),
 	CLK_PCOM("ebi1_clk", EBI1_CLK, NULL, USE_MIN),
