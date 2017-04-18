@@ -34,7 +34,6 @@
 
 #include <mach/htc_acdb.h>
 #include <mach/htc_acoustic_7x30.h>
-#include "board-vision.h"
 
 #define ACOUSTIC_IOCTL_MAGIC 'p'
 #define ACOUSTIC_ADIE_SIZE	_IOW(ACOUSTIC_IOCTL_MAGIC, 15, size_t)
