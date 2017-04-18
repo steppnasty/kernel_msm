@@ -140,12 +140,6 @@ obj-$(CONFIG_MACH_BRAVOC) += board-bravoc-microp.o
 
 # MSM7x30 boards
 obj-$(CONFIG_ARCH_MSM7X30) += htc_wifi_nvs.o htc_awb_cal.o
-obj-$(CONFIG_MACH_VISION)+= board-vision.o
-obj-$(CONFIG_MACH_VISION)+= board-vision-keypad.o
-obj-$(CONFIG_MACH_VISION)+= board-vision-microp.o
-obj-$(CONFIG_MACH_VISION)+= board-vision-audio.o
-obj-$(CONFIG_MACH_VISION)+= board-vision-mmc.o board-vision-wifi.o
-obj-$(CONFIG_MACH_VISION)+= board-vision-rfkill.o htc_bluetooth.o
 
 obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon.o
 obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon-keypad.o
@@ -171,14 +165,6 @@ obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-mmc.o board-kingdom-wifi.o
 obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-rfkill.o
 obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-panel.o htc_bluetooth.o
 
-obj-$(CONFIG_MACH_MECHA)+= board-mecha.o
-obj-$(CONFIG_MACH_MECHA)+= board-mecha-keypad.o
-obj-$(CONFIG_MACH_MECHA)+= board-mecha-microp.o
-obj-$(CONFIG_MACH_MECHA)+= board-mecha-audio.o
-obj-$(CONFIG_MACH_MECHA)+= board-mecha-mmc.o board-mecha-wifi.o
-obj-$(CONFIG_MACH_MECHA)+= board-mecha-rfkill.o
-obj-$(CONFIG_MACH_MECHA)+= board-mecha-panel.o htc_bluetooth.o
-
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-keypad.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-microp.o
@@ -188,14 +174,6 @@ obj-$(CONFIG_MACH_GLACIER)+= board-glacier-rfkill.o
 obj-$(CONFIG_MACH_GLACIER)+= htc_fmtx_rfkill.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-panel.o htc_bluetooth.o
 
-obj-$(CONFIG_MACH_SAGA)+= board-saga.o
-obj-$(CONFIG_MACH_SAGA)+= board-saga-keypad.o
-obj-$(CONFIG_MACH_SAGA)+= board-saga-audio.o
-obj-$(CONFIG_MACH_SAGA)+= board-saga-mmc.o board-saga-wifi.o
-obj-$(CONFIG_MACH_SAGA)+= board-saga-rfkill.o
-obj-$(CONFIG_MACH_SAGA)+= htc_fmtx_rfkill.o
-obj-$(CONFIG_MACH_SAGA)+= board-saga-panel.o htc_bluetooth.o
-
 obj-$(CONFIG_MACH_ICON)+= board-icon.o
 obj-$(CONFIG_MACH_ICON)+= board-icon-keypad.o
 obj-$(CONFIG_MACH_ICON)+= board-icon-audio.o
@@ -203,13 +181,6 @@ obj-$(CONFIG_MACH_ICON)+= board-icon-mmc.o board-icon-wifi.o
 obj-$(CONFIG_MACH_ICON)+= board-icon-rfkill.o
 obj-$(CONFIG_MACH_ICON)+= htc_fmtx_rfkill.o
 obj-$(CONFIG_MACH_ICON)+= board-icon-panel.o htc_bluetooth.o
-
-obj-$(CONFIG_MACH_SPADE)+= board-spade.o
-obj-$(CONFIG_MACH_SPADE)+= board-spade-keypad.o
-obj-$(CONFIG_MACH_SPADE)+= board-spade-microp.o
-obj-$(CONFIG_MACH_SPADE)+= board-spade-audio.o
-obj-$(CONFIG_MACH_SPADE)+= board-spade-mmc.o board-spade-wifi.o htc_awb_cal.o
-obj-$(CONFIG_MACH_SPADE)+= board-spade-rfkill.o htc_bluetooth.o board-spade-panel.o
 
 obj-$(CONFIG_MACH_FLYER)+= board-flyer.o
 obj-$(CONFIG_MACH_FLYER)+= board-flyer-keypad.o
@@ -343,11 +314,6 @@ obj-$(CONFIG_MACH_VERDI_LTE) += board-verdi-lte-keypad.o
 obj-$(CONFIG_MACH_VERDI_LTE) += board-verdi-lte-audio.o
 obj-$(CONFIG_MACH_VERDI_LTE) += htc_bdaddress.o htc_sleep_clk.o board-verdi-lte-rfkill.o
 obj-$(CONFIG_MACH_VERDI_LTE) += board-verdi-lte-mmc.o board-verdi-lte-wifi.o
-obj-$(CONFIG_MACH_HOLIDAY) += board-holiday.o
-obj-$(CONFIG_MACH_HOLIDAY) += board-holiday-audio.o
-obj-$(CONFIG_MACH_HOLIDAY) += board-holiday-keypad.o
-obj-$(CONFIG_MACH_HOLIDAY) += htc_bdaddress.o htc_sleep_clk.o board-holiday-rfkill.o htc_fmtx_rfkill.o
-obj-$(CONFIG_MACH_HOLIDAY) += board-holiday-mmc.o board-holiday-wifi.o
 obj-$(CONFIG_MACH_VIGOR) += board-vigor.o
 obj-$(CONFIG_MACH_VIGOR) += board-vigor-audio.o
 obj-$(CONFIG_MACH_VIGOR) += board-vigor-keypad.o
