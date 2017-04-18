@@ -881,20 +881,20 @@ void msm_set_i2c_mux(bool gpio, int *gpio_clk, int *gpio_dat, int clk_str, int d
 {
 	unsigned id;
 	if (gpio) {
-		id = PCOM_GPIO_CFG(GPIO_I2C_CLK, 0, GPIO_OUTPUT,
-				   GPIO_NO_PULL, GPIO_2MA);
+		id = GPIO_CFG(GPIO_I2C_CLK, 0, GPIO_CFG_OUTPUT,
+				   GPIO_CFG_NO_PULL, GPIO_CFG_2MA);
 		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
-		id = PCOM_GPIO_CFG(GPIO_I2C_DAT, 0, GPIO_OUTPUT,
-				   GPIO_NO_PULL, GPIO_2MA);
+		id = GPIO_CFG(GPIO_I2C_DAT, 0, GPIO_CFG_OUTPUT,
+				   GPIO_CFG_NO_PULL, GPIO_CFG_2MA);
 		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
 		*gpio_clk = GPIO_I2C_CLK;
 		*gpio_dat = GPIO_I2C_DAT;
 	} else {
-		id = PCOM_GPIO_CFG(GPIO_I2C_CLK, 1, GPIO_INPUT,
-				   GPIO_NO_PULL, clk_str);
+		id = GPIO_CFG(GPIO_I2C_CLK, 1, GPIO_CFG_INPUT,
+				   GPIO_CFG_NO_PULL, clk_str);
 		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
-		id = PCOM_GPIO_CFG(GPIO_I2C_DAT , 1, GPIO_INPUT,
-				   GPIO_NO_PULL, dat_str);
+		id = GPIO_CFG(GPIO_I2C_DAT , 1, GPIO_CFG_INPUT,
+				   GPIO_CFG_NO_PULL, dat_str);
 		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
 	}
 }

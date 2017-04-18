@@ -59,10 +59,10 @@ void gpio_set_diag_gpio_table(unsigned long * dwMFG_gpio_table)
 			/* configure by the settings from DIAG */
 			unsigned long dwGpioKind, dwGpioConfig, dwOutputLevel;
 			if(tempGpio & 0x2) { /* GPIO INPUT PIN */
-				dwGpioKind = GPIO_INPUT;
+				dwGpioKind = GPIO_CFG_INPUT;
 				dwOutputLevel = 0;
 			} else { /* GPIO_OUTPUT_PIN */
-				dwGpioKind = GPIO_OUTPUT;
+				dwGpioKind = GPIO_CFG_OUTPUT;
 				if (tempGpio & 0x4)
 					dwOutputLevel = 1;
 				else
@@ -71,19 +71,19 @@ void gpio_set_diag_gpio_table(unsigned long * dwMFG_gpio_table)
 
 			// config GpioPullStatus
 			if ((tempGpio & 0x10) && (tempGpio & 0x08))
-				dwGpioConfig = GPIO_PULL_UP;
+				dwGpioConfig = GPIO_CFG_PULL_UP;
 			else if (tempGpio & 0x08)
-				dwGpioConfig = GPIO_PULL_DOWN;
+				dwGpioConfig = GPIO_CFG_PULL_DOWN;
 			else if (tempGpio & 0x10)
-				dwGpioConfig = GPIO_KEEPER;
+				dwGpioConfig = GPIO_CFG_KEEPER;
 			else
-				dwGpioConfig = GPIO_NO_PULL;
+				dwGpioConfig = GPIO_CFG_NO_PULL;
 
-			cfg = PCOM_GPIO_CFG(i, 0, dwGpioKind, dwGpioConfig, GPIO_2MA);
+			cfg = GPIO_CFG(i, 0, dwGpioKind, dwGpioConfig, GPIO_CFG_2MA);
 
 			msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &cfg, 0);
 
-			if (dwGpioKind == GPIO_OUTPUT)
+			if (dwGpioKind == GPIO_CFG_OUTPUT)
 				gpio_direction_output(i, dwOutputLevel);
 		} else {
 			/* DIAG does not want to config this GPIO */

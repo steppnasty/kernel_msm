@@ -91,7 +91,7 @@ static void config_gpio_table(uint32_t *table, int len)
 static void glacier_setup_input_gpio(void)
 {
 	uint32_t inputs_gpio_table[] = {
-		PCOM_GPIO_CFG(GLACIER_GPIO_KEYPAD_POWER_KEY, 0, GPIO_INPUT, GPIO_PULL_UP, GPIO_4MA),
+		GPIO_CFG(GLACIER_GPIO_KEYPAD_POWER_KEY, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA),
 	};
 
 	config_gpio_table(inputs_gpio_table, ARRAY_SIZE(inputs_gpio_table));
