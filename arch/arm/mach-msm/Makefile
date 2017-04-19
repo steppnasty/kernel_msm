@@ -168,9 +168,10 @@ obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-rfkill.o
 obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-panel.o htc_bluetooth.o
 
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier.o
+obj-$(CONFIG_MACH_GLACIER)+= board-glacier-audio.o
+obj-$(CONFIG_MACH_GLACIER)+= board-glacier-camera.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-keypad.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-microp.o
-obj-$(CONFIG_MACH_GLACIER)+= board-glacier-audio.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-mmc.o board-glacier-wifi.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-rfkill.o
 obj-$(CONFIG_MACH_GLACIER)+= htc_fmtx_rfkill.o

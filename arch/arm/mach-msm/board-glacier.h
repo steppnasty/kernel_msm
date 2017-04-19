@@ -184,4 +184,6 @@ void __init glacier_audio_init(void);
 int glacier_init_keypad(void);
 int __init glacier_wifi_init(void);
 int __init glacier_init_panel(void);
+extern struct msm_camera_board_info glacier_camera_board_info;
+void glacier_init_cam(void);
 #endif /* __ARCH_ARM_MACH_MSM_BOARD_GLACIER_H */

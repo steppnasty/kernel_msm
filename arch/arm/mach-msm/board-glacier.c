@@ -3,7 +3,7 @@
  * Copyright (C) 2009 Google, Inc.
  * Copyright (C) 2010 HTC Corporation.
  * Author: Tony Liu <tony_liu@htc.com>
- * Modified 2014, Brian Stepp <steppnasty@gmail.com>
+ * Modified 2014-2017, Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -634,6 +634,25 @@ static struct i2c_board_info i2c_devices[] = {
 		.platform_data = &tps65200_data,
 	},
 };
+
+struct i2c_registry {
+	int                   bus;
+	struct i2c_board_info *info;
+	int                   len;
+};
+
+static void register_i2c_devices(void)
+{
+	struct i2c_registry glacier_camera_i2c_devices = {
+		4, /* QUP ID */
+		glacier_camera_board_info.board_info,
+		glacier_camera_board_info.num_i2c_board_info,
+	};
+
+	i2c_register_board_info(glacier_camera_i2c_devices.bus,
+		glacier_camera_i2c_devices.info,
+		glacier_camera_i2c_devices.len);
+}
 
 static struct vreg *vreg_marimba_1;
 static struct vreg *vreg_marimba_2;
@@ -1519,419 +1538,6 @@ static struct platform_device glacier_oj = {
 	}
 };
 
-static uint32_t camera_off_gpio_table[] = {
-/* parallel CAMERA interfaces */
-GPIO_CFG(GLACIER_CAM_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-GPIO_CFG(GLACIER_CAM_PWD, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-GPIO_CFG(GLACIER_CAM2_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-GPIO_CFG(GLACIER_CAM2_PWD, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(2,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT2 */
-	GPIO_CFG(3,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT3 */
-	GPIO_CFG(4,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT4 */
-	GPIO_CFG(5,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT5 */
-	GPIO_CFG(6,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT6 */
-	GPIO_CFG(7,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT7 */
-	GPIO_CFG(8,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT8 */
-	GPIO_CFG(9,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT9 */
-	GPIO_CFG(10, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT10 */
-	GPIO_CFG(11, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT11 */
-	GPIO_CFG(12, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* PCLK */
-	GPIO_CFG(13, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* HSYNC_IN */
-	GPIO_CFG(14, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* VSYNC_IN */
-	GPIO_CFG(15, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), /* MCLK */
-
-};
-
-static uint32_t camera_on_gpio_table[] = {
-/* parallel CAMERA interfaces */
-GPIO_CFG(GLACIER_CAM_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-GPIO_CFG(GLACIER_CAM_PWD, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-GPIO_CFG(GLACIER_CAM2_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-GPIO_CFG(GLACIER_CAM2_PWD, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(2,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT2 */
-	GPIO_CFG(3,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT3 */
-	GPIO_CFG(4,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT4 */
-	GPIO_CFG(5,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT5 */
-	GPIO_CFG(6,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT6 */
-	GPIO_CFG(7,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT7 */
-	GPIO_CFG(8,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT8 */
-	GPIO_CFG(9,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT9 */
-	GPIO_CFG(10, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT10 */
-	GPIO_CFG(11, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT11 */
-	GPIO_CFG(12, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* PCLK */
-	GPIO_CFG(13, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* HSYNC_IN */
-	GPIO_CFG(14, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* VSYNC_IN */
-	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), /* MCLK */
-
-};
-
-
-static int glacier_sensor_power_enable(char *power, unsigned volt)
-{
-	struct vreg *vreg_gp;
-	int rc;
-
-	if (power == NULL)
-		return EIO;
-
-	vreg_gp = vreg_get(NULL, power);
-	if (IS_ERR(vreg_gp)) {
-		pr_err("%s: vreg_get(%s) failed (%ld)\n",
-			__func__, power, PTR_ERR(vreg_gp));
-		return EIO;
-	}
-
-	rc = vreg_set_level(vreg_gp, volt);
-	if (rc) {
-		pr_err("%s: vreg wlan set %s level failed (%d)\n",
-			__func__, power, rc);
-		return EIO;
-	}
-
-	rc = vreg_enable(vreg_gp);
-	if (rc) {
-		pr_err("%s: vreg enable %s failed (%d)\n",
-			__func__, power, rc);
-		return EIO;
-	}
-	return rc;
-}
-
-static int glacier_sensor_power_disable(char *power)
-{
-	struct vreg *vreg_gp;
-	int rc;
-	vreg_gp = vreg_get(NULL, power);
-	if (IS_ERR(vreg_gp)) {
-		pr_err("%s: vreg_get(%s) failed (%ld)\n",
-			__func__, power, PTR_ERR(vreg_gp));
-		return EIO;
-	}
-
-	rc = vreg_disable(vreg_gp);
-	if (rc) {
-		pr_err("%s: vreg disable %s failed (%d)\n",
-			__func__, power, rc);
-		return EIO;
-	}
-	return rc;
-}
-
-static int glacier_sensor_vreg_on(void)
-{
-	int rc;
-
-	struct pm8058_gpio camera_analog_pw_on = {
-		.direction		= PM_GPIO_DIR_OUT,
-		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
-		.output_value	= 1,
-		.pull			= PM_GPIO_PULL_NO,
-		.out_strength	= PM_GPIO_STRENGTH_HIGH,
-		.function = PM_GPIO_FUNC_NORMAL,
-	};
-
-	pr_info("%s camera vreg on\n", __func__);
-
-	/*camera VCM power*/
-	if (system_rev >= 1)
-		rc = glacier_sensor_power_enable("gp4", 2850);
-	else
-		rc = glacier_sensor_power_enable("wlan", 2850);
-
-	/*camera IO power*/
-	rc = glacier_sensor_power_enable("gp2", 1800);
-
-
-	/*camera analog power*/
-	pm8058_gpio_config(GLACIER_CAM_A2V85_EN, &camera_analog_pw_on);
-
-	/*camera digital power*/
-	if (system_rev >= 1)
-		rc = glacier_sensor_power_enable("wlan", 1800);
-	else
-		rc = glacier_sensor_power_enable("gp4", 1800);
-
-	udelay(200);
-
-	return rc;
-}
-
-static int glacier_sensor_vreg_off(void)
-{
-	int rc;
-	/*camera analog power*/
-	struct pm8058_gpio camera_analog_pw_off = {
-		.direction		= PM_GPIO_DIR_OUT,
-		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
-		.output_value	= 0,
-		.pull			= PM_GPIO_PULL_NO,
-		.out_strength	= PM_GPIO_STRENGTH_LOW,
-		.function = PM_GPIO_FUNC_NORMAL,
-	};
-
-	pm8058_gpio_config(GLACIER_CAM_A2V85_EN, &camera_analog_pw_off);
-	/*camera digital power*/
-	rc = glacier_sensor_power_disable("gp4");
-
-	/*camera IO power*/
-	rc = glacier_sensor_power_disable("gp2");
-
-	/*camera VCM power*/
-	rc = glacier_sensor_power_disable("wlan");
-	return rc;
-}
-static void config_glacier_camera_on_gpios(void)
-{
-	config_gpio_table(camera_on_gpio_table,
-		ARRAY_SIZE(camera_on_gpio_table));
-}
-
-static void config_glacier_camera_off_gpios(void)
-{
-	config_gpio_table(camera_off_gpio_table,
-		ARRAY_SIZE(camera_off_gpio_table));
-}
-
-static struct resource msm_camera_resources[] = {
-	{
-		.start	= 0xA6000000,
-		.end	= 0xA6000000 + SZ_1M - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
-static struct msm_camera_device_platform_data msm_camera_device_data = {
-	.camera_gpio_on  = config_glacier_camera_on_gpios,
-	.camera_gpio_off = config_glacier_camera_off_gpios,
-	.ioext.mdcphy = MSM_MDC_PHYS,
-	.ioext.mdcsz  = MSM_MDC_SIZE,
-	.ioext.appphy = MSM_CLK_CTL_PHYS,
-	.ioext.appsz  = MSM_CLK_CTL_SIZE,
-	.ioext.camifpadphy = 0xAB000000,
-	.ioext.camifpadsz  = 0x00000400,
-
-};
-
-#ifdef CONFIG_MSMB_CAMERA
-static struct msm_camera_sensor_platform_info s5k4e1gx_sensor_platform_info = {
-	.mount_angle = 90
-};
-
-static void glacier_s5k4e1gx_clk_switch(void){
-	int rc = 0;
-	pr_info("doing clk switch (glacier)(s5k4e1gx)\n");
-	rc = gpio_request(GLACIER_CLK_SWITCH, "s5k4e1gx");
-	if (rc < 0)
-		pr_err("GPIO (%d) request fail\n", GLACIER_CLK_SWITCH);
-	else
-		gpio_direction_output(GLACIER_CLK_SWITCH, 0);
-	gpio_free(GLACIER_CLK_SWITCH);
-
-	return;
-}
-
-static struct msm_camera_device_platform_data glacier_s5k4e1gx_platform_data = {
-	.camera_gpio_on = config_glacier_camera_on_gpios,
-	.camera_gpio_off = config_glacier_camera_off_gpios,
-	.csid_core = 0,
-	.ioclk = {
-		.vfe_clk_rate = 122880000,
-	},
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_info = {
-	.sensor_name    = "s5k4e1gx",
-	.sensor_reset   = GLACIER_CAM_RST,
-	.vcm_pwd     = GLACIER_CAM_PWD,
-	.camera_clk_switch	= glacier_s5k4e1gx_clk_switch,
-/*	.camera_analog_pwd = "gp8", */
-	.camera_io_pwd = "gp2",
-	.camera_vcm_pwd = "wlan",
-	.camera_digital_pwd = "gp4",
-	.analog_pwd1_gpio = GLACIER_CAM_A2V85_EN,
-	.camera_power_on = glacier_sensor_vreg_on,
-	.camera_power_off = glacier_sensor_vreg_off,
-	.pdata          = &glacier_s5k4e1gx_platform_data,
-	.sensor_lc_disable = true, /* disable sensor lens correction */
-	.cam_select_pin = GLACIER_CLK_SWITCH,
-	.sensor_platform_info = &s5k4e1gx_sensor_platform_info,
-	.csi_if = 0,
-};
-
-static struct msm_sensor_info_t msm_camera_sensor_s5k4e1gx_sensor_info = {
-	.sensor_name = "s5k4e1gx",
-};
-
-static struct msm_camera_slave_info msm_camera_sensor_s5k4e1gx_slave_info = {
-	.sensor_slave_addr = 0x20,
-	.sensor_id_reg_addr = 0x0000,
-	.sensor_id = 0x4E10,
-};
-
-static struct msm_sensor_init_params msm_camera_sensor_s5k4e1gx_init_params = {
-	.modes_supported = CAMERA_MODE_2D_B,
-	.position = BACK_CAMERA_B,
-	.sensor_mount_angle = 90,
-};
-
-static struct msm_camera_sensor_board_info msm_camera_sensor_s5k4e1gx_data = {
-	.sensor_name = "s5k4e1gx",
-	.slave_info = &msm_camera_sensor_s5k4e1gx_slave_info,
-	.sensor_info = &msm_camera_sensor_s5k4e1gx_sensor_info,
-	.sensor_init_params = &msm_camera_sensor_s5k4e1gx_init_params,
-};
-
-
-static struct platform_device msm_camera_sensor_s5k4e1gx = {
-	.name      = "msm_camera_s5k4e1gx",
-	.dev       = {
-		.platform_data = &msm_camera_sensor_s5k4e1gx_info,
-	},
-};
-
-static struct msm_camera_sensor_platform_info mt9v113_sensor_platform_info = {
-	.mount_angle = 0
-};
-
-static void glacier_mt9v113_clk_switch(void){
-	int rc = 0;
-	pr_info("doing clk switch (glacier)(mt9v113)\n");
-	rc = gpio_request(GLACIER_CLK_SWITCH, "mt9v113");
-	if (rc < 0)
-		pr_err("GPIO (%d) request fail\n", GLACIER_CLK_SWITCH);
-	else
-		gpio_direction_output(GLACIER_CLK_SWITCH, 1);
-	gpio_free(GLACIER_CLK_SWITCH);
-
-	return;
-}
-
-static struct msm_camera_device_platform_data glacier_mt9v113_platform_data = {
-	.camera_gpio_on = config_glacier_camera_on_gpios,
-	.camera_gpio_off = config_glacier_camera_off_gpios,
-	.csid_core = 0,
-	.ioclk = {
-		.vfe_clk_rate = 122880000,
-	},
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_info = {
-	.sensor_name	= "mt9v113",
-	.sensor_reset	= GLACIER_CAM2_RST,
-	.vcm_pwd		= GLACIER_CAM2_PWD,
-	.camera_clk_switch	= glacier_mt9v113_clk_switch,
-	.camera_power_on = glacier_sensor_vreg_on,
-	.camera_power_off = glacier_sensor_vreg_off,
-	.pdata		= &glacier_mt9v113_platform_data,
-	.flash_type     = MSM_CAMERA_FLASH_NONE,
-	.resource = msm_camera_resources,
-	.num_resources = ARRAY_SIZE(msm_camera_resources),
-	.cam_select_pin = GLACIER_CLK_SWITCH,
-	.sensor_platform_info = &mt9v113_sensor_platform_info,
-	.csi_if = 0,
-};
-
-static struct msm_sensor_info_t msm_camera_sensor_mt9v113_sensor_info = {
-	.sensor_name = "mt9v113",
-};
-
-static struct msm_camera_slave_info msm_camera_sensor_mt9v113_slave_info = {
-	.sensor_slave_addr = 0x3C << 1,
-	.sensor_id_reg_addr = 0x0000,
-	.sensor_id = 0x2280,
-};
-
-static struct msm_sensor_init_params msm_camera_sensor_mt9v113_init_params = {
-	.modes_supported = CAMERA_MODE_2D_B,
-	.position = FRONT_CAMERA_B,
-	.sensor_mount_angle = 0,
-};
-
-static struct msm_camera_sensor_board_info msm_camera_sensor_mt9v113_data = {
-	.sensor_name = "mt9v113",
-	.slave_info = &msm_camera_sensor_mt9v113_slave_info,
-	.sensor_info = &msm_camera_sensor_mt9v113_sensor_info,
-	.sensor_init_params = &msm_camera_sensor_mt9v113_init_params,
-};
-
-static struct platform_device msm_camera_sensor_mt9v113 = {
-	.name = "msm_camera_mt9v113",
-	.dev = {
-		.platform_data = &msm_camera_sensor_mt9v113_info,
-	},
-};
-
-static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
-	{
-		I2C_BOARD_INFO("s5k4e1gx", 0x20 >> 1),
-		.platform_data = &msm_camera_sensor_s5k4e1gx_data,
-	},
-	{
-		I2C_BOARD_INFO("mt9v113", 0x3C), /* 0x78: w, 0x79 :r */
-		.platform_data = &msm_camera_sensor_mt9v113_data,
-	},
-};
-
-static struct resource glacier_vfe_resources[] = {
-	{
-		.name	= "msm_vfe",
-		.start	= 0xA6000000,
-		.end	= 0xA6000000 + SZ_1M - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.name	= "msm_vfe",
-		.start	= INT_VFE,
-		.end	= INT_VFE,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.name	= "msm_camif",
-		.start	= 0xAB000000,
-		.end    = 0xAB000000 + SZ_1K - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
-static struct platform_device msm_device_vfe = {
-	.name		= "msm_vfe31",
-	.id		= 0,
-	.resource	= glacier_vfe_resources,
-	.num_resources	= ARRAY_SIZE(glacier_vfe_resources),
-};
-#endif
-
-#ifdef CONFIG_MSM_GEMINI
-static struct resource msm_gemini_resources[] = {
-	{
-		.start  = 0xA3A00000,
-		.end    = 0xA3A00000 + 0x0150 - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	{
-		.start  = INT_JPEG,
-		.end    = INT_JPEG,
-		.flags  = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device msm_gemini_device = {
-	.name           = "msm_gemini",
-	.resource       = msm_gemini_resources,
-	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
-};
-#endif
-
-#ifdef CONFIG_MSMB_CAMERA
-void __init glacier_init_cam(void)
-{
-	platform_device_register(&msm_device_cam);
-	platform_device_register(&msm_device_vfe);
-	platform_device_register(&msm_device_csic0);
-	//platform_device_register(&msm_device_vpe);
-}
-#endif
-
 static struct platform_device glacier_rfkill = {
 	.name = "glacier_rfkill",
 	.id = -1,
@@ -2189,19 +1795,12 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_MSM_VIDC_720P
 	&msm_device_vidc_720p,
 #endif
-#ifdef CONFIG_MSM_GEMINI
-	&msm_gemini_device,
-#endif
 #ifdef CONFIG_MSM7KV2_1X_AUDIO
 	&msm_aux_pcm_device,
-#endif
-#ifdef CONFIG_MSMB_CAMERA
-	&msm_camera_sensor_s5k4e1gx,
 #endif
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
 #endif
-	&msm_camera_sensor_mt9v113, /* 2nd CAM */
 	&glacier_flashlight_device,
 #ifdef CONFIG_ION_MSM
 	&ion_dev,
@@ -2486,10 +2085,7 @@ static void __init glacier_init(void)
 		glacier_ts_atmel_data[0].abs_y_max = 954;
 	}
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
-#ifdef CONFIG_MSMB_CAMERA
-	i2c_register_board_info(4 /* QUP ID */, msm_camera_boardinfo,
-				ARRAY_SIZE(msm_camera_boardinfo));
-#endif
+	register_i2c_devices();
 #ifdef CONFIG_I2C_SSBI
 	msm_device_ssbi6.dev.platform_data = &msm_i2c_ssbi6_pdata;
 

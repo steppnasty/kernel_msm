@@ -141,7 +141,6 @@ extern struct platform_device msm_kgsl_3d0;
 extern struct platform_device msm_kgsl_2d0;
 extern struct platform_device msm_device_vpe;
 extern struct platform_device msm_device_csic0;
-extern struct platform_device msm_device_cam;
 
 extern int glacier_mddi_init(void);
 

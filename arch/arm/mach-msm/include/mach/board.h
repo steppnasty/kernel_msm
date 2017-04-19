@@ -353,6 +353,11 @@ struct msm_camera_sensor_info {
 	struct msm_eeprom_info *eeprom_info;
 };
 
+struct msm_camera_board_info {
+	struct i2c_board_info *board_info;
+	uint8_t num_i2c_board_info;
+};
+
 struct clk;
 
 struct snd_endpoint {

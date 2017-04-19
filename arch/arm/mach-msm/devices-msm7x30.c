@@ -26,6 +26,52 @@
 
 #include <mach/dal_axi.h>
 
+#ifdef CONFIG_MSMB_CAMERA
+static struct resource msm_csic_resources[] = {
+	{
+		.name	= "csic",
+		.start	= 0xA6100000,
+		.end	= 0xA6100000 + 0x00000400 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "csic",
+		.start	= INT_CSI,
+		.end	= INT_CSI,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct resource msm_vpe_resources[] = {
+	{
+		.name	= "vpe",
+		.start	= 0xAD200000,
+		.end	= 0xAD200000 + SZ_1M - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "vpe",
+		.start	= INT_VPE,
+		.end	= INT_VPE,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm_device_csic0 = {
+	.name		= "msm_csic",
+	.id		= 0,
+	.resource	= msm_csic_resources,
+	.num_resources	= ARRAY_SIZE(msm_csic_resources),
+};
+
+struct platform_device msm_device_vpe = {
+	.name		= "msm_vpe",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(msm_vpe_resources),
+	.resource	= msm_vpe_resources,
+};
+#endif
+
 struct resource msm_dmov_resource[] = {
 	{
 		.start = INT_ADM_AARM,
