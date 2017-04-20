@@ -26,9 +26,7 @@
 static int msm_imp_ext_abort(unsigned long addr, unsigned int fsr,
 			     struct pt_regs *regs)
 {
-#ifdef CONFIG_ARCH_MSM8X60
 	int cpu;
-#endif
 	unsigned int regval;
 	static unsigned char flush_toggle;
 
@@ -77,13 +75,9 @@ static int msm_imp_ext_abort(unsigned long addr, unsigned int fsr,
 	MRC(DMACHSR,  p15, 1, c11, c0, 0);
 	MRC(DMACHESR, p15, 1, c11, c0, 1);
 	MRC(DMACHCR,  p15, 0, c11, c0, 2);
-#ifdef CONFIG_ARCH_MSM8X60
 	for_each_online_cpu(cpu)
 		pr_info("cpu %d, acpuclk rate: %lu kHz\n", cpu,
 			acpuclk_get_rate(cpu));
-#else
-	pr_info("acpuclk rate: %lu kHz\n", acpuclk_get_rate());
-#endif
 
 	return 1;
 }

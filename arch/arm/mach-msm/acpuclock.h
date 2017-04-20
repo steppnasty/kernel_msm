@@ -30,15 +30,9 @@ enum setrate_reason {
 	SETRATE_INIT,
 };
 
-#ifdef CONFIG_ARCH_MSM8X60
 unsigned long acpuclk_power_collapse(void);
 int acpuclk_set_rate(int cpu, unsigned long rate, enum setrate_reason reason);
 unsigned long acpuclk_get_rate(int);
-#else
-unsigned long acpuclk_power_collapse(int from_idle);
-int acpuclk_set_rate(unsigned long rate, enum setrate_reason reason);
-unsigned long acpuclk_get_rate(void);
-#endif
 
 uint32_t acpuclk_get_switch_time(void);
 unsigned long acpuclk_wait_for_irq(void);

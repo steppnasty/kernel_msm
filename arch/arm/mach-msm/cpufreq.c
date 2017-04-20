@@ -64,7 +64,7 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq)
 #ifdef CONFIG_ARCH_MSM8X60
 	ret = acpuclk_set_rate(policy->cpu, new_freq, SETRATE_CPUFREQ);
 #else
-	ret = acpuclk_set_rate(new_freq * 1000, SETRATE_CPUFREQ);
+	ret = acpuclk_set_rate(policy->cpu, new_freq * 1000, SETRATE_CPUFREQ);
 #endif
 	if (!ret)
 		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
@@ -187,7 +187,7 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 #endif
 
 #ifndef CONFIG_ARCH_MSM8X60
-	policy->cur = acpuclk_get_rate();
+	policy->cur = acpuclk_get_rate(policy->cpu);
 #else
 	cur_freq = acpuclk_get_rate(policy->cpu);
 	if (cpufreq_frequency_table_target(policy, table, cur_freq,

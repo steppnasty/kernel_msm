@@ -1,7 +1,7 @@
 /*
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007-2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2007-2010, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -143,13 +143,13 @@ static struct clkctl_acpu_speed acpu_freq_tbl[] = {
 static unsigned long max_axi_rate;
 
 #define POWER_COLLAPSE_HZ (MAX_AXI_KHZ * 1000)
-unsigned long acpuclk_power_collapse(int from_idle)
+unsigned long acpuclk_power_collapse(void)
 {
-	int ret = acpuclk_get_rate();
+	int ret = acpuclk_get_rate(smp_processor_id());
 	ret *= 1000;
 	if (ret > drv_state.power_collapse_khz)
-		acpuclk_set_rate(drv_state.power_collapse_khz,
-	(from_idle ? SETRATE_PC_IDLE : SETRATE_PC));
+		acpuclk_set_rate(smp_processor_id(),
+			drv_state.power_collapse_khz, SETRATE_PC);
 	return ret;
 }
 
@@ -161,10 +161,11 @@ unsigned long acpuclk_get_wfi_rate(void)
 #define WAIT_FOR_IRQ_HZ (MAX_AXI_KHZ * 1000)
 unsigned long acpuclk_wait_for_irq(void)
 {
-	int ret = acpuclk_get_rate();
+	int ret = acpuclk_get_rate(smp_processor_id());
 	ret *= 1000;
 	if (ret > drv_state.wait_for_irq_khz)
-		acpuclk_set_rate(drv_state.wait_for_irq_khz, SETRATE_SWFI);
+		acpuclk_set_rate(smp_processor_id(),
+			drv_state.wait_for_irq_khz, SETRATE_SWFI);
 	return ret;
 }
 
@@ -210,7 +211,7 @@ static void acpuclk_set_src(const struct clkctl_acpu_speed *s)
 
 static struct clk *ebi1_clk;
 
-int acpuclk_set_rate(unsigned long rate, enum setrate_reason reason)
+int acpuclk_set_rate(int cpu, unsigned long rate, enum setrate_reason reason)
 {
 	struct clkctl_acpu_speed *tgt_s, *strt_s;
 	int res, rc = 0;
@@ -328,7 +329,7 @@ unsigned long acpuclk_get_max_axi_rate(void)
 }
 EXPORT_SYMBOL(acpuclk_get_max_axi_rate);
 
-unsigned long acpuclk_get_rate(void)
+unsigned long acpuclk_get_rate(int cpu)
 {
 	WARN_ONCE(drv_state.current_speed == NULL,
 		  "acpuclk_get_rate: not initialized\n");

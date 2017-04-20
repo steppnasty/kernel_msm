@@ -479,7 +479,7 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay,
 	}
 
 	if (sleep_mode <= MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT) {
-		pm_saved_acpu_clk_rate = acpuclk_power_collapse(from_idle);
+		pm_saved_acpu_clk_rate = acpuclk_power_collapse();
 		if (msm_pm_debug_mask & MSM_PM_DEBUG_CLOCK)
 			printk(KERN_INFO "msm_sleep(): %ld enter power collapse"
 			       "\n", pm_saved_acpu_clk_rate);
@@ -554,8 +554,8 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay,
 		if (msm_pm_debug_mask & MSM_PM_DEBUG_CLOCK)
 			printk(KERN_INFO "msm_sleep(): exit power collapse %ld"
 			       "\n", pm_saved_acpu_clk_rate);
-		if (acpuclk_set_rate(pm_saved_acpu_clk_rate,
-				from_idle ? SETRATE_PC_IDLE : SETRATE_PC) < 0)
+		if (acpuclk_set_rate(smp_processor_id(),
+				pm_saved_acpu_clk_rate, SETRATE_PC) < 0)
 			printk(KERN_ERR "msm_sleep(): clk_set_rate %ld "
 			       "failed\n", pm_saved_acpu_clk_rate);
 
@@ -823,7 +823,8 @@ void arch_idle(void)
 			printk(KERN_DEBUG "msm_sleep: clk swfi -> %ld\n",
 				saved_rate);
 		if (saved_rate
-		    && acpuclk_set_rate(saved_rate, SETRATE_SWFI) < 0)
+		    && acpuclk_set_rate(smp_processor_id(),
+				saved_rate, SETRATE_SWFI) < 0)
 			printk(KERN_ERR "msm_sleep(): clk_set_rate %ld "
 			       "failed\n", saved_rate);
 #ifdef CONFIG_MSM_IDLE_STATS
