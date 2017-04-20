@@ -494,3 +494,36 @@ static int __init acpuclk_7x30_init(struct acpuclk_soc_data *soc_data)
 struct acpuclk_soc_data acpuclk_7x30_soc_data __initdata = {
 	.init = acpuclk_7x30_init,
 };
+
+#ifdef CONFIG_VDD_USERSPACE
+ssize_t acpuclk_get_vdd_levels_str(char *buf)
+{
+	int i, len = 0;
+	if (buf) {
+		mutex_lock(&drv_state.lock);
+		for (i = 0; acpu_freq_tbl[i].acpu_clk_khz; i++) {
+			len += sprintf(buf + len, "%8u: %4d\n", acpu_freq_tbl[i].acpu_clk_khz, acpu_freq_tbl[i].vdd_mv);
+		}
+		mutex_unlock(&drv_state.lock);
+	}
+	return len;
+}
+
+void acpuclk_set_vdd(unsigned int khz, int vdd)
+{
+	int i;
+	vdd = vdd / V_STEP * V_STEP;
+	mutex_lock(&drv_state.lock);
+	for (i = 0; acpu_freq_tbl[i].acpu_clk_khz; i++) {
+		if (khz == 0) {
+			acpu_freq_tbl[i].vdd_mv = min(max((acpu_freq_tbl[i].vdd_mv + vdd), 700U), 1550U);
+			acpu_freq_tbl[i].vdd_raw = VDD_RAW(acpu_freq_tbl[i].vdd_mv);
+		}
+		else if (acpu_freq_tbl[i].acpu_clk_khz == khz) {
+			acpu_freq_tbl[i].vdd_mv = min(max((unsigned int)vdd, 700U), 1550U);
+			acpu_freq_tbl[i].vdd_raw = VDD_RAW(acpu_freq_tbl[i].vdd_mv);
+		}
+	}
+	mutex_unlock(&drv_state.lock);
+}
+#endif
