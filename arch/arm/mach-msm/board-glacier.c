@@ -86,6 +86,7 @@
 #include "spm.h"
 #include "pm.h"
 #include "socinfo.h"
+#include "acpuclock.h"
 #include "gpio_chip.h"
 #ifdef CONFIG_MSM_SSBI
 #include <mach/msm_ssbi.h>
@@ -1870,12 +1871,6 @@ static void __init qup_device_i2c_init(void)
 
 }
 
-static struct msm_acpu_clock_platform_data glacier_clock_data = {
-	.acpu_switch_time_us = 50,
-	.vdd_switch_time_us = 62,
-	.wait_for_irq_khz	= 0,
-};
-
 static unsigned glacier_perf_acpu_table[] = {
 	245000000,
 	768000000,
@@ -2056,7 +2051,7 @@ static void __init glacier_init(void)
 	i2c_register_board_info(2, msm_marimba_board_info,
 			ARRAY_SIZE(msm_marimba_board_info));
 	msm_spm_init(&msm_spm_data, 1);
-	msm_acpu_clock_init(&glacier_clock_data);
+	acpuclk_init(&acpuclk_7x30_soc_data);
 	perflock_init(&glacier_perflock_data);
 
 	msm_init_pmic_vibrator(3000);

@@ -22,6 +22,7 @@
 
 #include "devices.h"
 #include "clock-7x30.h"
+#include "clock-local.h"
 #include "footswitch.h"
 
 #include <mach/dal_axi.h>
@@ -186,6 +187,31 @@ struct platform_device msm_kgsl_2d0 = {
 	},
 };
 
+static int pll_src_enable(unsigned id)
+{
+	return local_src_enable(id);
+}
+
+static void pll_src_disable(unsigned id)
+{
+	local_src_disable(id);
+}
+
+#define CLK_PLL(clk_name, l_id, clk_dev, clk_flags) { \
+	.con_id = clk_name, \
+	.dev_id = clk_dev, \
+	.clk = &(struct clk){ \
+		.id = l_id, \
+		.flags = clk_flags, \
+		.dbg_name = clk_name, \
+		.ops = &(struct clk_ops){ \
+			.enable = pll_src_enable, \
+			.disable = pll_src_disable, \
+		}, \
+	}, \
+	}
+
+
 struct clk_lookup msm_clocks_7x30[] = {
 	CLK_PCOM("core_clk", ADM_CLK, "msm_dmov", 0),
 	CLK_PCOM("adsp_clk", ADSP_CLK, NULL, 0),
@@ -275,6 +301,9 @@ struct clk_lookup msm_clocks_7x30[] = {
 	CLK_PCOM("csi_clk", CSI0_CLK, NULL, 0),
 	CLK_PCOM("csi_pclk", CSI0_P_CLK, NULL, 0),
 	CLK_PCOM("csi_vfe_clk", CSI0_VFE_CLK, NULL, 0),
+	CLK_PLL("pll1_clk", PLL_1, "acpu", 0),
+	CLK_PLL("pll2_clk", PLL_2, "acpu", 0),
+	CLK_PLL("pll3_clk", PLL_3, "acpu", 0),
 };
 
 unsigned msm_num_clocks_7x30 = ARRAY_SIZE(msm_clocks_7x30);

@@ -17,6 +17,7 @@ ifndef CONFIG_ARCH_MSM8X60
 	obj-y += devices.o pmic.o pwrtest.o
 endif
 
+obj-y += acpuclock.o
 obj-$(CONFIG_MSM_VIC) += irq-vic.o
 
 obj-$(CONFIG_ARCH_QSD8X50) += sirc.o

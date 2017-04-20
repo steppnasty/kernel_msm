@@ -796,29 +796,22 @@ void arch_idle(void)
 #endif
 	} else if (allow[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT]) {
 		unsigned long saved_rate;
-		/* only spin while trying wfi ramp down */
-		if (acpuclk_get_wfi_rate() && msm_pm_idle_spin() < 0) {
-#ifdef CONFIG_MSM_IDLE_STATS
-			exit_stat = MSM_PM_STAT_IDLE_SPIN;
-#endif
-			goto abort_idle;
-		}
 		saved_rate = acpuclk_wait_for_irq();
-
 		if (saved_rate && msm_pm_debug_mask & MSM_PM_DEBUG_CLOCK)
 			printk(KERN_DEBUG "arch_idle: clk %ld -> swfi\n",
 				saved_rate);
-
-		/*
-		 * If there is a wfi speed specified and we failed to ramp,
-		 * do not go into wfi.
-		 */
-		if (acpuclk_get_wfi_rate() && !saved_rate)
+		if (saved_rate) {
+			msm_arch_idle();
+#ifdef CONFIG_MSM_IDLE_STATS
+			exit_stat = MSM_PM_STAT_IDLE_WFI;
+#endif
+		} else {
 			while (!msm_irq_pending())
 				udelay(1);
-		else
-			msm_arch_idle();
-
+#ifdef CONFIG_MSM_IDLE_STATS
+			exit_stat = MSM_PM_STAT_IDLE_SPIN;
+#endif
+		}
 		if (msm_pm_debug_mask & MSM_PM_DEBUG_CLOCK)
 			printk(KERN_DEBUG "msm_sleep: clk swfi -> %ld\n",
 				saved_rate);

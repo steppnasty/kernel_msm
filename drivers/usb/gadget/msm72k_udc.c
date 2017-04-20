@@ -1685,9 +1685,6 @@ static void usb_lpm_exit(struct usb_info *ui)
 
 	USB_INFO("lpm exit\n");
 	spin_lock_irqsave(&ui->lock, iflags);
-#ifndef CONFIG_ARCH_MSM8X60 /* FIXME */
-	clk_set_rate(ui->ebi1clk, acpuclk_get_max_axi_rate());
-#endif
 	udelay(10);
 	if (ui->pclk_src)
 		clk_enable(ui->pclk_src);
