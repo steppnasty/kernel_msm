@@ -2002,19 +2002,11 @@ static struct msm_spm_platform_data msm_spm_data __initdata = {
 	.vctl_timeout_us = 50,
 };
 
-static void glacier_reset(void)
-{
-	gpio_set_value(GLACIER_GPIO_PS_HOLD, 0);
-}
-
 static void __init glacier_init(void)
 {
 	int ret = 0;
 	printk("glacier_init() reglacier=%d\n", system_rev);
 	printk(KERN_INFO "%s: microp version = %s\n", __func__, microp_ver);
-
-	/* Must set msm_hw_reset_hook before first proc comm */
-	msm_hw_reset_hook = glacier_reset;
 
 	if (socinfo_init() < 0)
 		printk(KERN_ERR "%s: socinfo_init() failed!\n", __func__);

@@ -885,12 +885,12 @@ int diag_bind_config(struct usb_configuration *c)
 
 	printk(KERN_INFO "diag_bind_config\n");
 
-	ret = smd_open("SMD_DIAG", &ctxt->ch, ctxt, smd_diag_notify);
+	ret = smd_open("DIAG", &ctxt->ch, ctxt, smd_diag_notify);
 	if (ret)
 		return ret;
 
 #ifdef CONFIG_ARCH_QSD8X50
-	ret = smd_open("DSP_DIAG", &ctxt->ch_dsp, ctxt, dsp_diag_notify);
+	ret = smd_open("DIAG", &ctxt->ch_dsp, ctxt, dsp_diag_notify);
 	if (ret) {
 		pr_err("%s: smd_open failed (DSP_DIAG)\n", __func__);
 		return ret;

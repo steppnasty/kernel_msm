@@ -448,12 +448,6 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay,
 
 		*msm_pm_sma.sleep_delay = sleep_delay;
 		*msm_pm_sma.limit_sleep = sleep_limit;
-		ret = smsm_set_sleep_duration(sleep_delay);
-		if (ret) {
-			printk(KERN_ERR "msm_sleep(): smsm_set_sleep_duration %x failed\n", enter_state);
-			enter_state = 0;
-			exit_state = 0;
-		}
 		ret = smsm_change_state(PM_SMSM_WRITE_STATE, PM_SMSM_WRITE_RUN, enter_state);
 		if (ret) {
 			printk(KERN_ERR "msm_sleep(): smsm_change_state %x failed\n", enter_state);
@@ -959,13 +953,6 @@ static void msm_pm_restart(char str, const char *cmd)
 	/* In case Radio is dead, reset device after notify Radio 5 seconds */
 	mdelay(5000);
 #endif
-
-	/* hard reboot if possible */
-	if (msm_hw_reset_hook) {
-		printk(KERN_INFO "%s : Do HW_RESET by APP not by RADIO\r\n", __func__);
-		msm_hw_reset_hook();
-	}
-
 	for (;;) ;
 }
 

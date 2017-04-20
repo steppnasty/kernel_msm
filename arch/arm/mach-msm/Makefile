@@ -5,7 +5,7 @@ obj-y += timer-8x60.o clock-core.o clock-voter.o
 else
 obj-y += timer.o clock.o clock-voter.o
 endif
-obj-y += subsystem_map.o
+obj-y += modem_notifier.o subsystem_map.o
 
 obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o
 ifndef CONFIG_ARCH_MSM8X60

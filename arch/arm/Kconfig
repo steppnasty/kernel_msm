@@ -599,6 +599,7 @@ config ARCH_MSM
 	select ARCH_WANT_OPTIONAL_GPIOLIB
 	select ARCH_HAS_BARRIERS if !ARCH_MSM7227
 	select CLKDEV_LOOKUP
+	select HAVE_SCHED_CLOCK
 	help
 	  Support for Qualcomm MSM/QSD based systems.  This runs on the
 	  ARM11/Scorpion apps processor of the MSM/QSD and depends on a

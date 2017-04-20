@@ -1844,7 +1844,7 @@ static int msm_rpcrouter_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&newserver_wait);
 	init_waitqueue_head(&smd_wait);
-	wake_lock_init(&rpcrouter_wake_lock, WAKE_LOCK_SUSPEND, "SMD_RPCCALL");
+	wake_lock_init(&rpcrouter_wake_lock, WAKE_LOCK_SUSPEND, "RPCCALL");
 
 	rpcrouter_workqueue = create_singlethread_workqueue("rpcrouter");
 	if (!rpcrouter_workqueue)
@@ -1856,7 +1856,7 @@ static int msm_rpcrouter_probe(struct platform_device *pdev)
 
 	/* Open up SMD channel 2 */
 	initialized = 0;
-	rc = smd_open("SMD_RPCCALL", &smd_channel, NULL, rpcrouter_smdnotify);
+	rc = smd_open("RPCCALL", &smd_channel, NULL, rpcrouter_smdnotify);
 	if (rc < 0)
 		goto fail_remove_devices;
 
@@ -1885,7 +1885,7 @@ static int msm_rpcrouter_suspend(struct platform_device *pdev,
 static struct platform_driver msm_smd_channel2_driver = {
 	.probe		= msm_rpcrouter_probe,
 	.driver		= {
-			.name	= "SMD_RPCCALL",
+			.name	= "RPCCALL",
 			.owner	= THIS_MODULE,
 	},
 	.suspend	= msm_rpcrouter_suspend,

@@ -86,7 +86,7 @@
 
 /* this is the ACDB device ID */
 #define DALDEVICEID_ACDB		0x02000069
-#define ACDB_PORT_NAME			"SMD_DAL00"
+#define ACDB_PORT_NAME			"DAL00"
 #define ACDB_CPU			SMD_APPS_MODEM
 #define ACDB_BUF_SIZE			4096
 

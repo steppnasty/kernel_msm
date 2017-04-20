@@ -798,7 +798,7 @@ void diag_smd_enable(char *src, int enable)
 	mutex_lock(&driver->smd_lock);
 	if (enable) {
 		if (!driver->ch)
-			smd_open("SMD_DIAG", &driver->ch, driver, diag_smd_notify);
+			smd_open("DIAG", &driver->ch, driver, diag_smd_notify);
 	} else {
 		if (driver->ch) {
 			smd_close(driver->ch);
@@ -897,7 +897,7 @@ static struct platform_driver msm_smd_ch1_driver = {
 
 	.probe = diag_smd_probe,
 	.driver = {
-		   .name = "SMD_DIAG",
+		   .name = "DIAG",
 		   .owner = THIS_MODULE,
 		   /*.pm   = &diagfwd_dev_pm_ops,*/
 		   },

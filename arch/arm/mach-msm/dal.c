@@ -74,7 +74,6 @@
 #include <mach/msm_smd.h>
 
 #include "smd_private.h"
-#include "smd_debug.h"
 
 #define DALRPC_PROTOCOL_VERSION 0x11
 #define DALRPC_SUCCESS 0
@@ -509,13 +508,6 @@ static void dalrpc_sendwait(struct daldevice_handle *h)
 
 	mutex_lock(&h->port->write_lock);
 	do {
-		if ((h->port->ch->recv->state != SMD_SS_OPENED) ||
-		   (h->port->ch->send->state != SMD_SS_OPENED)) {
-			printk(KERN_ERR "%s: smd channel %s not ready,"
-			       " wait 100ms.\n", __func__, h->port->ch->name);
-			mdelay(100);
-			continue;
-		}
 		written = smd_write(h->port->ch, buf + (h->msg.hdr.len - len),
 				 len);
 		if (written < 0)
