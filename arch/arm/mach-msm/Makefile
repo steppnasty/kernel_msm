@@ -43,6 +43,9 @@ obj-$(CONFIG_ARCH_MSM8X60) += saw-regulator.o
 obj-$(CONFIG_ARCH_MSM8X60) += rpm-regulator.o
 obj-$(CONFIG_ARCH_MSM8X60) += footswitch-8x60.o
 obj-$(CONFIG_ARCH_MSM8X60) += sysinfo-8x60.o
+obj-$(CONFIG_MSM_SUBSYSTEM_RESTART) += subsystem_notif.o
+obj-$(CONFIG_MSM_SUBSYSTEM_RESTART) += subsystem_restart.o
+
 obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o htc_simlock-8x60.o
 obj-$(CONFIG_MSM_SECURE_IO) += scm-io.o
 obj-$(CONFIG_MSM_PIL) += peripheral-loader.o
