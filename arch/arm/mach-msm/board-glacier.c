@@ -68,6 +68,8 @@
 #include <mach/rpc_pmapp.h>
 #include <mach/remote_spinlock.h>
 #include <mach/msm_panel.h>
+#include <mach/socinfo.h>
+
 #include <mach/vreg.h>
 #include <mach/atmega_microp.h>
 #include <mach/htc_battery.h>
@@ -85,7 +87,6 @@
 #include "smd_private.h"
 #include "spm.h"
 #include "pm.h"
-#include "socinfo.h"
 #include "acpuclock.h"
 #include "gpio_chip.h"
 #ifdef CONFIG_MSM_SSBI
@@ -2008,9 +2009,6 @@ static void __init glacier_init(void)
 	printk("glacier_init() reglacier=%d\n", system_rev);
 	printk(KERN_INFO "%s: microp version = %s\n", __func__, microp_ver);
 
-	if (socinfo_init() < 0)
-		printk(KERN_ERR "%s: socinfo_init() failed!\n", __func__);
-
 	msm_clock_init(msm_clocks_7x30, msm_num_clocks_7x30);
 
 	/* for bcm */
@@ -2136,6 +2134,8 @@ static void __init glacier_map_io(void)
 	printk(KERN_INFO "[%s]\n", __func__);
 
 	msm_map_common_io();
+	if (socinfo_init() < 0)
+		pr_err("socinfo_init() failed!\n");
 }
 
 MACHINE_START(GLACIER, "glacier")
