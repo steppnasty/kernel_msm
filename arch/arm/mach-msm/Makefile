@@ -14,18 +14,25 @@ ifndef CONFIG_ARCH_MSM8X60
 	ifdef CONFIG_MSM_PROC_COMM
 		obj-$(CONFIG_REGULATOR) += footswitch-pcom.o
 	endif
-	obj-y += devices.o pmic.o pwrtest.o
+	obj-y += devices.o pwrtest.o
 endif
 
 obj-y += acpuclock.o
 obj-$(CONFIG_MSM_VIC) += irq-vic.o
+
+quiet_cmd_mkrpcsym = MKCAP   $@
+      cmd_mkrpcsym = $(PERL) $(srctree)/$(src)/mkrpcsym.pl $< $@
+
+target += smd_rpc_sym.c
+$(obj)/smd_rpc_sym.c: $(src)/smd_rpc_sym $(src)/mkrpcsym.pl
+	$(call if_changed,mkrpcsym)
 
 obj-$(CONFIG_ARCH_QSD8X50) += sirc.o
 obj-$(CONFIG_ARCH_MSM_ARM11) += acpuclock-arm11.o idle.o
 obj-$(CONFIG_ARCH_QSD8X50) += arch-init-scorpion.o acpuclock-scorpion.o
 obj-$(CONFIG_ARCH_MSM7X30) += acpuclock-7x30.o
 obj-$(CONFIG_ACPUCLOCK_DEBUG) += acpuclock_debug.o
-obj-$(CONFIG_ARCH_MSM7X30) += clock-local.o clock-7x30.o arch-init-7x30.o socinfo.o
+obj-$(CONFIG_ARCH_MSM7X30) += clock-local.o clock-7x30.o arch-init-7x30.o
 obj-$(CONFIG_ARCH_MSM7X30) += spm.o
 
 obj-$(CONFIG_CPU_V7) += idle-v7.o msm_fault_handlers.o
@@ -33,10 +40,10 @@ obj-$(CONFIG_CPU_V7) += idle-v7.o msm_fault_handlers.o
 obj-y += nand_partitions.o
 obj-y += drv_callback.o
 obj-y += radio_feedback.o
-obj-$(CONFIG_ARCH_QSD8X50) += pmic.o htc_wifi_nvs.o htc_bluetooth.o
+obj-$(CONFIG_ARCH_QSD8X50) += htc_wifi_nvs.o htc_bluetooth.o
 
 obj-$(CONFIG_SMP) += headsmp.o platsmp.o
-obj-$(CONFIG_ARCH_MSM8X60) += devices-msm8x60.o clock-local.o clock-8x60.o acpuclock-8x60.o clock-debug.o socinfo.o
+obj-$(CONFIG_ARCH_MSM8X60) += devices-msm8x60.o clock-local.o clock-8x60.o acpuclock-8x60.o clock-debug.o
 obj-$(CONFIG_ARCH_MSM8X60) += clock-8x60_mxo.o clock-rpm.o spm.o restart.o mpm.o mpp.o
 obj-$(CONFIG_ARCH_MSM8X60) += subsystem-fatal-8x60.o
 obj-$(CONFIG_ARCH_MSM8X60) += saw-regulator.o
@@ -54,24 +61,27 @@ obj-$(CONFIG_MSM_DSPS) += msm_dsps.o
 obj-$(CONFIG_MSM_FIQ_SUPPORT) += fiq_glue.o
 obj-$(CONFIG_MACH_TROUT) += board-trout-rfkill.o
 
-obj-$(CONFIG_ARCH_MSM7X30) += rpc_hsusb.o
-
-obj-y += remote_spinlock.o
-
-obj-y += remote_spinlock.o
+obj-$(CONFIG_ARCH_MSM7X30) += rpc_pmapp.o
 obj-$(CONFIG_MSM_SMD) += htc_port_list.o
-obj-$(CONFIG_ARCH_MSM7X30) += rpc_pmapp.o smd_rpcrouter_clients.o
-obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o
 obj-$(CONFIG_MSM_SMD) += smem_log.o
-obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_device.o
-ifndef CONFIG_ARCH_MSM7X30
-obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter.o
-obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_servers.o
-else
-obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter-7x30.o
-obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_servers-7x30.o
+obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o remote_spinlock.o
+        obj-y += socinfo.o
+ifndef CONFIG_ARCH_MSM9615
+ifndef CONFIG_ARCH_MSM8960
+ifndef CONFIG_ARCH_MSM8X60
+	obj-$(CONFIG_MSM_SMD) += pmic.o
+	obj-$(CONFIG_MSM_ONCRPCROUTER) += rpc_hsusb.o
 endif
+endif
+endif
+obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter.o
+obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_device.o
+obj-$(CONFIG_DEBUG_FS) += smd_rpc_sym.o
+obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_servers.o
+obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_clients.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_xdr.o
+obj-$(CONFIG_MSM_ONCRPCROUTER) += rpcrouter_smd_xprt.o
+obj-$(CONFIG_MSM_RPC_SDIO_XPRT) += rpcrouter_sdio_xprt.o
 obj-$(CONFIG_MSM_RPCSERVERS) += rpc_server_dog_keepalive.o
 obj-$(CONFIG_MSM_RPCSERVERS) += rpc_server_time_remote.o
 obj-$(CONFIG_MSM_SMD) += smd_tty.o smd_qmi.o

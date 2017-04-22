@@ -17,10 +17,10 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <mach/msm_rpcrouter.h>
-#include <mach/msm_rpc_version.h>
 /* time_remote_mtoa server definitions. */
 
 #define TIME_REMOTE_MTOA_PROG 0x3000005d
+#define TIME_REMOTE_MTOA_VERS 0x00010002
 #define RPC_TIME_REMOTE_MTOA_NULL   0
 #define RPC_TIME_TOD_SET_APPS_BASES 2
 

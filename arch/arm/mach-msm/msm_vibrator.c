@@ -21,14 +21,23 @@
 #include <linux/sched.h>
 
 #include <mach/msm_rpcrouter.h>
-#include <mach/msm_rpc_version.h>
 
 #define VIB_INFO_LOG(fmt, ...) \
 		printk(KERN_INFO "[VIB]" fmt, ##__VA_ARGS__)
 #define VIB_ERR_LOG(fmt, ...) \
 		printk(KERN_ERR "[VIB][ERR]" fmt, ##__VA_ARGS__)
 
-#define PM_LIBPROG	  0x30000061
+#define PM_LIBPROG	0x30000061
+#if (CONFIG_MSM_AMSS_VERSION == 6220) || (CONFIG_MSM_AMSS_VERSION == 6225)
+#define PM_LIBVERS      0xfb837d0b
+#define HTC_PROCEDURE_SET_VIB_ON_OFF	21
+#elif (CONFIG_MSM_AMSS_VERSION == 1200)
+#define PM_LIBVERS      0x30001
+#define HTC_PROCEDURE_SET_VIB_ON_OFF	22
+#else
+#define PM_LIBVERS      0x10001
+#define HTC_PROCEDURE_SET_VIB_ON_OFF	21
+#endif
 
 static struct work_struct vibrator_work;
 static struct hrtimer vibe_timer;

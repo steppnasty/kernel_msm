@@ -1,7 +1,7 @@
 /** include/asm-arm/arch-msm/msm_rpcrouter.h
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007-2009 QUALCOMM Incorporated
+ * Copyright (c) 2007-2011, Code Aurora Forum. All rights reserved.
  * Author: San Mehat <san@android.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -34,19 +34,10 @@
  */
 #define RPC_VERSION_MODE_MASK  0x80000000
 #define RPC_VERSION_MAJOR_MASK 0x0fff0000
-#define RPC_VERSION_MAJOR_OFFSET 16
 #define RPC_VERSION_MINOR_MASK 0x0000ffff
 
 /* callback ID for NULL callback function is -1 */
 #define MSM_RPC_CLIENT_NULL_CB_ID 0xffffffff
-
-#define MSM_RPC_VERS(major, minor)					\
-	((uint32_t)((((major) << RPC_VERSION_MAJOR_OFFSET) &		\
-		RPC_VERSION_MAJOR_MASK) |				\
-	((minor) & RPC_VERSION_MINOR_MASK)))
-#define MSM_RPC_GET_MAJOR(vers) (((vers) & RPC_VERSION_MAJOR_MASK) >>	\
-					RPC_VERSION_MAJOR_OFFSET)
-#define MSM_RPC_GET_MINOR(vers) ((vers) & RPC_VERSION_MINOR_MASK)
 
 struct msm_rpc_endpoint;
 
@@ -120,20 +111,24 @@ struct rpc_reply_hdr
 	} data;
 };
 
+struct rpc_board_dev {
+	uint32_t prog;
+	struct platform_device pdev;
+};
+
 /* flags for msm_rpc_connect() */
 #define MSM_RPC_UNINTERRUPTIBLE 0x0001
-#define MSM_RPC_ENABLE_RECEIVE (0x10000)
 
 /* use IS_ERR() to check for failure */
 struct msm_rpc_endpoint *msm_rpc_open(void);
 /* Connect with the specified server version */
 struct msm_rpc_endpoint *msm_rpc_connect(uint32_t prog, uint32_t vers, unsigned flags);
-uint32_t msm_rpc_get_vers(struct msm_rpc_endpoint *ept);
+/* Connect with a compatible server version */
+struct msm_rpc_endpoint *msm_rpc_connect_compatible(uint32_t prog,
+	uint32_t vers, unsigned flags);
 /* check if server version can handle client requested version */
 int msm_rpc_is_compatible_version(uint32_t server_version,
 				  uint32_t client_version);
-struct msm_rpc_endpoint *msm_rpc_connect_compatible(uint32_t prog,
-			uint32_t vers, unsigned flags);
 
 int msm_rpc_close(struct msm_rpc_endpoint *ept);
 int msm_rpc_write(struct msm_rpc_endpoint *ept,
@@ -148,6 +143,11 @@ int msm_rpc_register_server(struct msm_rpc_endpoint *ept,
 int msm_rpc_unregister_server(struct msm_rpc_endpoint *ept,
 			      uint32_t prog, uint32_t vers);
 
+int msm_rpc_add_board_dev(struct rpc_board_dev *board_dev, int num);
+
+int msm_rpc_clear_netreset(struct msm_rpc_endpoint *ept);
+
+int msm_rpc_get_curr_pkt_size(struct msm_rpc_endpoint *ept);
 /* simple blocking rpc call
  *
  * request is mandatory and must have a rpc_request_hdr
@@ -201,26 +201,24 @@ struct msm_rpc_server
 	uint32_t prog;
 	uint32_t vers;
 
-#ifdef CONFIG_ARCH_MSM7X30
 	struct mutex cb_req_lock;
+
 	struct msm_rpc_endpoint *cb_ept;
+
 	struct msm_rpc_xdr cb_xdr;
+
 	uint32_t version;
-#endif
 
 	int (*rpc_call)(struct msm_rpc_server *server,
 			struct rpc_request_hdr *req, unsigned len);
 
-#ifdef CONFIG_ARCH_MSM7X30
 	int (*rpc_call2)(struct msm_rpc_server *server,
 			 struct rpc_request_hdr *req,
 			 struct msm_rpc_xdr *xdr);
-#endif
 };
 
 int msm_rpc_create_server(struct msm_rpc_server *server);
 int msm_rpc_create_server2(struct msm_rpc_server *server);
-
 
 #define MSM_RPC_MSGSIZE_MAX 8192
 
@@ -255,7 +253,7 @@ struct msm_rpc_client {
 	int cb_avail;
 
 	atomic_t next_cb_id;
-	struct mutex cb_list_lock;
+	spinlock_t cb_list_lock;
 	struct list_head cb_list;
 
 	uint32_t exit_flag;
@@ -263,13 +261,21 @@ struct msm_rpc_client {
 	struct completion cb_complete;
 
 	struct mutex req_lock;
+
+	void (*cb_restart_teardown)(struct msm_rpc_client *client);
+	void (*cb_restart_setup)(struct msm_rpc_client *client);
+	int in_reset;
 };
+
 struct msm_rpc_client_info {
 	uint32_t pid;
 	uint32_t cid;
 	uint32_t prog;
 	uint32_t vers;
 };
+
+
+int msm_rpc_client_in_reset(struct msm_rpc_client *client);
 
 struct msm_rpc_client *msm_rpc_register_client(
 	const char *name,
@@ -302,15 +308,23 @@ int msm_rpc_client_req2(struct msm_rpc_client *client, uint32_t proc,
 			void *result_data,
 			long timeout);
 
+int msm_rpc_register_reset_callbacks(
+	struct msm_rpc_client *client,
+	void (*teardown)(struct msm_rpc_client *client),
+	void (*setup)(struct msm_rpc_client *client)
+	);
+
 void *msm_rpc_start_accepted_reply(struct msm_rpc_client *client,
 				   uint32_t xid, uint32_t accept_status);
 
 int msm_rpc_send_accepted_reply(struct msm_rpc_client *client, uint32_t size);
+
 void *msm_rpc_server_start_accepted_reply(struct msm_rpc_server *server,
 					  uint32_t xid, uint32_t accept_status);
 
 int msm_rpc_server_send_accepted_reply(struct msm_rpc_server *server,
 				       uint32_t size);
+
 int msm_rpc_add_cb_func(struct msm_rpc_client *client, void *cb_func);
 
 void *msm_rpc_get_cb_func(struct msm_rpc_client *client, uint32_t cb_id);
@@ -336,8 +350,10 @@ int msm_rpc_server_cb_req2(struct msm_rpc_server *server,
 			   int (*ret_func)(struct msm_rpc_server *server,
 					   struct msm_rpc_xdr *xdr, void *data),
 			   void *ret_data, long timeout);
+
 void msm_rpc_server_get_requesting_client(
 	struct msm_rpc_client_info *clnt_info);
+
 int xdr_send_pointer(struct msm_rpc_xdr *xdr, void **obj,
 		     uint32_t obj_size, void *xdr_op);
 

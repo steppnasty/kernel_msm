@@ -540,7 +540,16 @@ static int __init smd_tty_init(void)
 	spin_lock_init(&smd_tty[0].reset_lock);
 	smd_tty[0].is_open = 0;
 	init_waitqueue_head(&smd_tty[0].ch_opened_wait_queue);
-	if (cpu_is_msm7x30() || cpu_is_msm8x55()) {
+	/*
+	 * DS port is opened in the kernel starting with 8660 fusion.
+	 * Only register the platform driver for targets older than that.
+	 */
+	if (cpu_is_msm7x01() || cpu_is_msm7x25() || cpu_is_msm7x27() ||
+			cpu_is_msm7x27a() || cpu_is_msm7x27aa() ||
+			cpu_is_msm7x25a() || cpu_is_msm7x25aa() ||
+			cpu_is_msm7x30() || cpu_is_qsd8x50() ||
+			cpu_is_msm8x55() ||  (cpu_is_msm8x60() &&
+			socinfo_get_platform_subtype() == 0x1)) {
 		ret = platform_driver_register(&smd_tty[0].driver);
 		if (ret)
 			goto out;

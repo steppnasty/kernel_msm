@@ -84,9 +84,9 @@ tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec); \
 } while (0)
 
 /* rpc related */
-#define APP_BATT_PDEV_NAME		"rs30100001:00000000"
+#define APP_BATT_PDEV_NAME		"rs30100001"
 #define APP_BATT_PROG			0x30100001
-#define APP_BATT_VER			MSM_RPC_VERS(0,0)
+#define APP_BATT_VER			0
 #define HTC_PROCEDURE_BATTERY_NULL	0
 #define HTC_PROCEDURE_GET_BATT_LEVEL	1
 #define HTC_PROCEDURE_GET_BATT_INFO	2

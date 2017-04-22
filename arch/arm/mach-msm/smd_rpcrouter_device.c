@@ -1,7 +1,7 @@
 /* arch/arm/mach-msm/smd_rpcrouter_device.c
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007-2009 QUALCOMM Incorporated.
+ * Copyright (c) 2007-2011, Code Aurora Forum. All rights reserved.
  * Author: San Mehat <san@android.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -14,6 +14,7 @@
  * GNU General Public License for more details.
  *
  */
+#include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/string.h>
@@ -26,7 +27,6 @@
 #include <linux/fs.h>
 #include <linux/err.h>
 #include <linux/sched.h>
-#include <linux/slab.h>
 #include <linux/poll.h>
 #include <linux/platform_device.h>
 #include <linux/msm_rpcrouter.h>
@@ -34,12 +34,18 @@
 #include <asm/uaccess.h>
 #include <asm/byteorder.h>
 
+#include <mach/peripheral-loader.h>
 #include "smd_rpcrouter.h"
 
-#define SAFETY_MEM_SIZE 65536
+/* Support 64KB of data plus some space for headers */
+#define SAFETY_MEM_SIZE (65536 + sizeof(struct rpc_request_hdr))
+
+/* modem load timeout */
+#define MODEM_LOAD_TIMEOUT (10 * HZ)
 
 /* Next minor # available for a remote server */
 static int next_minor = 1;
+static DEFINE_SPINLOCK(server_cdev_lock);
 
 struct class *msm_rpcrouter_class;
 dev_t msm_rpcrouter_devno;
@@ -47,39 +53,113 @@ dev_t msm_rpcrouter_devno;
 static struct cdev rpcrouter_cdev;
 static struct device *rpcrouter_device;
 
+struct rpcrouter_file_info {
+	struct msm_rpc_endpoint *ept;
+	void *modem_pil;
+};
+
+static void msm_rpcrouter_unload_modem(void *pil)
+{
+	if (pil)
+		pil_put(pil);
+}
+
+static void *msm_rpcrouter_load_modem(void)
+{
+	void *pil;
+	int rc;
+
+	pil = pil_get("modem");
+	if (IS_ERR(pil))
+		pr_err("%s: modem load failed\n", __func__);
+	else {
+		rc = wait_for_completion_interruptible_timeout(
+						&rpc_remote_router_up,
+						MODEM_LOAD_TIMEOUT);
+		if (!rc)
+			rc = -ETIMEDOUT;
+		if (rc < 0) {
+			pr_err("%s: wait for remote router failed %d\n",
+			       __func__, rc);
+			msm_rpcrouter_unload_modem(pil);
+			pil = ERR_PTR(rc);
+		}
+	}
+
+	return pil;
+}
+
 static int rpcrouter_open(struct inode *inode, struct file *filp)
 {
 	int rc;
+	void *pil;
 	struct msm_rpc_endpoint *ept;
+	struct rpcrouter_file_info *file_info;
 
 	rc = nonseekable_open(inode, filp);
 	if (rc < 0)
 		return rc;
 
-	ept = msm_rpcrouter_create_local_endpoint(inode->i_rdev);
-	if (!ept)
+	file_info = kzalloc(sizeof(*file_info), GFP_KERNEL);
+	if (!file_info)
 		return -ENOMEM;
 
-	filp->private_data = ept;
+	ept = msm_rpcrouter_create_local_endpoint(inode->i_rdev);
+	if (!ept) {
+		kfree(file_info);
+		return -ENOMEM;
+	}
+	file_info->ept = ept;
+
+	/* if router device, load the modem */
+	if (inode->i_rdev == msm_rpcrouter_devno) {
+		pil = msm_rpcrouter_load_modem();
+		if (IS_ERR(pil)) {
+			kfree(file_info);
+			msm_rpcrouter_destroy_local_endpoint(ept);
+			return PTR_ERR(pil);
+		}
+		file_info->modem_pil = pil;
+	}
+
+	filp->private_data = file_info;
 	return 0;
 }
 
 static int rpcrouter_release(struct inode *inode, struct file *filp)
 {
+	struct rpcrouter_file_info *file_info = filp->private_data;
 	struct msm_rpc_endpoint *ept;
-	ept = (struct msm_rpc_endpoint *) filp->private_data;
+	static unsigned int rpcrouter_release_cnt;
 
+	ept = (struct msm_rpc_endpoint *) file_info->ept;
+
+	/* A user program with many files open when ends abruptly,
+	 * will cause a flood of REMOVE_CLIENT messages to the
+	 * remote processor.  This will cause remote processors
+	 * internal queue to overflow. Inserting a sleep here
+	 * regularly is the effecient option.
+	 */
+	if (rpcrouter_release_cnt++ % 2)
+		msleep(1);
+
+	/* if router device, unload the modem */
+	if (inode->i_rdev == msm_rpcrouter_devno)
+		msm_rpcrouter_unload_modem(file_info->modem_pil);
+
+	kfree(file_info);
 	return msm_rpcrouter_destroy_local_endpoint(ept);
 }
 
 static ssize_t rpcrouter_read(struct file *filp, char __user *buf,
 			      size_t count, loff_t *ppos)
 {
+	struct rpcrouter_file_info *file_info = filp->private_data;
 	struct msm_rpc_endpoint *ept;
 	struct rr_fragment *frag, *next;
 	int rc;
 
-	ept = (struct msm_rpc_endpoint *) filp->private_data;
+	ept = (struct msm_rpc_endpoint *) file_info->ept;
 
 	rc = __msm_rpc_read(ept, &frag, count, -1);
 	if (rc < 0)
@@ -105,11 +185,12 @@ static ssize_t rpcrouter_read(struct file *filp, char __user *buf,
 static ssize_t rpcrouter_write(struct file *filp, const char __user *buf,
 				size_t count, loff_t *ppos)
 {
+	struct rpcrouter_file_info *file_info = filp->private_data;
 	struct msm_rpc_endpoint	*ept;
 	int rc = 0;
 	void *k_buffer;
 
-	ept = (struct msm_rpc_endpoint *) filp->private_data;
+	ept = (struct msm_rpc_endpoint *) file_info->ept;
 
 	/* A check for safety, this seems non-standard */
 	if (count > SAFETY_MEM_SIZE)
@@ -134,25 +215,46 @@ write_out_free:
 	return rc;
 }
 
+/* RPC VFS Poll Implementation
+ *
+ * POLLRDHUP - restart in progress
+ * POLLOUT - writes accepted (without blocking)
+ * POLLIN - data ready to read
+ *
+ * The restart state consists of several different phases including a client
+ * notification and a server restart.  If the server has been restarted, then
+ * reads and writes can be performed and the POLLOUT bit will be set.  If a
+ * restart is in progress, but the server hasn't been restarted, then only the
+ * POLLRDHUP is active and reads and writes will block.  See the table
+ * below for a summary.  POLLRDHUP is cleared once a call to msm_rpc_write_pkt
+ * or msm_rpc_read_pkt returns ENETRESET.
+ *
+ * POLLOUT	POLLRDHUP
+ *    1         0       Normal operation
+ *    0         1       Restart in progress and server hasn't restarted yet
+ *    1         1       Server has been restarted, but client has
+ *                      not been notified of a restart by a return code
+ *                      of ENETRESET from msm_rpc_write_pkt or
+ *                      msm_rpc_read_pkt.
+ */
 static unsigned int rpcrouter_poll(struct file *filp,
 				   struct poll_table_struct *wait)
 {
+	struct rpcrouter_file_info *file_info = filp->private_data;
 	struct msm_rpc_endpoint *ept;
 	unsigned mask = 0;
-	ept = (struct msm_rpc_endpoint *) filp->private_data;
 
-	/* If there's data already in the read queue, return POLLIN.
-	 * Else, wait for the requested amount of time, and check again.
-	 */
+	ept = (struct msm_rpc_endpoint *) file_info->ept;
+
+	poll_wait(filp, &ept->wait_q, wait);
+	poll_wait(filp, &ept->restart_wait, wait);
 
 	if (!list_empty(&ept->read_q))
 		mask |= POLLIN;
-
-	if (!mask) {
-		poll_wait(filp, &ept->wait_q, wait);
-		if (!list_empty(&ept->read_q))
-			mask |= POLLIN;
-	}
+	if (!(ept->restart_state & RESTART_PEND_SVR))
+		mask |= POLLOUT;
+	if (ept->restart_state != 0)
+		mask |= POLLRDHUP;
 
 	return mask;
 }
@@ -160,12 +262,13 @@ static unsigned int rpcrouter_poll(struct file *filp,
 static long rpcrouter_ioctl(struct file *filp, unsigned int cmd,
 			    unsigned long arg)
 {
+	struct rpcrouter_file_info *file_info = filp->private_data;
 	struct msm_rpc_endpoint *ept;
 	struct rpcrouter_ioctl_server_args server_args;
 	int rc = 0;
 	uint32_t n;
 
-	ept = (struct msm_rpc_endpoint *) filp->private_data;
+	ept = (struct msm_rpc_endpoint *) file_info->ept;
 	switch (cmd) {
 
 	case RPC_ROUTER_IOCTL_GET_VERSION:
@@ -202,9 +305,12 @@ static long rpcrouter_ioctl(struct file *filp, unsigned int cmd,
 					  server_args.vers);
 		break;
 
-	case RPC_ROUTER_IOCTL_GET_MINOR_VERSION:
-		n = MSM_RPC_GET_MINOR(msm_rpc_get_vers(ept));
-		rc = put_user(n, (unsigned int *)arg);
+	case RPC_ROUTER_IOCTL_CLEAR_NETRESET:
+		msm_rpc_clear_netreset(ept);
+		break;
+
+	case RPC_ROUTER_IOCTL_GET_CURR_PKT_SIZE:
+		rc = msm_rpc_get_curr_pkt_size(ept);
 		break;
 
 	default:
@@ -239,31 +345,31 @@ int msm_rpcrouter_create_server_cdev(struct rr_server *server)
 {
 	int rc;
 	uint32_t dev_vers;
+	unsigned long flags;
 
+	spin_lock_irqsave(&server_cdev_lock, flags);
 	if (next_minor == RPCROUTER_MAX_REMOTE_SERVERS) {
+		spin_unlock_irqrestore(&server_cdev_lock, flags);
 		printk(KERN_ERR
 		       "rpcrouter: Minor numbers exhausted - Increase "
 		       "RPCROUTER_MAX_REMOTE_SERVERS\n");
 		return -ENOBUFS;
 	}
 
-#if CONFIG_MSM_AMSS_VERSION >= 6350 || defined(CONFIG_ARCH_QSD8X50) || defined(CONFIG_ARCH_MSM7X30)
 	/* Servers with bit 31 set are remote msm servers with hashkey version.
 	 * Servers with bit 31 not set are remote msm servers with
 	 * backwards compatible version type in which case the minor number
 	 * (lower 16 bits) is set to zero.
 	 *
 	 */
-	if ((server->vers & RPC_VERSION_MODE_MASK))
+	if ((server->vers & 0x80000000))
 		dev_vers = server->vers;
 	else
-		dev_vers = server->vers & RPC_VERSION_MAJOR_MASK;
-#else
-	dev_vers = server->vers;
-#endif
+		dev_vers = server->vers & 0xffff0000;
 
 	server->device_number =
 		MKDEV(MAJOR(msm_rpcrouter_devno), next_minor++);
+	spin_unlock_irqrestore(&server_cdev_lock, flags);
 
 	server->device =
 		device_create(msm_rpcrouter_class, rpcrouter_device,
@@ -295,16 +401,9 @@ int msm_rpcrouter_create_server_cdev(struct rr_server *server)
  */
 int msm_rpcrouter_create_server_pdev(struct rr_server *server)
 {
-	sprintf(server->pdev_name, "rs%.8x:%.8x",
-		server->prog,
-#if CONFIG_MSM_AMSS_VERSION >= 6350 || defined(CONFIG_ARCH_QSD8X50) || defined(CONFIG_ARCH_MSM7X30)
-		(server->vers & RPC_VERSION_MODE_MASK) ? server->vers :
-		(server->vers & RPC_VERSION_MAJOR_MASK));
-#else
-		server->vers);
-#endif
-
-	server->p_device.base.id = -1;
+	server->p_device.base.id = (server->vers & RPC_VERSION_MODE_MASK) ?
+				   server->vers :
+				   (server->vers & RPC_VERSION_MAJOR_MASK);
 	server->p_device.base.name = server->pdev_name;
 
 	server->p_device.prog = server->prog;

@@ -58,7 +58,7 @@ int usb_phy_error;
 
 #define HSUSB_API_INIT_PHY_PROC	2
 #define HSUSB_API_PROG		0x30000064
-#define HSUSB_API_VERS MSM_RPC_VERS(1, 1)
+#define HSUSB_API_VERS		0x00010001
 
 static void internal_phy_reset(void)
 {
