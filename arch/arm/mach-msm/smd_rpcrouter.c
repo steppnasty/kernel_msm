@@ -823,13 +823,6 @@ static int process_control_msg(struct rpcrouter_xprt_info *xprt_info,
 		break;
 
 	case RPCROUTER_CTRL_CMD_NEW_SERVER:
-		if (msg->srv.vers == 0) {
-			pr_err(
-			"rpcrouter: Server create rejected, version = 0, "
-			"program = %08x\n", msg->srv.prog);
-			break;
-		}
-
 		RR("o NEW_SERVER id=%d:%08x prog=%08x:%08x\n",
 		   msg->srv.pid, msg->srv.cid, msg->srv.prog, msg->srv.vers);
 
