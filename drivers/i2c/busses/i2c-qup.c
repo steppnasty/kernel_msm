@@ -816,7 +816,6 @@ qup_i2c_probe(struct platform_device *pdev)
 	struct clk         *clk, *pclk;
 	int ret = 0;
 	struct msm_i2c_platform_data *pdata;
-	const char *qup_apps_clk_name = "qup_clk";
 
 	dev_dbg(&pdev->dev, "qup_i2c_probe\n");
 
@@ -868,26 +867,20 @@ qup_i2c_probe(struct platform_device *pdev)
 		return -EBUSY;
 	}
 
-	if (pdata->clk != NULL)
-		qup_apps_clk_name = pdata->clk;
-
-	clk = clk_get(&pdev->dev, qup_apps_clk_name);
+	clk = clk_get(&pdev->dev, "core_clk");
 	if (IS_ERR(clk)) {
 		dev_err(&pdev->dev, "Could not get clock\n");
 		ret = PTR_ERR(clk);
 		goto err_clk_get_failed;
 	}
 
-	if (pdata->pclk != NULL) {
-		pclk = clk_get(&pdev->dev, pdata->pclk);
-		if (IS_ERR(pclk)) {
-			dev_err(&pdev->dev, "Could not get pclock\n");
-			ret = PTR_ERR(pclk);
-			clk_put(clk);
-			goto err_clk_get_failed;
-		}
-	} else
-		pclk = NULL;
+	pclk = clk_get(&pdev->dev, "iface_clk");
+	if (IS_ERR(pclk)) {
+		dev_err(&pdev->dev, "Could not get iface_clk\n");
+		ret = PTR_ERR(pclk);
+		clk_put(clk);
+		goto err_clk_get_failed;
+	}
 
 	if (!(pdata->msm_i2c_config_gpio)) {
 		dev_err(&pdev->dev, "config_gpio function not initialized\n");
