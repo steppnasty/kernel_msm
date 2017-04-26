@@ -124,11 +124,11 @@ static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 	.idle_timeout = HZ/20,
 	.nap_allowed = true,
 	.clk = {
-		.clk = "grp_clk",
-		.pclk = "grp_pclk",
+		.clk = "core_clk",
+		.pclk = "iface_clk",
 	},
 	.imem_clk_name = {
-		.clk = "imem_clk",
+		.clk = "mem_clk",
 		.pclk = NULL,
 	},
 };
@@ -172,8 +172,8 @@ static struct kgsl_device_platform_data kgsl_2d0_pdata = {
 	.idle_timeout = HZ/10,
 	.nap_allowed = true,
 	.clk = {
-		.clk = "grp_2d_clk",
-		.pclk = "grp_2d_pclk",
+		.clk = "core_clk",
+		.pclk = "iface_clk",
 	},
 };
 
@@ -223,15 +223,15 @@ struct clk_lookup msm_clocks_7x30[] = {
 	CLK_PCOM("emdh_clk", EMDH_CLK, NULL, OFF | MINMAX),
 	CLK_PCOM("emdh_pclk", EMDH_P_CLK, NULL, OFF),
 	CLK_PCOM("gp_clk", GP_CLK, NULL, 0),
-	CLK_PCOM("grp_2d_clk", GRP_2D_CLK, NULL, 0),
-	CLK_PCOM("grp_2d_pclk", GRP_2D_P_CLK, NULL, 0),
-	CLK_PCOM("grp_clk", GRP_3D_CLK,	NULL, 0),
-	CLK_PCOM("grp_pclk", GRP_3D_P_CLK, NULL, 0),
+	CLK_PCOM("core_clk", GRP_2D_CLK, "kgsl-2d0.0", 0),
+	CLK_PCOM("iface_clk", GRP_2D_P_CLK, "kgsl-2d0.0", 0),
+	CLK_PCOM("core_clk", GRP_3D_CLK, "kgsl-3d0.0", 0),
+	CLK_PCOM("iface_clk", GRP_3D_P_CLK, "kgsl-3d0.0", 0),
 	CLK_7X30S("grp_src_clk", GRP_3D_SRC_CLK, GRP_3D_CLK, NULL, 0),
 	CLK_PCOM("hdmi_clk", HDMI_CLK, NULL, 0),
 	CLK_PCOM("i2c_clk", I2C_CLK, "msm_i2c.0", 0),
 	CLK_PCOM("i2c_clk", I2C_2_CLK, "msm_i2c.2", 0),
-	CLK_PCOM("imem_clk", IMEM_CLK, NULL, OFF),
+	CLK_PCOM("mem_clk", IMEM_CLK, "kgsl-3d0.0", OFF),
 	CLK_PCOM("jpeg_clk", JPEG_CLK, NULL, OFF),
 	CLK_PCOM("jpeg_pclk", JPEG_P_CLK, NULL, OFF),
 	CLK_PCOM("lpa_codec_clk", LPA_CODEC_CLK, NULL, 0),
