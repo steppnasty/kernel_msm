@@ -34,7 +34,7 @@ static void glacier_config_gpio_table(uint32_t *table, int len)
 	}
 }
 
-static uint32_t camera_off_gpio_table[] = {
+static uint32_t glacier_camera_off_gpio_table[] = {
 	/* parallel CAMERA interfaces */
 	/* RST1 */
 	GPIO_CFG(31, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
@@ -74,7 +74,7 @@ static uint32_t camera_off_gpio_table[] = {
 	GPIO_CFG(15, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 };
 
-static uint32_t camera_on_gpio_table[] = {
+static uint32_t glacier_camera_on_gpio_table[] = {
 	/* parallel CAMERA interfaces */
 	/* RST1 */
 	GPIO_CFG(31, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
@@ -114,55 +114,32 @@ static uint32_t camera_on_gpio_table[] = {
 	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA),
 };
 
-
-static int glacier_sensor_power_enable(char *power, unsigned volt)
+static int glacier_sensor_power(char *power, unsigned volt)
 {
-	struct vreg *vreg_gp;
+	struct vreg *sensor_power;
 	int rc;
 
 	if (power == NULL)
-		return EIO;
+		return -EIO;
 
-	vreg_gp = vreg_get(NULL, power);
-	if (IS_ERR(vreg_gp)) {
+	sensor_power = vreg_get(NULL, power);
+	if (IS_ERR(sensor_power)) {
 		pr_err("%s: vreg_get(%s) failed (%ld)\n",
-			__func__, power, PTR_ERR(vreg_gp));
-		return EIO;
+			__func__, power, PTR_ERR(sensor_power));
+		return -EIO;
 	}
 
-	rc = vreg_set_level(vreg_gp, volt);
-	if (rc) {
-		pr_err("%s: vreg wlan set %s level failed (%d)\n",
-			__func__, power, rc);
-		return EIO;
-	}
-
-	rc = vreg_enable(vreg_gp);
-	if (rc) {
-		pr_err("%s: vreg enable %s failed (%d)\n",
-			__func__, power, rc);
-		return EIO;
-	}
-	return rc;
-}
-
-static int glacier_sensor_power_disable(char *power)
-{
-	struct vreg *vreg_gp;
-	int rc;
-	vreg_gp = vreg_get(NULL, power);
-	if (IS_ERR(vreg_gp)) {
-		pr_err("%s: vreg_get(%s) failed (%ld)\n",
-			__func__, power, PTR_ERR(vreg_gp));
-		return EIO;
-	}
-
-	rc = vreg_disable(vreg_gp);
-	if (rc) {
-		pr_err("%s: vreg disable %s failed (%d)\n",
-			__func__, power, rc);
-		return EIO;
-	}
+	if (volt) {
+		if (vreg_set_level(sensor_power, volt))
+			pr_err("[CAM]%s: unable to set %s voltage to %d\n",
+				__func__, power, volt);
+		rc = vreg_enable(sensor_power);
+	} else
+		rc = vreg_disable(sensor_power);
+	if (rc)
+		pr_err("%s: vreg %s %s failed (%d)\n", __func__,
+			volt ? "enable" : "disable", power, rc);
+	vreg_put(sensor_power);
 	return rc;
 }
 
@@ -183,12 +160,12 @@ static int glacier_sensor_vreg_on(void)
 
 	/*camera VCM power*/
 	if (system_rev >= 1)
-		rc = glacier_sensor_power_enable("gp4", 2850);
+		rc = glacier_sensor_power("gp4", 2850);
 	else
-		rc = glacier_sensor_power_enable("wlan", 2850);
+		rc = glacier_sensor_power("wlan", 2850);
 
 	/*camera IO power*/
-	rc = glacier_sensor_power_enable("gp2", 1800);
+	rc = glacier_sensor_power("gp2", 1800);
 
 
 	/*camera analog power*/
@@ -196,9 +173,9 @@ static int glacier_sensor_vreg_on(void)
 
 	/*camera digital power*/
 	if (system_rev >= 1)
-		rc = glacier_sensor_power_enable("wlan", 1800);
+		rc = glacier_sensor_power("wlan", 1800);
 	else
-		rc = glacier_sensor_power_enable("gp4", 1800);
+		rc = glacier_sensor_power("gp4", 1800);
 
 	udelay(200);
 
@@ -220,25 +197,26 @@ static int glacier_sensor_vreg_off(void)
 
 	pm8058_gpio_config(GLACIER_CAM_A2V85_EN, &camera_analog_pw_off);
 	/*camera digital power*/
-	rc = glacier_sensor_power_disable("gp4");
+	rc = glacier_sensor_power("gp4", 0);
 
 	/*camera IO power*/
-	rc = glacier_sensor_power_disable("gp2");
+	rc = glacier_sensor_power("gp2", 0);
 
 	/*camera VCM power*/
-	rc = glacier_sensor_power_disable("wlan");
+	rc = glacier_sensor_power("wlan", 0);
 	return rc;
 }
-static void config_glacier_camera_on_gpios(void)
+
+static void glacier_camera_on_gpios(void)
 {
-	glacier_config_gpio_table(camera_on_gpio_table,
-		ARRAY_SIZE(camera_on_gpio_table));
+	glacier_config_gpio_table(glacier_camera_on_gpio_table,
+		ARRAY_SIZE(glacier_camera_on_gpio_table));
 }
 
-static void config_glacier_camera_off_gpios(void)
+static void glacier_camera_off_gpios(void)
 {
-	glacier_config_gpio_table(camera_off_gpio_table,
-		ARRAY_SIZE(camera_off_gpio_table));
+	glacier_config_gpio_table(glacier_camera_off_gpio_table,
+		ARRAY_SIZE(glacier_camera_off_gpio_table));
 }
 
 static struct resource msm_camera_resources[] = {
@@ -267,8 +245,8 @@ static void glacier_s5k4e1gx_clk_switch(void){
 }
 
 static struct msm_camera_device_platform_data glacier_s5k4e1gx_platform_data = {
-	.camera_gpio_on = config_glacier_camera_on_gpios,
-	.camera_gpio_off = config_glacier_camera_off_gpios,
+	.camera_gpio_on = glacier_camera_on_gpios,
+	.camera_gpio_off = glacier_camera_off_gpios,
 	.csid_core = 0,
 	.ioclk = {
 		.vfe_clk_rate = 122880000,
@@ -343,8 +321,8 @@ static void glacier_mt9v113_clk_switch(void){
 }
 
 static struct msm_camera_device_platform_data glacier_mt9v113_platform_data = {
-	.camera_gpio_on = config_glacier_camera_on_gpios,
-	.camera_gpio_off = config_glacier_camera_off_gpios,
+	.camera_gpio_on = glacier_camera_on_gpios,
+	.camera_gpio_off = glacier_camera_off_gpios,
 	.csid_core = 0,
 	.ioclk = {
 		.vfe_clk_rate = 122880000,
