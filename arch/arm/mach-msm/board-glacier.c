@@ -1397,8 +1397,8 @@ static int msm_qsd_spi_dma_config(void)
 #endif
 static struct msm_spi_platform_data qsd_spi_pdata = {
 	.max_clock_speed = 26000000,
-	.clk_name = "spi_clk",
-	.pclk_name = "spi_pclk",
+	.clk_name = "core_clk",
+	.pclk_name = "iface_clk",
 	.gpio_config  = msm_qsd_spi_gpio_config,
 	.gpio_release = msm_qsd_spi_gpio_release,
 //	.dma_config = msm_qsd_spi_dma_config,
