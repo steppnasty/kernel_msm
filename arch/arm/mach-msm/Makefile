@@ -3,9 +3,11 @@ obj-y += io.o dma.o memory.o
 ifdef CONFIG_ARCH_MSM8X60
 obj-y += timer-8x60.o clock-core.o clock-voter.o
 else
-obj-y += timer.o clock.o clock-voter.o
+obj-y += timer.o
+obj-y += clock.o clock-voter.o clock-dummy.o
 endif
 obj-y += modem_notifier.o subsystem_map.o
+obj-$(CONFIG_DEBUG_FS) += clock-debug.o
 
 obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o
 ifndef CONFIG_ARCH_MSM8X60
@@ -30,9 +32,8 @@ $(obj)/smd_rpc_sym.c: $(src)/smd_rpc_sym $(src)/mkrpcsym.pl
 obj-$(CONFIG_ARCH_QSD8X50) += sirc.o
 obj-$(CONFIG_ARCH_MSM_ARM11) += acpuclock-arm11.o idle.o
 obj-$(CONFIG_ARCH_QSD8X50) += arch-init-scorpion.o acpuclock-scorpion.o
-obj-$(CONFIG_ARCH_MSM7X30) += acpuclock-7x30.o
 obj-$(CONFIG_ACPUCLOCK_DEBUG) += acpuclock_debug.o
-obj-$(CONFIG_ARCH_MSM7X30) += clock-local.o clock-7x30.o arch-init-7x30.o
+obj-$(CONFIG_ARCH_MSM7X30) += clock-local.o clock-7x30.o acpuclock-7x30.o arch-init-7x30.o
 obj-$(CONFIG_ARCH_MSM7X30) += spm.o
 
 obj-$(CONFIG_CPU_V7) += idle-v7.o msm_fault_handlers.o

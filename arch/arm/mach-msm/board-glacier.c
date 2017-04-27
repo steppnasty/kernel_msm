@@ -2008,7 +2008,7 @@ static void __init glacier_init(void)
 	printk("glacier_init() reglacier=%d\n", system_rev);
 	printk(KERN_INFO "%s: microp version = %s\n", __func__, microp_ver);
 
-	msm_clock_init(msm_clocks_7x30, msm_num_clocks_7x30);
+	msm_clock_init(&msm7x30_clock_init_data);
 
 	/* for bcm */
 	bt_export_bd_address();

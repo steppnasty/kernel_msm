@@ -14,152 +14,158 @@
  *
  */
 
-#include <linux/version.h>
 #include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/list.h>
 #include <linux/err.h>
-#include <linux/clk.h>
-#include <linux/slab.h>
 #include <linux/spinlock.h>
-#include <linux/fs.h>
-#include <linux/debugfs.h>
-#include <linux/device.h>
-#include <linux/seq_file.h>
-#include <linux/pm_qos.h>
+#include <linux/string.h>
+#include <linux/module.h>
+#include <linux/clk.h>
 #include <linux/clkdev.h>
-#include "mach/socinfo.h"
 
 #include "clock.h"
-#include "proc_comm.h"
-
-static DEFINE_MUTEX(clocks_mutex);
-static DEFINE_SPINLOCK(clocks_lock);
-static LIST_HEAD(clocks);
-struct clk *msm_clocks;
-unsigned msm_num_clocks;
-
-static struct notifier_block axi_freq_notifier_block;
-static struct clk *pbus_clk;
-
-struct clk* axi_clk;  /* hack */
-
-static int clk_set_rate_locked(struct clk *clk, unsigned long rate);
-
-static inline int pc_pll_request(unsigned id, unsigned on)
-{
-	on = !!on;
-	return msm_proc_comm(PCOM_CLKCTL_RPC_PLL_REQUEST, &id, &on);
-}
 
 /*
  * Standard clock functions defined in include/linux/clk.h
  */
 int clk_enable(struct clk *clk)
 {
+	int ret = 0;
 	unsigned long flags;
-	spin_lock_irqsave(&clocks_lock, flags);
+	struct clk *parent;
+
+	if (!clk)
+		return 0;
+
+	spin_lock_irqsave(&clk->lock, flags);
+	if (clk->count == 0) {
+		parent = clk_get_parent(clk);
+		ret = clk_enable(parent);
+		if (ret)
+			goto out;
+		ret = clk_enable(clk->depends);
+		if (ret) {
+			clk_disable(parent);
+			goto out;
+		}
+
+		if (clk->ops->enable)
+			ret = clk->ops->enable(clk);
+		if (ret) {
+			clk_disable(clk->depends);
+			clk_disable(parent);
+			goto out;
+		}
+	} else if (clk->flags & CLKFLAG_HANDOFF_RATE) {
+		/*
+		 * The clock was already enabled by handoff code so there is no
+		 * need to enable it again here. Clearing the handoff flag will
+		 * prevent the lateinit handoff code from disabling the clock if
+		 * a client driver still has it enabled.
+		 */
+		clk->flags &= ~CLKFLAG_HANDOFF_RATE;
+		goto out;
+	}
 	clk->count++;
-	if (clk->count == 1)
-		clk->ops->enable(clk->id);
-	spin_unlock_irqrestore(&clocks_lock, flags);
-	return 0;
+out:
+	spin_unlock_irqrestore(&clk->lock, flags);
+
+	return ret;
 }
 EXPORT_SYMBOL(clk_enable);
 
 void clk_disable(struct clk *clk)
 {
 	unsigned long flags;
-	spin_lock_irqsave(&clocks_lock, flags);
-	BUG_ON(clk->count == 0);
-	clk->count--;
-	if (clk->count == 0) {
-		clk->ops->disable(clk->id);
+	struct clk *parent;
+
+	if (!clk)
+		return;
+
+	spin_lock_irqsave(&clk->lock, flags);
+	if (WARN(clk->count == 0, "%s is unbalanced", clk->dbg_name))
+		goto out;
+	if (clk->count == 1) {
+		if (clk->ops->disable)
+			clk->ops->disable(clk);
+		clk_disable(clk->depends);
+		parent = clk_get_parent(clk);
+		clk_disable(parent);
 	}
-	spin_unlock_irqrestore(&clocks_lock, flags);
+	clk->count--;
+out:
+	spin_unlock_irqrestore(&clk->lock, flags);
 }
 EXPORT_SYMBOL(clk_disable);
 
 int clk_reset(struct clk *clk, enum clk_reset_action action)
 {
-	return clk->ops->reset(clk->remote_id, action);
+	if (!clk->ops->reset)
+		return -ENOSYS;
+
+	return clk->ops->reset(clk, action);
 }
 EXPORT_SYMBOL(clk_reset);
 
 unsigned long clk_get_rate(struct clk *clk)
 {
-	return clk->ops->get_rate(clk->id);
+	if (!clk->ops->get_rate)
+		return 0;
+
+	return clk->ops->get_rate(clk);
 }
 EXPORT_SYMBOL(clk_get_rate);
 
-static int clk_set_rate_locked(struct clk *clk, unsigned long rate)
-{
-	int ret = 0;
-
-	if (clk->flags & CLKFLAG_USE_MAX_TO_SET) {
-		ret = clk->ops->set_max_rate(clk->id, rate);
-		if (ret)
-			goto err;
-	}
-	if (clk->flags & CLKFLAG_USE_MIN_TO_SET) {
-		ret = clk->ops->set_min_rate(clk->id, rate);
-		if (ret)
-			goto err;
-	}
-
-	if (!(clk->flags & (CLKFLAG_USE_MAX_TO_SET | CLKFLAG_USE_MIN_TO_SET)))
-		ret = clk->ops->set_rate(clk->id, rate);
-err:
-	return ret;
-}
-
 int clk_set_rate(struct clk *clk, unsigned long rate)
 {
-	int ret;
-	unsigned long flags;
+	if (!clk->ops->set_rate)
+		return -ENOSYS;
 
-	spin_lock_irqsave(&clocks_lock, flags);
-	ret = clk_set_rate_locked(clk, rate);
-	spin_unlock_irqrestore(&clocks_lock, flags);
-
-	return ret;
+	return clk->ops->set_rate(clk, rate);
 }
 EXPORT_SYMBOL(clk_set_rate);
 
 long clk_round_rate(struct clk *clk, unsigned long rate)
 {
-	return clk->ops->round_rate(clk->id, rate);
+	if (!clk->ops->round_rate)
+		return -ENOSYS;
+
+	return clk->ops->round_rate(clk, rate);
 }
 EXPORT_SYMBOL(clk_round_rate);
 
 int clk_set_min_rate(struct clk *clk, unsigned long rate)
 {
-	return clk->ops->set_min_rate(clk->id, rate);
+	if (!clk->ops->set_min_rate)
+		return -ENOSYS;
+
+	return clk->ops->set_min_rate(clk, rate);
 }
 EXPORT_SYMBOL(clk_set_min_rate);
 
 int clk_set_max_rate(struct clk *clk, unsigned long rate)
 {
-        if (IS_ERR_OR_NULL(clk))
-                return -EINVAL;
+	if (!clk->ops->set_max_rate)
+		return -ENOSYS;
 
-        if (!clk->ops->set_max_rate)
-                return -ENOSYS;
-
-        return clk->ops->set_max_rate(clk, rate);
+	return clk->ops->set_max_rate(clk, rate);
 }
 EXPORT_SYMBOL(clk_set_max_rate);
 
 int clk_set_parent(struct clk *clk, struct clk *parent)
 {
-	return -ENOSYS;
+	if (!clk->ops->set_parent)
+		return 0;
+
+	return clk->ops->set_parent(clk, parent);
 }
 EXPORT_SYMBOL(clk_set_parent);
 
 struct clk *clk_get_parent(struct clk *clk)
 {
-	return ERR_PTR(-ENOSYS);
+	if (!clk->ops->get_parent)
+		return NULL;
+
+	return clk->ops->get_parent(clk);
 }
 EXPORT_SYMBOL(clk_get_parent);
 
@@ -167,170 +173,82 @@ int clk_set_flags(struct clk *clk, unsigned long flags)
 {
 	if (clk == NULL || IS_ERR(clk))
 		return -EINVAL;
-	return clk->ops->set_flags(clk->id, flags);
+	if (!clk->ops->set_flags)
+		return -ENOSYS;
+
+	return clk->ops->set_flags(clk, flags);
 }
 EXPORT_SYMBOL(clk_set_flags);
 
-static int axi_freq_notifier_handler(struct notifier_block *block,
-				unsigned long min_freq, void *v)
-{
-	/* convert min_freq from KHz to Hz, unless it's a magic value */
-	if (min_freq != MSM_AXI_MAX_FREQ)
-		min_freq *= 1000;
+static struct clock_init_data __initdata *clk_init_data;
 
-	/* On 7x30, ebi1_clk votes are dropped during power collapse, but
-	 * pbus_clk votes are not. Use pbus_clk to implicitly request ebi1
-	 * and AXI rates. */
-	if (cpu_is_msm7x30() || cpu_is_msm8x55())
-		return clk_set_rate(pbus_clk, min_freq/2);
-	return 0;
-}
-
-void __init msm_clock_init(struct clk_lookup *clock_tbl, unsigned num_clocks)
+void __init msm_clock_init(struct clock_init_data *data)
 {
 	unsigned n;
-	struct clk *clk;
+	struct clk_lookup *clock_tbl;
+	size_t num_clocks;
 
-	/* Do SoC-speficic clock init operations. */
-	msm_clk_soc_init();
+	clk_init_data = data;
+	if (clk_init_data->init)
+		clk_init_data->init();
 
-	spin_lock_init(&clocks_lock);
-	mutex_lock(&clocks_mutex);
-	for (n = 0; n < num_clocks; n++) {
-		msm_clk_soc_set_ops(clock_tbl[n].clk);
-		clkdev_add(&clock_tbl[n]);
-		list_add_tail(&clock_tbl[n].clk->list, &clocks);
-	}
-	mutex_unlock(&clocks_mutex);
+	clock_tbl = data->table;
+	num_clocks = data->size;
 
 	for (n = 0; n < num_clocks; n++) {
-		clk = clock_tbl[n].clk;
-		if (clk->flags & CLKFLAG_VOTER) {
-			struct clk *agg_clk = clk_get(NULL, clk->aggregator);
-			BUG_ON(IS_ERR(agg_clk));
-
-			clk_set_parent(clk, agg_clk);
+		struct clk *clk = clock_tbl[n].clk;
+		struct clk *parent = clk_get_parent(clk);
+		clk_set_parent(clk, parent);
+		if (clk->ops->handoff && !(clk->flags & CLKFLAG_HANDOFF_RATE)) {
+			if (clk->ops->handoff(clk)) {
+				clk->flags |= CLKFLAG_HANDOFF_RATE;
+				clk_enable(clk);
+			}
 		}
 	}
 
-	if (cpu_is_msm7x30() || cpu_is_msm8x55()) {
-		pbus_clk = clk_get(NULL, "pbus_clk");
-		BUG_ON(IS_ERR(pbus_clk));
-	}
-
-	axi_freq_notifier_block.notifier_call = axi_freq_notifier_handler;
-	pm_qos_add_notifier(PM_QOS_SYSTEM_BUS_FREQ, &axi_freq_notifier_block);
+	clkdev_add_table(clock_tbl, num_clocks);
 }
 
-#if defined(CONFIG_MSM_CLOCK_CTRL_DEBUG)
-static int clk_debug_set(void *data, u64 val)
-{
-	struct clk *clk = data;
-	int ret;
-
-	ret = clk_set_rate(clk, val);
-	if (ret != 0)
-		pr_err("%s: can't set rate of '%s' to %llu (%d)\n",
-		       __func__, clk->name, val, ret);
-	return ret;
-}
-
-static int clk_debug_get(void *data, u64 *val)
-{
-	*val = clk_get_rate((struct clk *) data);
-	return *val == 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(clk_debug_fops, clk_debug_get, clk_debug_set, "%llu\n");
-
-static int clock_debug_measure_get(void *data, u64 *val)
-{
-	struct clk *clock = data;
-	*val = clock->ops->measure_rate(clock->id);
-	return 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(clock_measure_fops, clock_debug_measure_get,
-			NULL, "%lld\n");
-
-static void __init clock_debug_init(void)
-{
-	struct dentry *dent;
-	struct clk *clk;
-
-	dent = debugfs_create_dir("clk", 0);
-	if (IS_ERR(dent)) {
-		pr_err("%s: Unable to create debugfs dir (%ld)\n", __func__,
-		       PTR_ERR(dent));
-		return;
-	}
-
-	mutex_lock(&clocks_mutex);
-	list_for_each_entry(clk, &clocks, list) {
-		debugfs_create_file(clk->name, 0644, dent, clk,
-				    &clk_debug_fops);
-	}
-	mutex_unlock(&clocks_mutex);
-}
-#else
-static inline void __init clock_debug_init(void) {}
-#endif
-
-static struct clk *axi_clk_userspace;
-static int min_axi_khz;
-static int param_set_min_axi(const char *val, struct kernel_param *kp)
-{
-	int ret;
-	ret = param_set_int(val, kp);
-	if (min_axi_khz >= 0) {
-		ret = clk_set_rate_locked(axi_clk_userspace,
-			min_axi_khz * 1000);
-	}
-	return ret;
-}
-
-static int param_get_min_axi(char *buffer, struct kernel_param *kp)
-{
-	unsigned long rate;
-	int len;
-	rate = clk_get_rate(axi_clk_userspace);
-	len = sprintf(buffer, "%d %ld", min_axi_khz, rate / 1000);
-	return len;
-}
-
-module_param_call(min_axi_khz, param_set_min_axi,
-	param_get_min_axi, &min_axi_khz, S_IWUSR | S_IRUGO);
-
-/* The bootloader and/or AMSS may have left various clocks enabled.
- * Disable any clocks that belong to us (CLKFLAG_AUTO_OFF) but have
- * not been explicitly enabled by a clk_enable() call.
+/*
+ * The bootloader and/or AMSS may have left various clocks enabled.
+ * Disable any clocks that have not been explicitly enabled by a
+ * clk_enable() call and don't have the CLKFLAG_SKIP_AUTO_OFF flag.
  */
 static int __init clock_late_init(void)
 {
+	unsigned n, count = 0;
 	unsigned long flags;
-	struct clk *clk;
-	unsigned count = 0;
+	int ret = 0;
 
-	mutex_lock(&clocks_mutex);
-	list_for_each_entry(clk, &clocks, list) {
-		if (clk->flags & CLKFLAG_AUTO_OFF) {
-			spin_lock_irqsave(&clocks_lock, flags);
-			if (!clk->count) {
+	clock_debug_init(clk_init_data);
+	for (n = 0; n < clk_init_data->size; n++) {
+		struct clk *clk = clk_init_data->table[n].clk;
+		bool handoff = false;
+
+		clock_debug_add(clk);
+		if (!(clk->flags & CLKFLAG_SKIP_AUTO_OFF)) {
+			spin_lock_irqsave(&clk->lock, flags);
+			if (!clk->count && clk->ops->auto_off) {
 				count++;
-				clk->ops->auto_off(clk->id);
+				clk->ops->auto_off(clk);
 			}
-			spin_unlock_irqrestore(&clocks_lock, flags);
+			if (clk->flags & CLKFLAG_HANDOFF_RATE) {
+				clk->flags &= ~CLKFLAG_HANDOFF_RATE;
+				handoff = true;
+			}
+			spin_unlock_irqrestore(&clk->lock, flags);
+			/*
+			 * Calling clk_disable() outside the lock is safe since
+			 * it doesn't need to be atomic with the flag change.
+			 */
+			if (handoff)
+				clk_disable(clk);
 		}
 	}
-	mutex_unlock(&clocks_mutex);
 	pr_info("clock_late_init() disabled %d unused clocks\n", count);
-
-	clock_debug_init();
-
-	axi_clk = clk_get(NULL, "ebi1_clk");
-	axi_clk_userspace = clk_get(NULL, "ebi1_clk");
-
-	return 0;
+	if (clk_init_data->late_init)
+		ret = clk_init_data->late_init();
+	return ret;
 }
-
 late_initcall(clock_late_init);

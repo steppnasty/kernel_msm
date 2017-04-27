@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,36 +30,30 @@
 #ifndef __ARCH_ARM_MACH_MSM_CLOCK_VOTER_H
 #define __ARCH_ARM_MACH_MSM_CLOCK_VOTER_H
 
-enum {
-	V_EBI_ACPU_CLK,
-	V_EBI_DSI_CLK,
-	V_EBI_DTV_CLK,
-	V_EBI_KGSL_CLK,
-	V_EBI_LCDC_CLK,
-	V_EBI_MDDI_CLK,
-	V_EBI_MDP_CLK,
-	V_EBI_PM_CLK,
-	V_EBI_TV_CLK,
-	V_EBI_USB_CLK,
-	V_EBI_VCD_CLK,
-	V_EBI_VFE_CLK,
-
-	V_NR_CLKS
-};
-
 struct clk_ops;
 extern struct clk_ops clk_ops_voter;
 
-#define CLK_VOTER(clk_name, clk_id, agg_name, clk_dev, clk_flags) {	\
-	.con_id = clk_name, \
-	.dev_id = clk_dev, \
-	.clk = &(struct clk){ \
-		.id = V_##clk_id, \
-		.flags = clk_flags | CLKFLAG_VOTER, \
-		.aggregator = agg_name, \
-		.dbg_name = #clk_id, \
-		.ops = &clk_ops_voter, \
-	}, \
+struct clk_voter {
+	bool enabled;
+	unsigned rate;
+	struct clk *parent;
+	struct clk c;
+};
+
+static inline struct clk_voter *to_clk_voter(struct clk *clk)
+{
+	return container_of(clk, struct clk_voter, c);
+}
+
+#define DEFINE_CLK_VOTER(clk_name, _parent) \
+	struct clk_voter clk_name = { \
+		.parent = _parent, \
+		.c = { \
+			.dbg_name = #clk_name, \
+			.ops = &clk_ops_voter, \
+			.flags = CLKFLAG_SKIP_AUTO_OFF, \
+			CLK_INIT(clk_name.c), \
+		}, \
 	}
 
 #endif
