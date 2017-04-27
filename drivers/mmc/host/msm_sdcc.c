@@ -1791,13 +1791,13 @@ msmsdcc_probe(struct platform_device *pdev)
 	msmsdcc_init_dma(host);
 
 	/* Get our clocks */
-	host->pclk = clk_get(&pdev->dev, "sdc_pclk");
+	host->pclk = clk_get(&pdev->dev, "iface_clk");
 	if (IS_ERR(host->pclk)) {
 		ret = PTR_ERR(host->pclk);
 		goto host_free;
 	}
 
-	host->clk = clk_get(&pdev->dev, "sdc_clk");
+	host->clk = clk_get(&pdev->dev, "core_clk");
 	if (IS_ERR(host->clk)) {
 		ret = PTR_ERR(host->clk);
 		goto pclk_put;
