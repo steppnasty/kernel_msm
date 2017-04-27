@@ -2777,8 +2777,10 @@ static struct clk_local_ownership {
 	OWN(APPS1, 12, "mi2s_codec_rx_s_clk", mi2s_codec_rx_s_clk, NULL),
 	OWN(APPS1, 14, "mi2s_codec_tx_m_clk", mi2s_codec_tx_m_clk, NULL),
 	OWN(APPS1, 14, "mi2s_codec_tx_s_clk", mi2s_codec_tx_s_clk, NULL),
+#ifndef CONFIG_MACH_GLACIER
 	{ CLK_LOOKUP("midi_clk",        midi_clk.c,     NULL),
 		O(APPS1), BIT(22) },
+#endif
 	OWN(APPS1, 26, "sdac_clk",	sdac_clk,	NULL),
 	OWN(APPS1, 26, "sdac_m_clk",	sdac_m_clk,	NULL),
 	OWN(APPS1,  8, "vfe_clk",	vfe_clk,	NULL),
