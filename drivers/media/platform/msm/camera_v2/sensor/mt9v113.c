@@ -549,7 +549,7 @@ static inline int mt9v113_suspend(struct msm_sensor_ctrl_t *s_ctrl)
 	msleep(2);
 	return rc;
 suspend_fail:
-	pr_err("aospSX[%s:%d] suspend failed\n", __func__, __LINE__);
+	pr_err("%s: suspend failed\n", __func__);
 	return -EIO;
 }
 
@@ -659,12 +659,8 @@ static int32_t mt9v113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 					__LINE__, rc);
 				break;
 			}
-			//s_ctrl->sensor_state = MSM_SENSOR_POWER_UP;
 			pr_err("%s:%d sensor state %d\n", __func__, __LINE__,
 				s_ctrl->sensor_state);
-#if 0
-			rc = mt9v113_resume(s_ctrl);
-#endif
 		} else
 			rc = -EFAULT;
 		break;
@@ -977,7 +973,6 @@ static int32_t mt9v113_sensor_release(struct msm_sensor_ctrl_t *s_ctrl)
 	struct msm_sensor_power_setting_array *power_setting_array = NULL;
 	struct msm_sensor_power_setting *power_setting = NULL;
 
-	pr_info("aospSX[%s:%d]+\n", __func__, __LINE__);
 	power_setting_array = &s_ctrl->power_setting_array;
 	power_setting = &power_setting_array->power_setting[0];
 
@@ -985,8 +980,6 @@ static int32_t mt9v113_sensor_release(struct msm_sensor_ctrl_t *s_ctrl)
 		goto power_off_i2c_error;
 
 	mt9v113_sensor_power_down(s_ctrl);
-	//pr_info("aospSX[%s:%d] after power down\n", __func__, __LINE__);
-	//goto power_off_i2c_error;
 
 	if (sinfo->camera_clk_switch != NULL && sinfo->cam_select_pin) {
 		/*0709: optical ask : CLK switch to Main Cam after 2nd Cam release*/
@@ -1001,18 +994,10 @@ static int32_t mt9v113_sensor_release(struct msm_sensor_ctrl_t *s_ctrl)
 
 	msleep(1);
 
-	CDBG("[CAM]%s msm_camio_probe_off()\n", __func__);
-	//goto power_off_i2c_error;
-
 	camdev->camera_gpio_off();
-	pr_info("aospSX[%s:%d] after camera_gpio_off\n", __func__, __LINE__);
-	//goto power_off_i2c_error;
-
-#if 1
 	msm_cam_clk_enable(s_ctrl->dev, &s_ctrl->clk_info[0],
 		(struct clk **)&power_setting->data[0],
 		s_ctrl->clk_info_size, 0);
-#endif
 
 	return rc;
 power_off_i2c_error:

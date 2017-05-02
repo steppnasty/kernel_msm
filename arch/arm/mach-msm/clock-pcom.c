@@ -181,7 +181,6 @@ struct clk_ops clk_ops_pcom = {
 
 static int pc_clk_set_rate2(struct clk *clk, unsigned rate)
 {
-	pr_info("aospSX[%s:%d] rate=%d\n", __func__, __LINE__, rate);
 	return pc_clk_set_rate(clk, rate / 2);
 }
 

@@ -47,10 +47,8 @@ int panel_next_on(struct platform_device *pdev)
 			next_pdata =
 			    (struct msm_fb_panel_data *)next_pdev->dev.
 			    platform_data;
-			if ((next_pdata) && (next_pdata->on)) {
-				pr_info("aospSX[%s:%d]->on(\n", __func__, __LINE__);
+			if ((next_pdata) && (next_pdata->on))
 				ret = next_pdata->on(next_pdev);
-			}
 		}
 	}
 
