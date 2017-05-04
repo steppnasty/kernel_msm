@@ -477,8 +477,7 @@ int bam_data_setup(unsigned int no_bam2bam_port)
 		return -EINVAL;
 	}
 
-	bam_data_wq = alloc_workqueue("k_bam_data",
-				      WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
+	bam_data_wq = create_workqueue("k_bam_data");
 	if (!bam_data_wq) {
 		pr_err("Failed to create workqueue\n");
 		return -ENOMEM;

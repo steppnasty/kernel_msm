@@ -1019,10 +1019,12 @@ void gether_cleanup(void)
 		return;
 
 	unregister_netdev(the_dev->net);
-	flush_work_sync(&the_dev->work);
 	free_netdev(the_dev->net);
 
 	the_dev = NULL;
+
+	/* assuming we used keventd, it must quiesce too */
+	flush_scheduled_work();
 }
 
 

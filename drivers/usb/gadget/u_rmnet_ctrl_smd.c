@@ -585,8 +585,7 @@ int gsmd_ctrl_setup(unsigned int count)
 		return -EINVAL;
 	}
 
-	grmnet_ctrl_wq = alloc_workqueue("gsmd_ctrl",
-				WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
+	grmnet_ctrl_wq = create_workqueue("gsmd_ctrl");
 	if (!grmnet_ctrl_wq) {
 		pr_err("%s: Unable to create workqueue grmnet_ctrl\n",
 				__func__);

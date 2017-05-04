@@ -24,6 +24,7 @@
 #include <linux/kthread.h>
 #include <linux/mutex.h>
 #include <linux/freezer.h>
+#include <linux/pm_runtime.h>
 #include <linux/usb/otg.h>
 
 #include <asm/uaccess.h>
@@ -2016,14 +2017,7 @@ int usb_new_device(struct usb_device *udev)
 
 	/* Tell the runtime-PM framework the device is active */
 	pm_runtime_set_active(&udev->dev);
-	pm_runtime_get_noresume(&udev->dev);
-	pm_runtime_use_autosuspend(&udev->dev);
 	pm_runtime_enable(&udev->dev);
-
-	/* By default, forbid autosuspend for all devices.  It will be
-	 * allowed for hubs during binding.
-	 */
-	usb_disable_autosuspend(udev);
 
 	err = usb_enumerate_device(udev);	/* Read descriptors */
 	if (err < 0)
@@ -2059,8 +2053,6 @@ int usb_new_device(struct usb_device *udev)
 	}
 
 	(void) usb_create_ep_devs(&udev->dev, &udev->ep0, udev);
-	usb_mark_last_busy(udev);
-	pm_runtime_put_sync_autosuspend(&udev->dev);
 	return err;
 
 fail:
@@ -2558,7 +2550,7 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 			dev_dbg(&udev->dev, "won't remote wakeup, status %d\n",
 					status);
 			/* bail if autosuspend is requested */
-			if (PMSG_IS_AUTO(msg))
+			if (msg.event & PM_EVENT_AUTO)
 				return status;
 		}
 	}
@@ -2603,17 +2595,16 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 				USB_CTRL_SET_TIMEOUT);
 
 		/* System sleep transitions should never fail */
-		if (!PMSG_IS_AUTO(msg))
+		if (!(msg.event & PM_EVENT_AUTO))
 			status = 0;
 	} else {
 		/* device has up to 10 msec to fully suspend */
 		dev_dbg(&udev->dev, "usb %ssuspend, wakeup %d\n",
-				(PMSG_IS_AUTO(msg) ? "auto-" : ""),
+				(msg.event & PM_EVENT_AUTO ? "auto-" : ""),
 				udev->do_remote_wakeup);
 		usb_set_device_state(udev, USB_STATE_SUSPENDED);
 		msleep(10);
 	}
-	usb_mark_last_busy(hub->hdev);
 	return status;
 }
 
@@ -2760,7 +2751,7 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 	} else {
 		/* drive resume for at least 20 msec */
 		dev_dbg(&udev->dev, "usb %sresume\n",
-				(PMSG_IS_AUTO(msg) ? "auto-" : ""));
+				(msg.event & PM_EVENT_AUTO ? "auto-" : ""));
 		msleep(25);
 
 		/* Virtual root hubs can trigger on GET_PORT_STATUS to
@@ -2873,7 +2864,7 @@ static int hub_suspend(struct usb_interface *intf, pm_message_t msg)
 		udev = hdev->children [port1-1];
 		if (udev && udev->can_submit) {
 			dev_warn(&intf->dev, "port %d nyet suspended\n", port1);
-			if (PMSG_IS_AUTO(msg))
+			if (msg.event & PM_EVENT_AUTO)
 				return -EBUSY;
 		}
 	}

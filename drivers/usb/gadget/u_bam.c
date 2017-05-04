@@ -1320,7 +1320,7 @@ int gbam_setup(unsigned int no_bam_port, unsigned int no_bam2bam_port)
 		return -EINVAL;
 	}
 
-	gbam_wq = alloc_workqueue("k_gbam", WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
+	gbam_wq = create_workqueue("k_gbam");
 	if (!gbam_wq) {
 		pr_err("%s: Unable to create workqueue gbam_wq\n",
 				__func__);

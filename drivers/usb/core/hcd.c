@@ -38,6 +38,7 @@
 #include <asm/unaligned.h>
 #include <linux/platform_device.h>
 #include <linux/workqueue.h>
+#include <linux/pm_runtime.h>
 
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
@@ -1975,7 +1976,7 @@ int hcd_bus_suspend(struct usb_device *rhdev, pm_message_t msg)
 	int		old_state = hcd->state;
 
 	dev_dbg(&rhdev->dev, "bus %ssuspend, wakeup %d\n",
-			(PMSG_IS_AUTO(msg) ? "auto-" : ""),
+			(msg.event & PM_EVENT_AUTO ? "auto-" : ""),
 			rhdev->do_remote_wakeup);
 	if (HCD_DEAD(hcd)) {
 		dev_dbg(&rhdev->dev, "skipped %s of dead bus\n", "suspend");
@@ -2024,7 +2025,7 @@ int hcd_bus_resume(struct usb_device *rhdev, pm_message_t msg)
 	int		old_state = hcd->state;
 
 	dev_dbg(&rhdev->dev, "usb %sresume\n",
-			(PMSG_IS_AUTO(msg) ? "auto-" : ""));
+			(msg.event & PM_EVENT_AUTO ? "auto-" : ""));
 	if (HCD_DEAD(hcd)) {
 		dev_dbg(&rhdev->dev, "skipped %s of dead bus\n", "resume");
 		return 0;

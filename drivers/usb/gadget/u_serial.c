@@ -1085,7 +1085,7 @@ static int gs_break_ctl(struct tty_struct *tty, int duration)
 	return status;
 }
 
-static int gs_tiocmget(struct tty_struct *tty)
+static int gs_tiocmget(struct tty_struct *tty, struct file *file)
 {
 	struct gs_port	*port = tty->driver_data;
 	struct gserial	*gser;
@@ -1114,7 +1114,7 @@ fail:
 	return result;
 }
 
-static int gs_tiocmset(struct tty_struct *tty,
+static int gs_tiocmset(struct tty_struct *tty, struct file *file,
 	unsigned int set, unsigned int clear)
 {
 	struct gs_port	*port = tty->driver_data;

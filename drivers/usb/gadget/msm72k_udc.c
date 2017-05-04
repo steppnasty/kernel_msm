@@ -2948,7 +2948,7 @@ static struct dev_pm_ops msm72k_udc_dev_pm_ops = {
 	.runtime_idle = msm72k_udc_runtime_idle
 };
 
-static int __exit msm72k_remove(struct platform_device *pdev)
+static int msm72k_remove(struct platform_device *pdev)
 {
 	struct usb_info *ui = container_of(&pdev, struct usb_info, pdev);
 
