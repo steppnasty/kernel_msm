@@ -60,7 +60,6 @@ struct usb_skel {
 	__u8			bulk_in_endpointAddr;	/* the address of the bulk in endpoint */
 	__u8			bulk_out_endpointAddr;	/* the address of the bulk out endpoint */
 	int			errors;			/* the last request tanked */
-	int			open_count;		/* count the number of openers */
 	bool			ongoing_read;		/* a read is going on */
 	bool			processed_urb;		/* indicates we haven't processed the urb */
 	spinlock_t		err_lock;		/* lock for errors */
@@ -113,22 +112,9 @@ static int skel_open(struct inode *inode, struct file *file)
 	 * in resumption */
 	mutex_lock(&dev->io_mutex);
 
-	if (!dev->open_count++) {
-		retval = usb_autopm_get_interface(interface);
-			if (retval) {
-				dev->open_count--;
-				mutex_unlock(&dev->io_mutex);
-				kref_put(&dev->kref, skel_delete);
-				goto exit;
-			}
-	} /* else { //uncomment this block if you want exclusive open
-		retval = -EBUSY;
-		dev->open_count--;
-		mutex_unlock(&dev->io_mutex);
-		kref_put(&dev->kref, skel_delete);
-		goto exit;
-	} */
-	/* prevent the device from being autosuspended */
+	retval = usb_autopm_get_interface(interface);
+	if (retval)
+		goto out_err;
 
 	/* save our object in the file's private structure */
 	file->private_data = dev;
@@ -142,13 +128,13 @@ static int skel_release(struct inode *inode, struct file *file)
 {
 	struct usb_skel *dev;
 
-	dev = (struct usb_skel *)file->private_data;
+	dev = file->private_data;
 	if (dev == NULL)
 		return -ENODEV;
 
 	/* allow the device to be autosuspended */
 	mutex_lock(&dev->io_mutex);
-	if (!--dev->open_count && dev->interface)
+	if (dev->interface)
 		usb_autopm_put_interface(dev->interface);
 	mutex_unlock(&dev->io_mutex);
 
@@ -162,7 +148,7 @@ static int skel_flush(struct file *file, fl_owner_t id)
 	struct usb_skel *dev;
 	int res;
 
-	dev = (struct usb_skel *)file->private_data;
+	dev = file->private_data;
 	if (dev == NULL)
 		return -ENODEV;
 
@@ -246,7 +232,7 @@ static ssize_t skel_read(struct file *file, char *buffer, size_t count,
 	int rv;
 	bool ongoing_io;
 
-	dev = (struct usb_skel *)file->private_data;
+	dev = file->private_data;
 
 	/* if we cannot read at all, return EOF */
 	if (!dev->bulk_in_urb || !count)
@@ -401,7 +387,7 @@ static ssize_t skel_write(struct file *file, const char *user_buffer,
 	char *buf = NULL;
 	size_t writesize = min(count, (size_t)MAX_TRANSFER);
 
-	dev = (struct usb_skel *)file->private_data;
+	dev = file->private_data;
 
 	/* verify that we actually have some data to write */
 	if (count == 0)
@@ -507,6 +493,7 @@ static const struct file_operations skel_fops = {
 	.open =		skel_open,
 	.release =	skel_release,
 	.flush =	skel_flush,
+	.llseek =	noop_llseek,
 };
 
 /*
@@ -554,7 +541,7 @@ static int skel_probe(struct usb_interface *interface,
 		if (!dev->bulk_in_endpointAddr &&
 		    usb_endpoint_is_bulk_in(endpoint)) {
 			/* we found a bulk in endpoint */
-			buffer_size = le16_to_cpu(endpoint->wMaxPacketSize);
+			buffer_size = usb_endpoint_maxp(endpoint);
 			dev->bulk_in_size = buffer_size;
 			dev->bulk_in_endpointAddr = endpoint->bEndpointAddress;
 			dev->bulk_in_buffer = kmalloc(buffer_size, GFP_KERNEL);
@@ -687,25 +674,6 @@ static struct usb_driver skel_driver = {
 	.supports_autosuspend = 1,
 };
 
-static int __init usb_skel_init(void)
-{
-	int result;
-
-	/* register this driver with the USB subsystem */
-	result = usb_register(&skel_driver);
-	if (result)
-		err("usb_register failed. Error number %d", result);
-
-	return result;
-}
-
-static void __exit usb_skel_exit(void)
-{
-	/* deregister this driver with the USB subsystem */
-	usb_deregister(&skel_driver);
-}
-
-module_init(usb_skel_init);
-module_exit(usb_skel_exit);
+module_usb_driver(skel_driver);
 
 MODULE_LICENSE("GPL");

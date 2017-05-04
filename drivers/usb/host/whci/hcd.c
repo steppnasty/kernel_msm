@@ -17,6 +17,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/module.h>
 #include <linux/uwb/umc.h>
 
 #include "../../wusbcore/wusbhc.h"
@@ -68,7 +69,7 @@ static int whc_start(struct usb_hcd *usb_hcd)
 	whc_write_wusbcmd(whc, WUSBCMD_RUN, WUSBCMD_RUN);
 
 	usb_hcd->uses_new_polling = 1;
-	usb_hcd->poll_rh = 1;
+	set_bit(HCD_FLAG_POLL_RH, &usb_hcd->flags);
 	usb_hcd->state = HC_STATE_RUNNING;
 
 out:
@@ -356,7 +357,7 @@ static void __exit whci_hc_driver_exit(void)
 module_exit(whci_hc_driver_exit);
 
 /* PCI device ID's that we handle (so it gets loaded) */
-static struct pci_device_id whci_hcd_id_table[] = {
+static struct pci_device_id __used whci_hcd_id_table[] = {
 	{ PCI_DEVICE_CLASS(PCI_CLASS_WIRELESS_WHCI, ~0) },
 	{ /* empty last entry */ }
 };

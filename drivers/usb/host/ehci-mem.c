@@ -40,7 +40,7 @@ static inline void ehci_qtd_init(struct ehci_hcd *ehci, struct ehci_qtd *qtd,
 {
 	memset (qtd, 0, sizeof *qtd);
 	qtd->qtd_dma = dma;
-	qtd->hw_token = cpu_to_le32 (QTD_STS_HALT);
+	qtd->hw_token = cpu_to_hc32(ehci, QTD_STS_HALT);
 	qtd->hw_next = EHCI_LIST_END(ehci);
 	qtd->hw_alt_next = EHCI_LIST_END(ehci);
 	INIT_LIST_HEAD (&qtd->qtd_list);
@@ -141,6 +141,10 @@ static void ehci_mem_cleanup (struct ehci_hcd *ehci)
 		qh_put (ehci->async);
 	ehci->async = NULL;
 
+	if (ehci->dummy)
+		qh_put(ehci->dummy);
+	ehci->dummy = NULL;
+
 	/* DMA consistent memory and pools */
 	if (ehci->qtd_pool)
 		dma_pool_destroy (ehci->qtd_pool);
@@ -174,12 +178,15 @@ static void ehci_mem_cleanup (struct ehci_hcd *ehci)
 static int ehci_mem_init (struct ehci_hcd *ehci, gfp_t flags)
 {
 	int i;
+	size_t align;
+
+	align = ((ehci->pool_64_bit_align) ? 64 : 32);
 
 	/* QTDs for control/bulk/intr transfers */
 	ehci->qtd_pool = dma_pool_create ("ehci_qtd",
 			ehci_to_hcd(ehci)->self.controller,
 			sizeof (struct ehci_qtd),
-			32 /* byte alignment (for hw parts) */,
+			align /* byte alignment (for hw parts) */,
 			4096 /* can't cross 4K */);
 	if (!ehci->qtd_pool) {
 		goto fail;
@@ -189,7 +196,7 @@ static int ehci_mem_init (struct ehci_hcd *ehci, gfp_t flags)
 	ehci->qh_pool = dma_pool_create ("ehci_qh",
 			ehci_to_hcd(ehci)->self.controller,
 			sizeof(struct ehci_qh_hw),
-			32 /* byte alignment (for hw parts) */,
+			align /* byte alignment (for hw parts) */,
 			4096 /* can't cross 4K */);
 	if (!ehci->qh_pool) {
 		goto fail;
@@ -227,8 +234,26 @@ static int ehci_mem_init (struct ehci_hcd *ehci, gfp_t flags)
 	if (ehci->periodic == NULL) {
 		goto fail;
 	}
-	for (i = 0; i < ehci->periodic_size; i++)
-		ehci->periodic [i] = EHCI_LIST_END(ehci);
+
+	if (ehci->use_dummy_qh) {
+		struct ehci_qh_hw	*hw;
+		ehci->dummy = ehci_qh_alloc(ehci, flags);
+		if (!ehci->dummy)
+			goto fail;
+
+		hw = ehci->dummy->hw;
+		hw->hw_next = EHCI_LIST_END(ehci);
+		hw->hw_qtd_next = EHCI_LIST_END(ehci);
+		hw->hw_alt_next = EHCI_LIST_END(ehci);
+		hw->hw_token &= ~QTD_STS_ACTIVE;
+		ehci->dummy->hw = hw;
+
+		for (i = 0; i < ehci->periodic_size; i++)
+			ehci->periodic[i] = ehci->dummy->qh_dma;
+	} else {
+		for (i = 0; i < ehci->periodic_size; i++)
+			ehci->periodic[i] = EHCI_LIST_END(ehci);
+	}
 
 	/* software shadow of hardware table */
 	ehci->pshadow = kcalloc(ehci->periodic_size, sizeof(void *), flags);
