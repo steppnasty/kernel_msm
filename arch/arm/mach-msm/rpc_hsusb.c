@@ -23,6 +23,7 @@
 #include <asm/mach-types.h>
 
 static struct msm_rpc_endpoint *usb_ep;
+static struct msm_rpc_endpoint *chg_ep;
 
 #define MSM_RPC_CHG_PROG 0x3000001a
 
@@ -49,6 +50,7 @@ struct msm_hsusb_rpc_ids {
 };
 
 static struct msm_hsusb_rpc_ids usb_rpc_ids;
+static struct msm_chg_rpc_ids chg_rpc_ids;
 
 static int msm_hsusb_init_rpc_ids(unsigned long vers)
 {
@@ -78,6 +80,27 @@ static int msm_hsusb_init_rpc_ids(unsigned long vers)
 			__func__);
 		return -ENODATA;
 	}
+}
+
+static int msm_chg_init_rpc(unsigned long vers)
+{
+	if (((vers & RPC_VERSION_MAJOR_MASK) == 0x00010000) ||
+	    ((vers & RPC_VERSION_MAJOR_MASK) == 0x00020000) ||
+	    ((vers & RPC_VERSION_MAJOR_MASK) == 0x00030000) ||
+	    ((vers & RPC_VERSION_MAJOR_MASK) == 0x00040000)) {
+		chg_ep = msm_rpc_connect_compatible(MSM_RPC_CHG_PROG, vers,
+						     MSM_RPC_UNINTERRUPTIBLE);
+		if (IS_ERR(chg_ep))
+			return -ENODATA;
+
+		chg_rpc_ids.vers_comp				= vers;
+		chg_rpc_ids.chg_usb_charger_connected_proc 	= 7;
+		chg_rpc_ids.chg_usb_charger_disconnected_proc 	= 8;
+		chg_rpc_ids.chg_usb_i_is_available_proc 	= 9;
+		chg_rpc_ids.chg_usb_i_is_not_available_proc 	= 10;
+		return 0;
+	} else
+		return -ENODATA;
 }
 
 /* rpc connect for hsusb */
@@ -117,6 +140,45 @@ int msm_hsusb_rpc_connect(void)
 }
 EXPORT_SYMBOL(msm_hsusb_rpc_connect);
 
+/* rpc connect for charging */
+int msm_chg_rpc_connect(void)
+{
+	uint32_t chg_vers;
+
+	if (machine_is_msm7x27_surf() || machine_is_qsd8x50_surf())
+		return -ENOTSUPP;
+
+	if (chg_ep && !IS_ERR(chg_ep)) {
+		pr_debug("%s: chg_ep already connected\n", __func__);
+		return 0;
+	}
+
+	chg_vers = 0x00040001;
+	if (!msm_chg_init_rpc(chg_vers))
+		goto chg_found;
+
+	chg_vers = 0x00030001;
+	if (!msm_chg_init_rpc(chg_vers))
+		goto chg_found;
+
+	chg_vers = 0x00020001;
+	if (!msm_chg_init_rpc(chg_vers))
+		goto chg_found;
+
+	chg_vers = 0x00010001;
+	if (!msm_chg_init_rpc(chg_vers))
+		goto chg_found;
+
+	pr_err("%s: connect compatible failed \n",
+			__func__);
+	return -EAGAIN;
+chg_found:
+	pr_info("%s: connected to rpc vers = %x\n",
+			__func__, chg_vers);
+	return 0;
+}
+EXPORT_SYMBOL(msm_chg_rpc_connect);
+
 /* rpc call for phy_reset */
 void msm_hsusb_phy_reset(void)
 {
@@ -144,6 +206,108 @@ void msm_hsusb_phy_reset(void)
 }
 EXPORT_SYMBOL(msm_hsusb_phy_reset);
 
+int msm_hsusb_send_productID(uint32_t product_id)
+{
+	int rc = 0;
+	struct hsusb_phy_start_req {
+		struct rpc_request_hdr hdr;
+		uint32_t product_id;
+	} req;
+
+	if (!usb_ep || IS_ERR(usb_ep)) {
+		pr_err("%s: rpc connect failed: rc = %ld\n",
+			__func__, PTR_ERR(usb_ep));
+		return -EAGAIN;
+	}
+
+	req.product_id = cpu_to_be32(product_id);
+	rc = msm_rpc_call(usb_ep, usb_rpc_ids.update_product_id,
+				&req, sizeof(req),
+				5 * HZ);
+	if (rc < 0)
+		pr_err("%s: rpc call failed! error: %d\n",
+			__func__, rc);
+	else
+		pr_debug("%s: rpc call success\n" , __func__);
+
+	return rc;
+}
+EXPORT_SYMBOL(msm_hsusb_send_productID);
+
+int msm_hsusb_send_serial_number(const char *serial_number)
+{
+	int rc = 0, serial_len, rlen;
+	struct hsusb_send_sn_req {
+		struct rpc_request_hdr hdr;
+		uint32_t length;
+		char sn[0];
+	} *req;
+
+	if (!usb_ep || IS_ERR(usb_ep)) {
+		pr_err("%s: rpc connect failed: rc = %ld\n",
+			__func__, PTR_ERR(usb_ep));
+		return -EAGAIN;
+	}
+
+	/*
+	 * USB driver passes null terminated string to us. Modem processor
+	 * expects serial number to be 32 bit aligned.
+	 */
+	serial_len  = strlen(serial_number)+1;
+	rlen = sizeof(struct rpc_request_hdr) + sizeof(uint32_t) +
+			((serial_len + 3) & ~3);
+
+	req = kmalloc(rlen, GFP_KERNEL);
+	if (!req)
+		return -ENOMEM;
+
+	req->length = cpu_to_be32(serial_len);
+	strncpy(req->sn , serial_number, serial_len);
+	rc = msm_rpc_call(usb_ep, usb_rpc_ids.update_serial_num,
+				req, rlen, 5 * HZ);
+	if (rc < 0)
+		pr_err("%s: rpc call failed! error: %d\n",
+			__func__, rc);
+	else
+		pr_debug("%s: rpc call success\n", __func__);
+
+	kfree(req);
+	return rc;
+}
+EXPORT_SYMBOL(msm_hsusb_send_serial_number);
+
+int msm_hsusb_is_serial_num_null(uint32_t val)
+{
+	int rc = 0;
+	struct hsusb_phy_start_req {
+			struct rpc_request_hdr hdr;
+			uint32_t value;
+	} req;
+
+	if (!usb_ep || IS_ERR(usb_ep)) {
+		pr_err("%s: rpc connect failed: rc = %ld\n",
+			__func__, PTR_ERR(usb_ep));
+		return -EAGAIN;
+	}
+	if (!usb_rpc_ids.update_is_serial_num_null) {
+		pr_err("%s: proc id not supported \n", __func__);
+		return -ENODATA;
+	}
+
+	req.value = cpu_to_be32(val);
+	rc = msm_rpc_call(usb_ep, usb_rpc_ids.update_is_serial_num_null,
+				&req, sizeof(req),
+				5 * HZ);
+	if (rc < 0)
+		pr_err("%s: rpc call failed! error: %d\n" ,
+			__func__, rc);
+	else
+		pr_debug("%s: rpc call success\n", __func__);
+
+	return rc;
+}
+EXPORT_SYMBOL(msm_hsusb_is_serial_num_null);
+
 /* rpc call to close connection */
 int msm_hsusb_rpc_close(void)
 {
@@ -169,3 +333,79 @@ int msm_hsusb_rpc_close(void)
 }
 EXPORT_SYMBOL(msm_hsusb_rpc_close);
 
+/* rpc call to close charging connection */
+int msm_chg_rpc_close(void)
+{
+	int rc = 0;
+
+	if (IS_ERR(chg_ep)) {
+		pr_err("%s: rpc_close failed before call, rc = %ld\n",
+			__func__, PTR_ERR(chg_ep));
+		return -EAGAIN;
+	}
+
+	rc = msm_rpc_close(chg_ep);
+	chg_ep = NULL;
+
+	if (rc < 0) {
+		pr_err("%s: close rpc failed! rc = %d\n",
+			__func__, rc);
+		return -EAGAIN;
+	} else
+		pr_debug("rpc close success\n");
+
+	return rc;
+}
+EXPORT_SYMBOL(msm_chg_rpc_close);
+
+/* wrapper for sending pid and serial# info to bootloader */
+int usb_diag_update_pid_and_serial_num(uint32_t pid, const char *snum)
+{
+	int ret;
+
+	ret = msm_hsusb_send_productID(pid);
+	if (ret)
+		return ret;
+
+	if (!snum) {
+		ret = msm_hsusb_is_serial_num_null(1);
+		if (ret)
+			return ret;
+	}
+
+	ret = msm_hsusb_is_serial_num_null(0);
+	if (ret)
+		return ret;
+	ret = msm_hsusb_send_serial_number(snum);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+#ifdef CONFIG_USB_MSM_72K
+/* charger api wrappers */
+int hsusb_chg_init(int connect)
+{
+	if (connect)
+		return msm_chg_rpc_connect();
+	else
+		return msm_chg_rpc_close();
+}
+EXPORT_SYMBOL(hsusb_chg_init);
+
+void hsusb_chg_connected(enum chg_type chgtype)
+{
+	char *chg_types[] = {"STD DOWNSTREAM PORT",
+			"CARKIT",
+			"DEDICATED CHARGER",
+			"INVALID"};
+
+	if (chgtype == USB_CHG_TYPE__INVALID) {
+		return;
+	}
+
+	pr_info("\nCharger Type: %s\n", chg_types[chgtype]);
+}
+EXPORT_SYMBOL(hsusb_chg_connected);
+#endif

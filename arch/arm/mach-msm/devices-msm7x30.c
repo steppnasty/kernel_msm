@@ -13,7 +13,6 @@
  *
  */
 
-#include <linux/dma-mapping.h>
 #include <linux/platform_device.h>
 #include <mach/kgsl.h>
 #include <linux/regulator/machine.h>
@@ -22,8 +21,6 @@
 #include "footswitch.h"
 
 #include <mach/msm_hsusb.h>
-#include <mach/msm_rpcrouter.h>
-#include <mach/msm_hsusb_hw.h>
 #ifdef CONFIG_PMIC8058
 #include <linux/mfd/pmic8058.h>
 #endif
@@ -75,160 +72,8 @@ struct platform_device msm_device_vpe = {
 };
 #endif
 
-int usb_phy_error;
-
-#define HSUSB_API_INIT_PHY_PROC	2
-#define HSUSB_API_PROG		0x30000064
-#define HSUSB_API_VERS		0x00010001
-
-static void internal_phy_reset(void)
-{
-	struct msm_rpc_endpoint *usb_ep;
-	int rc;
-	struct hsusb_phy_start_req {
-		struct rpc_request_hdr hdr;
-	} req;
-
-	printk(KERN_INFO "msm_hsusb_phy_reset\n");
-
-	usb_ep = msm_rpc_connect(HSUSB_API_PROG, HSUSB_API_VERS, 0);
-	if (IS_ERR(usb_ep)) {
-		printk(KERN_ERR "%s: init rpc failed! error: %ld\n",
-				__func__, PTR_ERR(usb_ep));
-		return;
-	}
-	rc = msm_rpc_call(usb_ep, HSUSB_API_INIT_PHY_PROC,
-			&req, sizeof(req), 5 * HZ);
-	if (rc < 0)
-		printk(KERN_ERR "%s: rpc call failed! (%d)\n", __func__, rc);
-
-	msm_rpc_close(usb_ep);
-}
-
-/* adjust eye diagram, disable vbusvalid interrupts */
-static int hsusb_phy_init_seq[] = { 0x1D, 0x0D, 0x1D, 0x10, -1 };
-
-#ifdef CONFIG_USB_FUNCTION
-static char *usb_functions[] = {
-#if defined(CONFIG_USB_FUNCTION_MASS_STORAGE) || defined(CONFIG_USB_FUNCTION_UMS)
-	"usb_mass_storage",
-#endif
-#if defined(CONFIG_USB_FUNCTION_ADB)
-	"adb",
-#endif
-#if defined(CONFIG_USB_FUNCTION_DIAG)
-	"diag",
-#endif
-#if defined(CONFIG_USB_FUNCTION_MODEM)
-	"serial",
-#endif
-#if defined(CONFIG_USB_FUNCTION_PROJECTOR)
-	"projector",
-#endif
-#if defined(CONFIG_USB_FUNCTION_MTP_TUNNEL)
-	"mtp_tunnel",
-#endif
-#if defined(CONFIG_USB_FUNCTION_ETHER)
-	"ether",
-#endif
-#if defined(CONFIG_USB_FUNCTION_MODEM)
-	"modem",
-	"nmea",
-#endif
-};
-
-static struct msm_hsusb_product usb_products[] = {
-	{
-		.product_id	= 0x0ff9,
-		.functions	= 0x00000001, /* usb_mass_storage */
-	},
-	{
-		.product_id	= 0x0c02,
-		.functions	= 0x00000003, /* usb_mass_storage + adb */
-	},
-	{
-		.product_id	= 0x0c03,
-		.functions	= 0x00000101, /* modem + mass_storage */
-	},
-	{
-		.product_id	= 0x0c04,
-		.functions	= 0x00000103, /* modem + adb + mass_storage */
-	},
-	{
-		.product_id = 0x0c05,
-		.functions	= 0x00000021, /* Projector + mass_storage */
-	},
-	{
-		.product_id = 0x0c06,
-		.functions	= 0x00000023, /* Projector + adb + mass_storage */
-	},
-	{
-		.product_id	= 0x0c07,
-		.functions	= 0x0000000B, /* diag + adb + mass_storage */
-	},
-	{
-		.product_id = 0x0c08,
-		.functions	= 0x00000009, /* diag + mass_storage */
-	},
-	{
-		.product_id = 0x0c88,
-		.functions	= 0x0000010B, /* adb + mass_storage + diag + modem */
-	},
-	{
-	       .product_id = 0x0c89,
-	       .functions      = 0x00000019, /* serial + diag + mass_storage */
-	},
-	{
-	       .product_id = 0x0c8a,
-	       .functions      = 0x0000001B, /* serial + diag + adb + mass_storage */
-	},
-	{
-		.product_id = 0x0c93,
-		.functions	= 0x00000080, /* mtp */
-	},
-	{
-		.product_id = 0x0FFE,
-		.functions	= 0x00000004, /* internet sharing */
-	},
-};
-#endif
-
-struct msm_hsusb_platform_data msm_hsusb_pdata = {
-	.phy_reset = internal_phy_reset,
-	.phy_init_seq = hsusb_phy_init_seq,
-#ifdef CONFIG_USB_FUNCTION
-	.vendor_id = 0x0bb4,
-	.product_id = 0x0c02,
-	.version = 0x0100,
-	.product_name = "Android Phone",
-	.manufacturer_name = "HTC",
-
-	.functions = usb_functions,
-	.num_functions = ARRAY_SIZE(usb_functions),
-	.products = usb_products,
-	.num_products = ARRAY_SIZE(usb_products),
-#endif
-};
-
-#ifdef CONFIG_USB_FUNCTION
-static struct usb_mass_storage_platform_data mass_storage_pdata = {
-	.nluns = 1,
-	.buf_size = 16384,
-	.vendor = "HTC     ",
-	.product = "Android Phone   ",
-	.release = 0x0100,
-};
-
-static struct platform_device usb_mass_storage_device = {
-	.name = "usb_mass_storage",
-	.id = -1,
-	.dev = {
-		.platform_data = &mass_storage_pdata,
-		},
-};
-#endif
-
-static struct resource resources_hsusb[] = {
+static u64 dma_mask = 0xffffffffULL;
+static struct resource resources_gadget_peripheral[] = {
 	{
 		.start	= MSM_HSUSB_PHYS,
 		.end	= MSM_HSUSB_PHYS + MSM_HSUSB_SIZE,
@@ -239,26 +84,57 @@ static struct resource resources_hsusb[] = {
 		.end	= INT_USB_HS,
 		.flags	= IORESOURCE_IRQ,
 	},
+};
+
+struct platform_device msm_device_gadget_peripheral = {
+	.name		= "msm_hsusb",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(resources_gadget_peripheral),
+	.resource	= resources_gadget_peripheral,
+	.dev		= {
+		.coherent_dma_mask	= 0xffffffff,
+	},
+};
+
+static struct resource resources_hsusb_host[] = {
 	{
-		.name	= "vbus_on",
-		.start	= PM8058_IRQ_CHGVAL,
-		.end	= PM8058_IRQ_CHGVAL,
+		.start	= MSM_HSUSB_PHYS,
+		.end	= MSM_HSUSB_PHYS + SZ_1K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= INT_USB_OTG,
+		.end	= INT_USB_OTG,
 		.flags	= IORESOURCE_IRQ,
 	},
 };
 
-struct platform_device msm_device_hsusb = {
-	.name		= "msm_hsusb",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(resources_hsusb),
-	.resource	= resources_hsusb,
+struct platform_device msm_device_hsusb_host = {
+	.name		= "msm_hsusb_host",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(resources_hsusb_host),
+	.resource	= resources_hsusb_host,
 	.dev		= {
-		.coherent_dma_mask	= 0xffffffff,
-		.platform_data = &msm_hsusb_pdata,
+		.dma_mask 		= &dma_mask,
+		.coherent_dma_mask	= 0xffffffffULL,
 	},
 };
 
-static u64 dma_mask = 0xffffffffULL;
+static struct platform_device *msm_host_devices[] = {
+	&msm_device_hsusb_host,
+};
+
+int msm_add_host(unsigned int host, struct msm_usb_host_platform_data *plat)
+{
+	struct platform_device	*pdev;
+
+	pdev = msm_host_devices[host];
+	if (!pdev)
+		return -ENODEV;
+	pdev->dev.platform_data = plat;
+	return platform_device_register(pdev);
+}
+
 static struct resource resources_otg[] = {
 	{
 		.start	= MSM_HSUSB_PHYS,
@@ -270,6 +146,12 @@ static struct resource resources_otg[] = {
 		.end	= INT_USB_OTG,
 		.flags	= IORESOURCE_IRQ,
 	},
+	{
+		.name	= "vbus_on",
+		.start	= PMIC8058_IRQ_BASE + PM8058_IRQ_CHGVAL,
+		.end	= PMIC8058_IRQ_BASE + PM8058_IRQ_CHGVAL,
+		.flags	= IORESOURCE_IRQ,
+	},
 };
 
 struct platform_device msm_device_otg = {
@@ -278,94 +160,9 @@ struct platform_device msm_device_otg = {
 	.num_resources	= ARRAY_SIZE(resources_otg),
 	.resource	= resources_otg,
 	.dev		= {
-		.dma_mask		= &dma_mask,
 		.coherent_dma_mask	= 0xffffffffULL,
 	},
 };
-
-static struct resource resources_hsusb_host[] = {
-	{
-		.start	= MSM_HSUSB_PHYS,
-		.end	= MSM_HSUSB_PHYS + MSM_HSUSB_SIZE,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.start	= INT_USB_HS,
-		.end	= INT_USB_HS,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
-
-struct platform_device msm_device_hsusb_host = {
-	.name		= "msm_hsusb_host",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(resources_hsusb_host),
-	.resource	= resources_hsusb_host,
-	.dev		= {
-		.dma_mask		= &dma_mask,
-		.coherent_dma_mask	= 0xffffffffULL,
-	},
-};
-
-void __init msm_add_usb_devices(void (*phy_reset) (void), void (*phy_shutdown) (void))
-{
-	/* setup */
-	msm_hsusb_pdata.phy_reset = phy_reset;
-	msm_hsusb_pdata.phy_shutdown = phy_shutdown;
-
-	msm_device_hsusb.dev.platform_data = &msm_hsusb_pdata;
-	platform_device_register(&msm_device_hsusb);
-#ifdef CONFIG_USB_FUNCTION
-	platform_device_register(&usb_mass_storage_device);
-#endif
-}
-
-#ifdef CONFIG_USB_FUNCTION
-void __init msm_set_ums_device_id(int id)
-{
-	usb_mass_storage_device.id = id;
-}
-
-void __init msm_add_usb_id_pin_function(void (*config_usb_id_gpios)(bool enable))
-{
-	/* setup */
-	msm_hsusb_pdata.config_usb_id_gpios = config_usb_id_gpios;
-
-}
-void __init msm_enable_car_kit_detect(bool enable)
-{
-	msm_hsusb_pdata.enable_car_kit_detect = enable;
-}
-
-void __init msm_init_ums_lun(int lun_num)
-{
-	if (lun_num > 0)
-		mass_storage_pdata.nluns = lun_num;
-}
-
-void __init msm_register_usb_phy_init_seq(int *int_seq)
-{
-	if (int_seq)
-		msm_hsusb_pdata.phy_init_seq = int_seq;
-}
-
-void __init msm_register_uart_usb_switch(void (*usb_uart_switch) (int))
-{
-	if (usb_uart_switch)
-		msm_hsusb_pdata.usb_uart_switch = usb_uart_switch;
-}
-
-void __init msm_add_usb_id_pin_gpio(int usb_id_pin_io)
-{
-	msm_hsusb_pdata.usb_id_pin_gpio = usb_id_pin_io;
-}
-
-void __init msm_hsusb_set_product(struct msm_hsusb_product *product,
-			int num_products) {
-	msm_hsusb_pdata.products = product;
-	msm_hsusb_pdata.num_products = num_products;
-}
-#endif
 
 struct resource msm_dmov_resource[] = {
 	{

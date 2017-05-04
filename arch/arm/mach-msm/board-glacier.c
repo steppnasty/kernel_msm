@@ -56,7 +56,6 @@
 #include <mach/bcm_bt_lpm.h>
 #endif
 
-#include <mach/htc_usb.h>
 #include <mach/hardware.h>
 #include <mach/msm_hsusb.h>
 #include <mach/rpc_hsusb.h>
@@ -83,6 +82,10 @@
 #include "board-glacier.h"
 #include "devices.h"
 #include "timer.h"
+#ifdef CONFIG_USB_G_ANDROID
+#include <linux/usb/android.h>
+#include <mach/usbdiag.h>
+#endif
 #include "proc_comm.h"
 #include "smd_private.h"
 #include "spm.h"
@@ -134,57 +137,126 @@ void config_glacier_usb_id_gpios(bool output)
 			ARRAY_SIZE(usb_ID_PIN_input_table));
 }
 
-#ifdef CONFIG_USB_ANDROID
-static int phy_init_seq[] = { 0x06, 0x36, 0x0C, 0x31, 0x31, 0x32, 0x1, 0x0D, 0x1, 0x10, -1 };
-static struct msm_hsusb_platform_data msm_hsusb_pdata = {
-	.phy_init_seq		= phy_init_seq,
-	.phy_reset		= (void *) msm_hsusb_phy_reset,
-	.usb_id_pin_gpio  = GLACIER_GPIO_USB_ID_PIN,
-	.dock_detect = 1, /* detect desk dock */
-	.dock_pin_gpio  = GLACIER_GPIO_DOCK_PIN,
-};
+#ifdef CONFIG_USB_EHCI_MSM_72K
+static void msm_hsusb_vbus_power(unsigned phy_info, int on)
+{
+	static int vbus_is_on;
 
-static struct usb_mass_storage_platform_data mass_storage_pdata = {
-	.nluns		= 1,
-	.vendor		= "T-Mobile",
-	.product	= "myTouch 4G",
-	.release	= 0x0100,
-};
+	/* If VBUS is already on (or off), do nothing. */
+	if (unlikely(on == vbus_is_on))
+		return;
 
-static struct platform_device usb_mass_storage_device = {
-	.name	= "usb_mass_storage",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &mass_storage_pdata,
-	},
-};
+	vbus_is_on = on;
+}
 
-#ifdef CONFIG_USB_ANDROID_RNDIS
-static struct usb_ether_platform_data rndis_pdata = {
-	/* ethaddr is filled by board_serialno_setup */
-	.vendorID       = 0x18d1,
-	.vendorDescr    = "Google, Inc.",
-};
-
-static struct platform_device rndis_device = {
-	.name   = "rndis",
-	.id     = -1,
-	.dev    = {
-		.platform_data = &rndis_pdata,
-	},
+static struct msm_usb_host_platform_data msm_usb_host_pdata = {
+	.phy_info	= (USB_PHY_INTEGRATED | USB_PHY_MODEL_45NM),
+	.vbus_power	= msm_hsusb_vbus_power,
+	.power_budget	= 180,
 };
 #endif
 
+#ifdef CONFIG_USB_MSM_OTG_72K
+static int hsusb_rpc_connect(int connect)
+{
+	if (connect)
+		return msm_hsusb_rpc_connect();
+	else
+		return msm_hsusb_rpc_close();
+}
+#endif
+
+#ifdef CONFIG_USB_MSM_OTG_72K
+static struct vreg *vreg_3p3;
+static int msm_hsusb_ldo_init(int init)
+{
+	uint32_t version = 0;
+	int def_vol = 3400;
+
+	version = socinfo_get_version();
+
+	if (SOCINFO_VERSION_MAJOR(version) >= 2 &&
+			SOCINFO_VERSION_MINOR(version) >= 1) {
+		def_vol = 3075;
+		pr_debug("%s: default voltage:%d\n", __func__, def_vol);
+	}
+
+	if (init) {
+		vreg_3p3 = vreg_get(NULL, "usb");
+		if (IS_ERR(vreg_3p3))
+			return PTR_ERR(vreg_3p3);
+		vreg_set_level(vreg_3p3, def_vol);
+	} else
+		vreg_put(vreg_3p3);
+
+	return 0;
+}
+
+static int msm_hsusb_ldo_enable(int enable)
+{
+	static int ldo_status;
+
+	if (!vreg_3p3 || IS_ERR(vreg_3p3))
+		return -ENODEV;
+
+	if (ldo_status == enable)
+		return 0;
+
+	ldo_status = enable;
+
+	if (enable)
+		return vreg_enable(vreg_3p3);
+
+	return vreg_disable(vreg_3p3);
+}
+
+static int msm_hsusb_ldo_set_voltage(int mV)
+{
+	static int cur_voltage = 3400;
+
+	if (!vreg_3p3 || IS_ERR(vreg_3p3))
+		return -ENODEV;
+
+	if (cur_voltage == mV)
+		return 0;
+
+	cur_voltage = mV;
+
+	pr_debug("%s: (%d)\n", __func__, mV);
+
+	return vreg_set_level(vreg_3p3, mV);
+}
+#endif
+
+#ifndef CONFIG_USB_EHCI_MSM_72K
+static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init);
+#endif
+static struct msm_otg_platform_data msm_otg_pdata = {
+	.rpc_connect	= hsusb_rpc_connect,
+
+#ifndef CONFIG_USB_EHCI_MSM_72K
+	.pmic_vbus_notif_init	= msm_hsusb_pmic_notif_init,
+#else
+	.vbus_power	= msm_hsusb_vbus_power,
+#endif
+	.pemp_level		 = PRE_EMPHASIS_WITH_20_PERCENT,
+	.cdr_autoreset		 = CDR_AUTO_RESET_DISABLE,
+	.drv_ampl		 = HS_DRV_AMPLITUDE_DEFAULT,
+	.se1_gating		 = SE1_GATING_DISABLE,
+	.phy_reset	= (void *) msm_hsusb_phy_reset,
+	.ldo_enable		 = msm_hsusb_ldo_enable,
+	.ldo_init		 = msm_hsusb_ldo_init,
+	.ldo_set_voltage	 = msm_hsusb_ldo_set_voltage,
+};
+
+#ifdef CONFIG_USB_G_ANDROID
+static struct msm_hsusb_gadget_platform_data msm_gadget_pdata = {
+	.is_phy_status_timer_on = 1,
+};
+
+#ifdef CONFIG_USB_G_ANDROID
 static struct android_usb_platform_data android_usb_pdata = {
-	.vendor_id	= 0x0bb4,
-	.product_id	= 0x0c96,
-	.version	= 0x0100,
-	.product_name		= "myTouch 4G",
-	.manufacturer_name	= "T-Mobile",
-	.num_products = ARRAY_SIZE(usb_products),
-	.products = usb_products,
-	.num_functions = ARRAY_SIZE(usb_functions_all),
-	.functions = usb_functions_all,
+	.update_pid_and_serial_num = usb_diag_update_pid_and_serial_num,
 };
 
 static struct platform_device android_usb_device = {
@@ -194,24 +266,14 @@ static struct platform_device android_usb_device = {
 		.platform_data = &android_usb_pdata,
 	},
 };
+#endif
 
 void glacier_add_usb_devices(void)
 {
-	android_usb_pdata.products[0].product_id =
-		android_usb_pdata.product_id;
-	msm_hsusb_pdata.serial_number = board_serialno();
-	android_usb_pdata.serial_number = board_serialno();
-	msm_device_hsusb.dev.platform_data = &msm_hsusb_pdata;
 	config_glacier_usb_id_gpios(0);
-	platform_device_register(&msm_device_hsusb);
-#ifdef CONFIG_USB_ANDROID_RNDIS
-       platform_device_register(&rndis_device);
-#endif
-	platform_device_register(&usb_mass_storage_device);
 	platform_device_register(&android_usb_device);
 }
 #endif
-
 
 int glacier_pm8058_gpios_init(struct pm8058_chip *pm_chip)
 {
@@ -1413,6 +1475,7 @@ static struct pm8058_platform_data pm8058_glacier_data = {
 	.pm_irqs = {
 		[PM8058_IRQ_KEYPAD - PM8058_FIRST_IRQ] = 74,
 		[PM8058_IRQ_KEYSTUCK - PM8058_FIRST_IRQ] = 75,
+		[PM8058_IRQ_CHGVAL - PM8058_FIRST_IRQ] = 15,
 	},
 	.init = &glacier_pm8058_gpios_init,
 	.num_subdevs = 4,
@@ -1785,6 +1848,12 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&msm_device_smd,
 	&msm_device_dmov,
+#ifdef CONFIG_USB_MSM_OTG_72K
+	&msm_device_otg,
+#endif
+#ifdef CONFIG_USB_GADGET
+	&msm_device_gadget_peripheral,
+#endif
 	&glacier_rfkill,
 	&glacier_fmtx_rfkill,
 #ifdef CONFIG_I2C_SSBI
@@ -2005,8 +2074,12 @@ static struct msm_spm_platform_data msm_spm_data __initdata = {
 static void __init glacier_init(void)
 {
 	int ret = 0;
+	uint32_t soc_version = 0;
+
 	printk("glacier_init() reglacier=%d\n", system_rev);
 	printk(KERN_INFO "%s: microp version = %s\n", __func__, microp_ver);
+
+	soc_version = socinfo_get_version();
 
 	msm_clock_init(&msm7x30_clock_init_data);
 
@@ -2030,6 +2103,18 @@ static void __init glacier_init(void)
 #endif
 
 	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
+#ifdef CONFIG_USB_MSM_OTG_72K
+	if (SOCINFO_VERSION_MAJOR(soc_version) >= 2 &&
+			SOCINFO_VERSION_MINOR(soc_version) >= 1) {
+		pr_debug("%s: SOC Version:2.(1 or more)\n", __func__);
+		msm_otg_pdata.ldo_set_voltage = 0;
+	}
+
+	msm_device_otg.dev.platform_data = &msm_otg_pdata;
+#ifdef CONFIG_USB_GADGET
+	msm_device_gadget_peripheral.dev.platform_data = &msm_gadget_pdata;
+#endif
+#endif
 	msm_device_i2c_init();
 	qup_device_i2c_init();
 	msm7x30_init_marimba();
@@ -2052,11 +2137,14 @@ static void __init glacier_init(void)
 	platform_add_devices(msm_footswitch_devices,
 			     msm_num_footswitch_devices);
 	platform_add_devices(devices, ARRAY_SIZE(devices));
+#ifdef CONFIG_USB_EHCI_MSM_72K
+	msm_add_host(0, &msm_usb_host_pdata);
+#endif
 #ifdef CONFIG_MSMB_CAMERA
 	glacier_init_cam();
 #endif
 
-#ifdef CONFIG_USB_ANDROID
+#ifdef CONFIG_USB_G_ANDROID
 	glacier_add_usb_devices();
 #endif
 

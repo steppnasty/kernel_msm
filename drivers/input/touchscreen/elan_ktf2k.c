@@ -1285,6 +1285,7 @@ static int elan_ktf2k_ts_register_interrupt(struct i2c_client *client)
 	return err;
 }
 
+#if 0
 static void cable_tp_status_handler_func(int connect_status)
 {
 	struct elan_ktf2k_ts_data *ts;
@@ -1309,6 +1310,7 @@ static struct t_usb_status_notifier cable_status_handler = {
 	.name = "usb_tp_connected",
 	.func = cable_tp_status_handler_func,
 };
+#endif
 
 static int elan_ktf2k_ts_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
@@ -1359,9 +1361,6 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 	}
 
 	elan_ktf2k_ts_get_firmware_version(client);
-
-	if (usb_get_connect_type())
-		ts->status = CONNECTED;
 
 	if (ts->status == CONNECTED && ts->fw_ver >= 0x0038) {
 		uint8_t cmd[] = {CMD_W_PKT, 0x56, 0x01, 0x01};
@@ -1448,7 +1447,9 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 	dev_info(&client->dev, "Start touchscreen %s in interrupt mode\n",
 		ts->input_dev->name);
 
+#if 0
 	usb_register_notifier(&cable_status_handler);
+#endif
 
 	return 0;
 

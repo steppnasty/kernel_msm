@@ -26,7 +26,6 @@
 #include <mach/board.h>
 #include <mach/board_htc.h>
 #include <mach/msm_hsusb.h>
-#include <linux/usb/android_composite.h>
 
 #include <asm/mach/flash.h>
 #include <asm/setup.h>

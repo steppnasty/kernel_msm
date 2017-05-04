@@ -71,7 +71,7 @@ ifndef CONFIG_ARCH_MSM9615
 ifndef CONFIG_ARCH_MSM8960
 ifndef CONFIG_ARCH_MSM8X60
 	obj-$(CONFIG_MSM_SMD) += pmic.o
-	obj-$(CONFIG_MSM_ONCRPCROUTER) += rpc_hsusb.o
+	obj-$(CONFIG_MSM_ONCRPCROUTER) += rpc_hsusb.o rpc_fsusb.o
 endif
 endif
 endif

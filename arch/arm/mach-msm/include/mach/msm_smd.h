@@ -18,6 +18,8 @@
 #ifndef __ASM_ARCH_MSM_SMD_H
 #define __ASM_ARCH_MSM_SMD_H
 
+#include <linux/io.h>
+
 typedef struct smd_channel smd_channel_t;
 
 #define SMD_MAX_CH_NAME_LEN 20 /* includes null char at end */
