@@ -741,11 +741,6 @@ choice
 	  bool "7x30 Version"
 	  help
 	    7x30 Version
-
-	config HTC_BATTCHG_VIVO
-	  bool "Vivo/Mecha Version"
-	  help
-	    Vivo/Mecha Version
 endchoice
 
 config HTC_BATT_CORE
@@ -759,7 +754,7 @@ config HTC_BATT8x60
 	bool "HTC battery driver for 8x60"
 
 config HTC_BATTCHG_SMEM
-	depends on HTC_BATTCHG || HTC_BATTCHG_VIVO
+	depends on HTC_BATTCHG
 	default n
 	bool "Read Battery Info via SMEM"
 
@@ -767,13 +762,6 @@ config HTC_PWRSINK
 	depends on MSM_SMD
 	default y
 	bool "HTC Power Sink Driver"
-
-config WIRELESS_CHARGER
-	depends on HTC_BATTCHG_VIVO
-	default n
-	bool "Wireless Charger support"
-	help
-	  For wireless charging on mecha.
 
 config MSM_SPM
 	bool "Subsystem Power Manager"

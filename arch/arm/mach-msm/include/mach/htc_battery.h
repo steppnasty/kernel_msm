@@ -109,7 +109,7 @@ struct htc_battery_platform_data {
 	int (*func_battery_gpio_init)(void);
 };
 
-#if defined(CONFIG_HTC_BATTCHG) || defined(CONFIG_HTC_BATTCHG_VIVO)
+#ifdef CONFIG_HTC_BATTCHG
 extern int register_notifier_cable_status(struct notifier_block *nb);
 extern int unregister_notifier_cable_status(struct notifier_block *nb);
 #else
@@ -117,18 +117,12 @@ static int register_notifier_cable_status(struct notifier_block *nb) { return 0;
 static int unregister_notifier_cable_status(struct notifier_block *nb) { return 0; }
 #endif
 
-#ifdef CONFIG_WIRELESS_CHARGER
-extern int register_notifier_wireless_charger(struct notifier_block *nb);
-extern int unregister_notifier_wireless_charger(struct notifier_block *nb);
-extern int htc_is_wireless_charger(void);
-#endif
-
 #if defined(CONFIG_BATTERY_DS2784)
 extern int battery_charging_ctrl(enum batt_ctl_t ctl);
 #endif
 extern int get_cable_status(void);
 
-#if defined(CONFIG_HTC_BATTCHG) || defined(CONFIG_HTC_BATTCHG_VIVO)
+#ifdef CONFIG_HTC_BATTCHG
 extern int batt_register_client(struct notifier_block *nb);
 extern int batt_unregister_client(struct notifier_block *nb);
 extern int batt_notifier_call_chain(unsigned long val, void *v);
