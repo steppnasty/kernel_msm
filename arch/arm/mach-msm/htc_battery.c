@@ -221,6 +221,9 @@ static void htc_usb_send_notify(void)
 		return;
 	}
 	msm_hsusb_set_vbus_state(vbus);
+#ifdef CONFIG_DOCK_DETECT
+	dock_detect_set_vbus_state(vbus);
+#endif
 	list_for_each_entry(notifier, &htc_batt_info.notify_list, notifier_link) {
 		/* Notify other drivers about source. */
 		if (notifier->func != NULL)

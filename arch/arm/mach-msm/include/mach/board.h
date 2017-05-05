@@ -637,6 +637,14 @@ struct t_mhl_status_notifier{
 };
 int mhl_detect_register_notifier(struct t_mhl_status_notifier *);
 static LIST_HEAD(g_lh_mhl_detect_notifier_list);
+
+#ifdef CONFIG_DOCK_DETECT
+struct dock_detect_platform_data {
+	int dock_pin_gpio;
+};
+void dock_detect_set_vbus_state(int vbus);
+#endif
+
 /* END: add USB connected notify function */
 #else
 static inline void msm_hsusb_set_vbus_state(int online) {}

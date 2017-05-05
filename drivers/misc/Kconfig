@@ -515,6 +515,11 @@ config CABLE_DETECT_ACCESSORY_BY_ADC
         depends on CABLE_DETECT_8X60 && CABLE_DETECT_ACCESSORY
         default n
 
+config DOCK_DETECT
+	boolean "DOCK ACCESSORY DETECT"
+	depends on USB_MSM_72K
+	default n
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

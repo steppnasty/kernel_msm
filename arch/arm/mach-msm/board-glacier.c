@@ -275,6 +275,20 @@ void glacier_add_usb_devices(void)
 }
 #endif
 
+#ifdef CONFIG_DOCK_DETECT
+static struct dock_detect_platform_data dock_detect_pdata = {
+	.dock_pin_gpio	= GLACIER_GPIO_DOCK_PIN,
+};
+
+static struct platform_device dock_detect_device = {
+	.name	= "dock_detect",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &dock_detect_pdata,
+	},
+};
+#endif
+
 int glacier_pm8058_gpios_init(struct pm8058_chip *pm_chip)
 {
 	int ret;
@@ -1848,6 +1862,9 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&msm_device_smd,
 	&msm_device_dmov,
+#ifdef CONFIG_DOCK_DETECT
+	&dock_detect_device,
+#endif
 #ifdef CONFIG_USB_MSM_OTG_72K
 	&msm_device_otg,
 #endif
