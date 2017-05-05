@@ -30,6 +30,9 @@
 #include <mach/msm_hsusb.h>
 #include <linux/stat.h>
 #include <linux/pl_sensor.h>
+#ifdef CONFIG_HTC_BATTCHG
+#include <mach/htc_battery.h>
+#endif
 #ifdef CONFIG_TOUCHSCREEN_ATMEL_SWEEP2WAKE
 #include <linux/leds-pm8058.h>
 #endif
@@ -1362,7 +1365,7 @@ static int psensor_tp_status_handler_func(struct notifier_block *this,
 	return NOTIFY_OK;
 }
 
-#if 0
+#ifdef CONFIG_HTC_BATTCHG
 static void cable_tp_status_handler_func(int connect_status)
 {
 	struct atmel_ts_data *ts;
@@ -1485,8 +1488,8 @@ static int read_object_table(struct atmel_ts_data *ts)
 	return 0;
 }
 
-#if 0
-static struct t_usb_status_notifier cable_status_handler = {
+#ifdef CONFIG_HTC_BATTCHG
+static struct htc_usb_status_notifier cable_status_handler = {
 	.name = "usb_tp_connected",
 	.func = cable_tp_status_handler_func,
 };
@@ -1979,8 +1982,8 @@ static int atmel_ts_probe(struct i2c_client *client,
 	dev_info(&client->dev, "Start touchscreen %s in interrupt mode\n",
 			ts->input_dev->name);
 
-#if 0
-	t_usb_register_notifier(&cable_status_handler);
+#ifdef CONFIG_HTC_BATTCHG
+	htc_usb_register_notifier(&cable_status_handler);
 #endif
 	register_notifier_by_psensor(&psensor_status_handler);
 

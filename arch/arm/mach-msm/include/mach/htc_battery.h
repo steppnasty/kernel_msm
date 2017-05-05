@@ -107,6 +107,15 @@ struct htc_battery_platform_data {
 	int (*func_battery_gpio_init)(void);
 };
 
+/* START: add USB connected notify function */
+struct htc_usb_status_notifier {
+	struct list_head notifier_link;
+	const char *name;
+	void (*func)(int cable_type);
+};
+
+int htc_usb_register_notifier(struct htc_usb_status_notifier *);
+
 #ifdef CONFIG_HTC_BATTCHG
 extern int register_notifier_cable_status(struct notifier_block *nb);
 extern int unregister_notifier_cable_status(struct notifier_block *nb);

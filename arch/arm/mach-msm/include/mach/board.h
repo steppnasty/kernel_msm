@@ -615,21 +615,6 @@ int __init rmt_storage_add_ramfs(void);
 #define ENG_BUILD	2
 
 void msm_hsusb_set_vbus_state(int online);
-enum usb_connect_type {
-	CONNECT_TYPE_UNKNOWN = -1,
-	CONNECT_TYPE_NONE = 0,
-	CONNECT_TYPE_USB,
-	CONNECT_TYPE_AC,
-	CONNECT_TYPE_9V_AC,
-};
-
-/* START: add USB connected notify function */
-struct t_usb_status_notifier{
-	struct list_head notifier_link;
-	const char *name;
-	void (*func)(int cable_type);
-};
-	static LIST_HEAD(g_lh_usb_notifier_list);
 
 /***********************************
 Direction: cable detect drvier -> battery driver or other

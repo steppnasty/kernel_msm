@@ -29,6 +29,9 @@
 #include <linux/device.h>
 #include <linux/jiffies.h>
 #include <mach/msm_hsusb.h>
+#ifdef CONFIG_HTC_BATTCHG
+#include <mach/htc_battery.h>
+#endif
 
 #define ELAN_I2C_RETRY_TIMES	10
 
@@ -1285,7 +1288,7 @@ static int elan_ktf2k_ts_register_interrupt(struct i2c_client *client)
 	return err;
 }
 
-#if 0
+#ifdef CONFIG_HTC_BATTCHG
 static void cable_tp_status_handler_func(int connect_status)
 {
 	struct elan_ktf2k_ts_data *ts;
@@ -1306,7 +1309,7 @@ static void cable_tp_status_handler_func(int connect_status)
 	}
 }
 
-static struct t_usb_status_notifier cable_status_handler = {
+static struct htc_usb_status_notifier cable_status_handler = {
 	.name = "usb_tp_connected",
 	.func = cable_tp_status_handler_func,
 };
@@ -1447,8 +1450,8 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 	dev_info(&client->dev, "Start touchscreen %s in interrupt mode\n",
 		ts->input_dev->name);
 
-#if 0
-	usb_register_notifier(&cable_status_handler);
+#ifdef CONFIG_HTC_BATTCHG
+	htc_usb_register_notifier(&cable_status_handler);
 #endif
 
 	return 0;
