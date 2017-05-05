@@ -349,7 +349,6 @@ struct hc_driver {
 	/* to log submission/completion events*/
 	void	(*log_urb)(struct urb *urb, char *event, unsigned extra);
 	void	(*dump_regs)(struct usb_hcd *);
-	void	(*set_autosuspend_delay)(struct usb_device *);
 	void	(*reset_sof_bug_handler)(struct usb_hcd *hcd, u32 val);
 };
 
