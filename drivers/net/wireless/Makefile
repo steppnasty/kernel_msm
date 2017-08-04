@@ -54,7 +54,8 @@ obj-$(CONFIG_WL12XX)	+= wl12xx/
 obj-$(CONFIG_IWM)	+= iwmc3200wifi/
 
 ifeq ($(CONFIG_BCM4329_PURE_ANDROID),y)
-  obj-$(CONFIG_BCM4329)	+= bcm4329/
+  obj-$(CONFIG_BCM4329)		+= bcm4329/
 else
-  obj-$(CONFIG_BCM4329)	+= bcm4329_204/
+  obj-$(CONFIG_BCM4329)		+= bcm4329_204/
 endif
+obj-$(CONFIG_BCM4329_248)	+= bcm4329_248/
