@@ -1387,26 +1387,12 @@ config VIRTUAL_KPANIC_PARTITION
 	  the specified mtd partition label.
 	  *** DO NOT USE IF YOU ARE USING OTA/RECOVERY ***
 
-config QSD_AUDIO
-	bool "QSD audio"
-	depends on (ARCH_QSD8X50 && MSM_DALRPC)
-	default y
-	help
-	  Provides PCM, MP3, and AAC audio playback.
-
 config VIRTUAL_KPANIC_PSIZE
 	depends on VIRTUAL_KPANIC_PARTITION
 	int "Default kpanic partition size"
 	default 1048576
 	help
 	  Sets the size of the virtual kpanic paritition to create.
-
-config QSD_HTC_FM
-	bool "QSD HTC FM"
-	depends on QSD_AUDIO
-	default y
-	help
-	  HTC FM driver for QSD
 
 config ARCH_MSM_FLASHLIGHT
         bool "Flashlight Driver"
