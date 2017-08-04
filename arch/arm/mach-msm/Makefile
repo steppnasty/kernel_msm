@@ -45,7 +45,8 @@ obj-$(CONFIG_ARCH_QSD8X50) += htc_wifi_nvs.o htc_bluetooth.o
 
 obj-$(CONFIG_SMP) += headsmp.o platsmp.o
 obj-$(CONFIG_ARCH_MSM8X60) += devices-msm8x60.o clock-local.o clock-8x60.o acpuclock-8x60.o clock-debug.o
-obj-$(CONFIG_ARCH_MSM8X60) += clock-8x60_mxo.o clock-rpm.o spm.o restart.o mpm.o mpp.o
+obj-$(CONFIG_ARCH_MSM8X60) += spm.o restart.o mpm.o mpp.o
+obj-$(CONFIG_ARCH_MSM8X60) += clock-rpm.o
 obj-$(CONFIG_ARCH_MSM8X60) += subsystem-fatal-8x60.o
 obj-$(CONFIG_ARCH_MSM8X60) += saw-regulator.o
 obj-$(CONFIG_ARCH_MSM8X60) += rpm-regulator.o
