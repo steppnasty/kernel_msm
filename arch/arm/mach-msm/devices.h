@@ -103,7 +103,7 @@ extern struct platform_device msm_device_i2c_2;
 extern struct platform_device qup_device_i2c;
 extern struct platform_device msm_device_vidc_720p;
 #endif
-#if defined(CONFIG_SPI_QSD_NEW) || defined(CONFIG_SPI_QSD_NEW_VIVO)
+#if defined(CONFIG_SPI_QSD_NEW)
 extern struct platform_device qsdnew_device_spi;
 #endif
 extern struct platform_device *msm_footswitch_devices[];

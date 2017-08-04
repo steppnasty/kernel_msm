@@ -169,14 +169,6 @@ obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon-mmc.o board-lexikon-wifi.o
 obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon-rfkill.o
 obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon-panel.o htc_bluetooth.o
 
-obj-$(CONFIG_MACH_SPEEDY)+= board-speedy.o
-obj-$(CONFIG_MACH_SPEEDY)+= board-speedy-keypad.o
-obj-$(CONFIG_MACH_SPEEDY)+= board-speedy-microp.o
-obj-$(CONFIG_MACH_SPEEDY)+= board-speedy-audio.o
-obj-$(CONFIG_MACH_SPEEDY)+= board-speedy-mmc.o board-speedy-wifi.o
-obj-$(CONFIG_MACH_SPEEDY)+= board-speedy-rfkill.o
-obj-$(CONFIG_MACH_SPEEDY)+= board-speedy-panel.o htc_bluetooth.o
-
 obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom.o
 obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-keypad.o
 obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-microp.o
@@ -229,27 +221,6 @@ obj-$(CONFIG_MACH_DYNASTY)+= board-dynasty-keypad.o
 obj-$(CONFIG_MACH_DYNASTY)+= board-dynasty-microp.o
 obj-$(CONFIG_MACH_DYNASTY)+= board-dynasty-mmc.o board-dynasty-wifi.o htc_awb_cal.o
 obj-$(CONFIG_MACH_DYNASTY)+= board-dynasty-rfkill.o htc_bluetooth.o
-
-obj-$(CONFIG_MACH_VIVO)+= board-vivo.o
-obj-$(CONFIG_MACH_VIVO)+= board-vivo-keypad.o
-obj-$(CONFIG_MACH_VIVO)+= board-vivo-audio.o
-obj-$(CONFIG_MACH_VIVO)+= board-vivo-mmc.o board-vivo-wifi.o
-obj-$(CONFIG_MACH_VIVO)+= board-vivo-rfkill.o
-obj-$(CONFIG_MACH_VIVO)+= board-vivow-panel.o htc_bluetooth.o
-
-obj-$(CONFIG_MACH_VIVOW)+= board-vivow.o
-obj-$(CONFIG_MACH_VIVOW)+= board-vivow-keypad.o
-obj-$(CONFIG_MACH_VIVOW)+= board-vivow-audio.o
-obj-$(CONFIG_MACH_VIVOW)+= board-vivow-mmc.o board-vivow-wifi.o
-obj-$(CONFIG_MACH_VIVOW)+= board-vivow-rfkill.o
-obj-$(CONFIG_MACH_VIVOW)+= board-vivow-panel.o htc_bluetooth.o
-
-obj-$(CONFIG_MACH_VIVOW_CT)+= board-vivow.o
-obj-$(CONFIG_MACH_VIVOW_CT)+= board-vivow-keypad.o
-obj-$(CONFIG_MACH_VIVOW_CT)+= board-vivow-audio.o
-obj-$(CONFIG_MACH_VIVOW_CT)+= board-vivow-mmc.o board-vivow-wifi.o
-obj-$(CONFIG_MACH_VIVOW_CT)+= board-vivow-rfkill.o
-obj-$(CONFIG_MACH_VIVOW_CT)+= board-vivow-panel.o htc_bluetooth.o
 
 # MSM7200A boards
 obj-$(CONFIG_MACH_HERO) += board-hero.o board-hero-panel.o board-hero-keypad.o
@@ -304,16 +275,6 @@ obj-$(CONFIG_MACH_SHOOTER) += htc_bdaddress.o htc_sleep_clk.o board-shooter-rfki
 obj-$(CONFIG_MACH_SHOOTER) += board-shooter-mmc.o board-shooter-wifi.o
 obj-$(CONFIG_MACH_SHOOTER) += board-shooter-keypad.o
 obj-$(CONFIG_MACH_SHOOTER) += board-shooter-3Dpanel.o
-obj-$(CONFIG_MACH_RIDER) += board-rider.o
-obj-$(CONFIG_MACH_RIDER) += board-rider-audio.o
-obj-$(CONFIG_MACH_RIDER) += htc_bdaddress.o htc_sleep_clk.o board-rider-rfkill.o
-obj-$(CONFIG_MACH_RIDER) += board-rider-mmc.o board-rider-wifi.o
-obj-$(CONFIG_MACH_RIDER) += board-rider-keypad.o
-obj-$(CONFIG_MACH_SHOOTER_U) += board-shooter_u.o board-shooter_u-audio.o
-obj-$(CONFIG_MACH_SHOOTER_U) += htc_bdaddress.o htc_sleep_clk.o board-shooter_u-rfkill.o
-obj-$(CONFIG_MACH_SHOOTER_U) += board-shooter_u-mmc.o board-shooter_u-wifi.o
-obj-$(CONFIG_MACH_SHOOTER_U) += board-shooter_u-keypad.o
-obj-$(CONFIG_MACH_SHOOTER_U) += board-shooter_u-3Dpanel.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-audio.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-keypad.o

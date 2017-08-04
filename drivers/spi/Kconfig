@@ -216,11 +216,6 @@ choice
                 bool "7x30 Version"
                 help
                   Qualcomm MSM SPI support 7x30 version
-
-        config SPI_QSD_NEW_VIVO
-                bool "Vivo/Mecha Version"
-                help
-                  Qualcomm MSM SPI support vivo/mecha version
 endchoice
 
 config SPI_QUP

@@ -285,7 +285,7 @@ struct platform_device qup_device_i2c = {
 	.resource	= resources_qup,
 };
 #endif
-#if defined(CONFIG_SPI_QSD_NEW) || defined(CONFIG_SPI_QSD_NEW_VIVO)
+#if defined(CONFIG_SPI_QSD_NEW)
 static struct resource qsd_spi_resources[] = {
 	{
 		.name   = "spi_irq_in",
