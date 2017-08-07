@@ -23,7 +23,7 @@
 #define PHYS_OFFSET		UL(0x02E00000)
 #elif defined(CONFIG_ARCH_MSM7227)
 #define PHYS_OFFSET		UL(0x12C00000)
-#elif defined(CONFIG_ARCH_MSM7230) && (defined(defined(CONFIG_MACH_FLYER) || defined(CONFIG_MACH_ICON) || defined(CONFIG_MACH_EXPRESS_KT))
+#elif defined(CONFIG_ARCH_MSM7230) && (defined(CONFIG_MACH_FLYER) || defined(CONFIG_MACH_ICON) || defined(CONFIG_MACH_EXPRESS_KT))
 #define PHYS_OFFSET		UL(0x04400000)
 #elif defined(CONFIG_ARCH_MSM7230)
 #define PHYS_OFFSET		UL(0x04000000)
