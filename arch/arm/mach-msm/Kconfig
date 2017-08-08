@@ -1789,12 +1789,6 @@ config MSM7X30_DDR2
 	depends on ARCH_MSM7X30
 	default n
 
-config SUPPORT_DQ_BATTERY
-	bool "Support DQ battery."
-	default n
-	help
-		support DQ battery.
-
 config MSM_SCHED_FAST_CPU_ONLINE
 	bool "Fast scheduler update for CPU online"
 	depends on ARCH_MSM8X60

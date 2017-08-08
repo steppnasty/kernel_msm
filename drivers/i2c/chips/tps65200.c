@@ -53,10 +53,6 @@ static int tps65200_detect(struct i2c_client *client, int kind,
 #endif
 static int tps65200_remove(struct i2c_client *client);
 
-#ifdef CONFIG_SUPPORT_DQ_BATTERY
-int htc_is_dq_pass(void);
-#endif
-
 /* Supersonic for Switch charger */
 struct tps65200_i2c_client {
 	struct i2c_client *client;
@@ -227,11 +223,6 @@ int tps_set_charger_ctrl(u32 ctl)
 		tps65200_i2c_write_byte(0x2A, 0x00);
 		/* set DPM regulation voltage to 4.44V */
 		regh = 0x83;
-#ifdef CONFIG_SUPPORT_DQ_BATTERY
-		if (htc_is_dq_pass())
-			/* set DPM regulation voltage to 4.6V */
-			regh = 0x85;
-#endif
 		if (tps65200_low_chg)
 			regh |= 0x08;	/* enable low charge curent */
 		tps65200_i2c_write_byte(regh, 0x03);
@@ -250,11 +241,6 @@ int tps_set_charger_ctrl(u32 ctl)
 		tps65200_i2c_write_byte(0x2A, 0x00);
 		/* set DPM regulation voltage to 4.44V */
 		regh = 0x83;
-#ifdef CONFIG_SUPPORT_DQ_BATTERY
-		if (htc_is_dq_pass())
-			/* set DPM regulation voltage to 4.6V */
-			regh = 0x85;
-#endif
 		if (tps65200_low_chg)
 			regh |= 0x08;	/* enable low charge current */
 		tps65200_i2c_write_byte(regh, 0x03);
@@ -370,19 +356,6 @@ int tps_set_charger_ctrl(u32 ctl)
 		pr_info("Switch charger OVERTEMP_VREG_4060: regh 0x02=%x\n", regh);
 		break;
 	case NORMALTEMP_VREG:
-#ifdef CONFIG_SUPPORT_DQ_BATTERY
-		tps65200_i2c_read_byte(&regh, 0x04);
-		pr_info("Switch charger CONFIG_D: regh 0x04=%x\n", regh);
-		if (htc_is_dq_pass()) {
-			pr_info("Switch charger NORMALTEMP_VREG_4340\n");
-			tps65200_i2c_read_byte(&regh, 0x02);
-			regh = (regh & 0xC0) | 0X2A;
-			tps65200_i2c_write_byte(regh, 0x02);
-			tps65200_i2c_read_byte(&regh, 0x02);
-			pr_info("Switch charger NORMALTEMP_VREG_4340: regh 0x02=%x\n", regh);
-			break;
-		}
-#endif
 		pr_info("Switch charger NORMALTEMP_VREG_4200 \n");
 		tps65200_i2c_read_byte(&regh, 0x02);
 		regh = (regh & 0xC0) | 0X23;
