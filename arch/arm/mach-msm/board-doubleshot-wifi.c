@@ -95,7 +95,6 @@ static struct wifi_platform_data doubleshot_wifi_control = {
 	.set_carddetect = doubleshot_wifi_set_carddetect,
 	.mem_prealloc   = doubleshot_wifi_mem_prealloc,
 	.get_mac_addr	= doubleshot_wifi_get_mac_addr,
-	.dot11n_enable  = 1,
 };
 
 static struct platform_device doubleshot_wifi_device = {

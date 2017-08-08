@@ -94,10 +94,6 @@ static struct wifi_platform_data glacier_wifi_control = {
 	.set_reset      = glacier_wifi_reset,
 	.set_carddetect = glacier_wifi_set_carddetect,
 	.mem_prealloc   = glacier_wifi_mem_prealloc,
-#ifndef CONFIG_BCM4329_PURE_ANDROID
-	.dot11n_enable  = 1,
-	.cscan_enable   = 1,
-#endif
 };
 
 static struct platform_device glacier_wifi_device = {

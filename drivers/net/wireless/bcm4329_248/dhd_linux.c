@@ -93,25 +93,10 @@ int wifi_get_irq_number(unsigned long *irq_flags_ptr)
 #endif
 }
 
-int wifi_get_dot11n_enable(void)
-{
-        if (wifi_control_data && wifi_control_data->dot11n_enable) {
-                return wifi_control_data->dot11n_enable;
-        }
-        return 0;
-}
-
 int wifi_get_cscan_enable(void)
 {
-#if 0
-        if (wifi_control_data && wifi_control_data->cscan_enable) {
-                return wifi_control_data->cscan_enable;
-        }
-        return 0;
-#else
         //Always use combo scan for 248 driver
         return 1;
-#endif
 }
 
 int wifi_set_carddetect(int on)
@@ -326,7 +311,7 @@ struct semaphore dhd_registration_sem;
 #define DHD_REGISTRATION_TIMEOUT  12000  /* msec : allowed time to finished dhd registration */
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
 /* load firmware and/or nvram values from the filesystem */
-module_param_string(firmware_path, firmware_path, MOD_PARAM_PATHLEN, 0);
+module_param_string(firmware_path, firmware_path, MOD_PARAM_PATHLEN, 0660);
 module_param_string(nvram_path, nvram_path, MOD_PARAM_PATHLEN, 0);
 
 /* Error bits */

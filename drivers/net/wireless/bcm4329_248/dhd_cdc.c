@@ -74,8 +74,6 @@ bool allowMulticast = false;
 #endif
 extern int wl_pattern_atoh(char *src, char *dst);
 
-extern int wifi_get_dot11n_enable(void);
-
 #if defined(SOFTAP)
 extern bool ap_fw_loaded;
 #endif
@@ -1126,13 +1124,6 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	bcm_mkiovar("wme_qosinfo", (char *)&wme_qosinfo, 4, iovbuf, sizeof(iovbuf));
 	dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
 #endif
-
-	if(!wifi_get_dot11n_enable()) {
-		/* Disable nmode as default */
-		bcm_mkiovar("nmode", (char *)&nmode, 4, iovbuf, sizeof(iovbuf));
-		dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
-		printf("wifi: Disable 802.11n\n");
-	}
 
 	/* Force STA UP */
 	if (dhd_radio_up)
