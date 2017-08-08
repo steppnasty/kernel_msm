@@ -46,7 +46,6 @@ static struct list_head active_wake_locks[WAKE_LOCK_TYPE_COUNT];
 static int current_event_num;
 struct workqueue_struct *suspend_work_queue;
 struct wake_lock main_wake_lock;
-struct wake_lock no_suspend_wake_lock;
 suspend_state_t requested_suspend_state = PM_SUSPEND_MEM;
 static struct wake_lock unknown_wakeup;
 
@@ -565,8 +564,6 @@ static int __init wakelocks_init(void)
 	wake_lock_init(&main_wake_lock, WAKE_LOCK_SUSPEND, "main");
 	wake_lock(&main_wake_lock);
 	wake_lock_init(&unknown_wakeup, WAKE_LOCK_SUSPEND, "unknown_wakeups");
-	wake_lock_init(&no_suspend_wake_lock, WAKE_LOCK_SUSPEND,
-					"no_suspend_wake_lock");
 
 	ret = platform_device_register(&power_device);
 	if (ret) {
@@ -596,7 +593,6 @@ err_suspend_work_queue:
 err_platform_driver_register:
 	platform_device_unregister(&power_device);
 err_platform_device_register:
-	wake_lock_destroy(&no_suspend_wake_lock);
 	wake_lock_destroy(&unknown_wakeup);
 	wake_lock_destroy(&main_wake_lock);
 #ifdef CONFIG_WAKELOCK_STAT
@@ -613,7 +609,6 @@ static void  __exit wakelocks_exit(void)
 	destroy_workqueue(suspend_work_queue);
 	platform_driver_unregister(&power_driver);
 	platform_device_unregister(&power_device);
-	wake_lock_destroy(&no_suspend_wake_lock);
 	wake_lock_destroy(&unknown_wakeup);
 	wake_lock_destroy(&main_wake_lock);
 #ifdef CONFIG_WAKELOCK_STAT
