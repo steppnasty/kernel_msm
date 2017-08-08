@@ -116,6 +116,7 @@ endif
 ifdef CONFIG_ARCH_MSM8X60
 	obj-$(CONFIG_CPU_IDLE) += cpuidle.o
 	obj-$(CONFIG_MSM_WATCHDOG) += msm_watchdog.o
+	obj-$(CONFIG_MSM_WATCHDOG) += htc_watchdog_monitor.o
 endif
 
 obj-$(CONFIG_CPU_FREQ) += cpufreq.o

@@ -14,6 +14,11 @@
 
 #include "base.h"
 
+#ifdef CONFIG_MSM_WATCHDOG
+extern int msm_watchdog_suspend(void);
+extern int msm_watchdog_resume(void);
+#endif
+
 static struct sysdev_class_attribute *cpu_sysdev_class_attrs[];
 
 struct sysdev_class cpu_sysdev_class = {
@@ -39,6 +44,10 @@ static ssize_t __ref store_online(struct sys_device *dev, struct sysdev_attribut
 	struct cpu *cpu = container_of(dev, struct cpu, sysdev);
 	ssize_t ret;
 
+#ifdef CONFIG_MSM_WATCHDOG
+	msm_watchdog_suspend();
+#endif
+
 	cpu_hotplug_driver_lock();
 	switch (buf[0]) {
 	case '0':
@@ -55,6 +64,10 @@ static ssize_t __ref store_online(struct sys_device *dev, struct sysdev_attribut
 		ret = -EINVAL;
 	}
 	cpu_hotplug_driver_unlock();
+
+#ifdef CONFIG_MSM_WATCHDOG
+	msm_watchdog_resume();
+#endif
 
 	if (ret >= 0)
 		ret = count;

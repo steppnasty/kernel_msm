@@ -22,6 +22,11 @@
 #include <linux/slab.h>
 #include <linux/syscalls.h>
 
+#ifdef CONFIG_MSM_WATCHDOG
+extern int msm_watchdog_suspend(void);
+extern int msm_watchdog_resume(void);
+#endif
+
 #define KEYRESET_DELAY 3*HZ
 struct keyreset_state {
 	struct input_handler input_handler;
@@ -91,6 +96,15 @@ static void keyreset_event(struct input_handle *handle, unsigned int type,
 		pr_info("keyboard reset\n");
 		schedule_delayed_work(&restart_work, KEYRESET_DELAY);
 		restart_requested = 1;
+#ifdef CONFIG_MSM_WATCHDOG
+		msm_watchdog_suspend();
+#endif
+		/* show blocked processes to debug hang problems */
+		printk(KERN_INFO "\n### Show Blocked State ###\n");
+		show_state_filter(TASK_UNINTERRUPTIBLE);
+#ifdef CONFIG_MSM_WATCHDOG
+		msm_watchdog_resume();
+#endif
 	} else if (restart_requested == 1) {
 		if (cancel_delayed_work(&restart_work)) {
 			pr_info("%s: cancel restart work\n", __func__);
