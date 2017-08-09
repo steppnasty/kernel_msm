@@ -78,6 +78,7 @@ ifndef CONFIG_ARCH_MSM8X60
 endif
 endif
 endif
+obj-$(CONFIG_MSM_SMD_PKT) += smd_pkt.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_device.o
 obj-$(CONFIG_DEBUG_FS) += smd_rpc_sym.o
