@@ -21,7 +21,6 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
-#include <mach/debug_display.h>
 #include <mach/panel_id.h>
 #include "msm_fb.h"
 #include "msm_fb_panel.h"

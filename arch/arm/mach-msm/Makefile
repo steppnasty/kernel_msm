@@ -13,12 +13,12 @@ obj-$(CONFIG_DEBUG_FS) += clock-debug.o
 
 obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o
 ifndef CONFIG_ARCH_MSM8X60
-	obj-$(CONFIG_MSM_PROC_COMM) += clock-pcom.o internal_power_rail.o
+	obj-$(CONFIG_MSM_PROC_COMM) += clock-pcom.o
 	obj-$(CONFIG_MSM_PROC_COMM) += vreg.o
 	ifdef CONFIG_MSM_PROC_COMM
 		obj-$(CONFIG_REGULATOR) += footswitch-pcom.o
 	endif
-	obj-y += devices.o pwrtest.o
+	obj-y += devices.o
 endif
 
 obj-y += acpuclock.o
