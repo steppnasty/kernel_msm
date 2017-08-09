@@ -2,7 +2,6 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
- * Modified 2014, Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -19,6 +18,7 @@
 #define __ARCH_ARM_MACH_MSM_DEVICES_H
 
 #include <linux/clkdev.h>
+#include <linux/platform_device.h>
 #include "clock.h"
 
 extern struct platform_device msm_ebi0_thermal;
@@ -95,16 +95,10 @@ extern struct platform_device msm_device_ssbi7;
 #endif /*CONFIG_MSM8X60_SSBI*/
 extern struct platform_device msm_gsbi1_qup_spi_device;
 extern struct platform_device msm_gsbi8_qup_spi_device;
-extern struct platform_device msm_mddi_device;
-extern struct platform_device msm_device_mddi1;
-extern struct platform_device msm_mdp_device;
 #if defined(CONFIG_ARCH_MSM7X30)
 extern struct platform_device msm_device_i2c_2;
 extern struct platform_device qup_device_i2c;
 extern struct platform_device msm_device_vidc_720p;
-#endif
-#if defined(CONFIG_SPI_QSD_NEW)
-extern struct platform_device qsdnew_device_spi;
 #endif
 extern struct platform_device *msm_footswitch_devices[];
 extern unsigned msm_num_footswitch_devices;

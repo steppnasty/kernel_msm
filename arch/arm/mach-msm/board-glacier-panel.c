@@ -181,7 +181,7 @@ int mdp_core_clk_rate_table[] = {
 	192000000,
 };
 
-static struct msm_panel_common_pdata mdp_pdata_glacier = {
+static struct msm_panel_common_pdata mdp_pdata = {
 	.hw_revision_addr = 0xac001270,
 	.gpio = 30,
 	.mdp_max_clk = 192000000,
@@ -191,6 +191,12 @@ static struct msm_panel_common_pdata mdp_pdata_glacier = {
 	.mem_hid = MEMTYPE_EBI0,
 	.ov0_wb_size = 0,
 };
+
+static void __init msm_fb_add_devices(void)
+{
+	msm_fb_register_device("mdp", &mdp_pdata);
+	msm_fb_register_device("pmdh", &mddi_pdata);
+}
 
 int __init glacier_init_panel(void)
 {
@@ -234,15 +240,11 @@ int __init glacier_init_panel(void)
 		return rc;
 	}
 
-	msm_mdp_device.dev.platform_data = &mdp_pdata_glacier;
-
 	rc = platform_device_register(&msm_fb_device);
 	if (rc)
 		return rc;
 
-	rc = platform_device_register(&msm_mdp_device);
-	if (rc)
-		return rc;
+	msm_fb_add_devices();
 
 	axi_clk = clk_get(NULL, "ebi1_clk");
 	if (IS_ERR(axi_clk)) {
@@ -250,9 +252,5 @@ int __init glacier_init_panel(void)
 		return PTR_ERR(axi_clk);
 	}
 
-	msm_mddi_device.dev.platform_data = &mddi_pdata;
-	rc = platform_device_register(&msm_mddi_device);
-	if (rc)
-		return rc;
 	return 0;
 }

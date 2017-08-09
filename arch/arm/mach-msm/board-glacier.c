@@ -1376,6 +1376,47 @@ static struct i2c_board_info msm_marimba_board_info[] = {
 	}
 };
 
+static struct resource qsd_spi_resources[] = {
+	{
+		.name   = "spi_irq_in",
+		.start	= INT_SPI_INPUT,
+		.end	= INT_SPI_INPUT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_irq_out",
+		.start	= INT_SPI_OUTPUT,
+		.end	= INT_SPI_OUTPUT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_irq_err",
+		.start	= INT_SPI_ERROR,
+		.end	= INT_SPI_ERROR,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_base",
+		.start	= 0xA8000000,
+		.end	= 0xA8000000 + SZ_4K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name   = "spidm_channels",
+		.flags  = IORESOURCE_DMA,
+	},
+	{
+		.name   = "spidm_crci",
+		.flags  = IORESOURCE_DMA,
+	},
+};
+
+static struct platform_device qsdnew_device_spi = {
+	.name		= "spi_qsd_new",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(qsd_spi_resources),
+	.resource	= qsd_spi_resources,
+};
 
 static struct spi_board_info msm_spi_board_info[] __initdata = {
 	{

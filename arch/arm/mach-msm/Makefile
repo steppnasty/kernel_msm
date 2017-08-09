@@ -18,7 +18,6 @@ ifndef CONFIG_ARCH_MSM8X60
 	ifdef CONFIG_MSM_PROC_COMM
 		obj-$(CONFIG_REGULATOR) += footswitch-pcom.o
 	endif
-	obj-y += devices.o
 endif
 
 obj-y += acpuclock.o
