@@ -292,7 +292,11 @@ obj-$(CONFIG_FS_ENET) += fs_enet/
 
 obj-$(CONFIG_NETXEN_NIC) += netxen/
 
+ifdef CONFIG_ARCH_MSM8X60
+obj-$(CONFIG_MSM_RMNET) += msm_rmnet-8x60.o
+else
 obj-$(CONFIG_MSM_RMNET) += msm_rmnet.o
+endif
 
 obj-$(CONFIG_NIU) += niu.o
 obj-$(CONFIG_VIRTIO_NET) += virtio_net.o
