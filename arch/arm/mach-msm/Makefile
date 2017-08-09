@@ -320,13 +320,7 @@ obj-$(CONFIG_HTC_BATT_CORE) += htc_battery_core.o
 obj-$(CONFIG_HTC_BATT8x60) += htc_battery_8x60.o
 obj-$(CONFIG_HTC_PWRSINK) += htc_pwrsink.o
 obj-$(CONFIG_MSM_RMT_STORAGE_SERVER) += rmt_storage_server.o
-#
-# wait for user-space rmt_storage daemon ready
-ifeq ($(CONFIG_ARCH_MSM8X60),y)
-obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client-8x60.o
-else
 obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o
-endif
 ifeq ($(CONFIG_MSM_SSBI),y)
 obj-$(CONFIG_PMIC8058) += pmic8058-mpp.o
 else

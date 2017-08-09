@@ -37,7 +37,7 @@
 #include <mach/restart.h>
 #include <mach/mdm.h>
 #if defined(CONFIG_MSM_RMT_STORAGE_CLIENT)
-#include <linux/rmt_storage_client-8x60.h>
+#include <linux/rmt_storage_client.h>
 #endif
 
 #define TCSR_WDT_CFG 0x30
