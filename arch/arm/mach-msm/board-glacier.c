@@ -399,7 +399,6 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.guage_driver = GUAGE_MODEM,
 	.charger = SWITCH_CHARGER_TPS65200,
 	.m2a_cable_detect = 1,
-	.int_data.chg_int = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(GLACIER_GPIO_CHG_INT)),
 };
 
 static struct platform_device htc_battery_pdev = {
@@ -702,7 +701,7 @@ static struct i2c_board_info i2c_a1026_devices[] = {
 };
 
 static struct tps65200_platform_data tps65200_data = {
-	.charger_check = 0,
+	.gpio_chg_int = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(GLACIER_GPIO_CHG_INT)),
 };
 
 static struct i2c_board_info i2c_devices[] = {

@@ -84,12 +84,6 @@ struct battery_info_reply {
 	s32 eval_current;	/* System loading current from ADC */
 };
 
-struct htc_battery_tps65200_int {
-	int chg_int;
-	int tps65200_reg;
-	struct delayed_work int_work;
-};
-
 struct htc_battery_platform_data {
 	int (*func_show_batt_attr)(struct device_attribute *attr,
 					 char *buf);
@@ -101,7 +95,6 @@ struct htc_battery_platform_data {
 	int guage_driver;
 	int m2a_cable_detect;
 	int charger;
-	struct htc_battery_tps65200_int int_data;
 	int (*func_is_support_super_charger)(void);
 	int (*func_battery_charging_ctrl)(enum batt_ctl_t ctl);
 	int (*func_battery_gpio_init)(void);

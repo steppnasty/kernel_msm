@@ -197,8 +197,6 @@ static struct power_supply htc_power_supplies[] = {
 	},
 };
 
-static int update_batt_info(void);
-
 static void htc_usb_send_notify(void)
 {
 	struct htc_usb_status_notifier *notifier;
@@ -847,6 +845,56 @@ static int htc_set_smem_cable_type(u32 cable_type)
 	return 0;
 }
 #endif
+
+static void tps_int_notifier_func(int int_reg, int value);
+static struct tps65200_chg_int_notifier tps_int_notifier = {
+	.name = "htc_battery",
+	.func = tps_int_notifier_func,
+};
+
+static void tps_int_notifier_func(int int_reg, int value)
+{
+#ifdef CONFIG_HTC_BATTCHG_SMEM
+	if (!smem_batt_info) {
+		smem_batt_info = smem_alloc(SMEM_BATT_INFO,
+				sizeof(struct htc_batt_info_full));
+		if (!smem_batt_info) {
+			BATT_ERR("Update SMEM: allocate fail");
+			return;
+		}
+	}
+#endif
+
+	if (int_reg == CHECK_INT1) {
+#ifdef CONFIG_HTC_BATTCHG_SMEM
+		smem_batt_info->over_vchg = (unsigned int)value;
+#else
+		htc_batt_info.rep.over_vchg = (unsigned int)value;
+#endif
+		if (value)
+			power_supply_changed(
+				&htc_power_supplies[CHARGER_BATTERY]);
+	}
+#ifdef CONFIG_HTC_BATTCHG_SMEM
+	else if (int_reg == CHECK_INT2)
+		smem_batt_info->reserve4 = 1;
+#endif
+}
+
+static ssize_t htc_battery_show_batt_attr(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	switch (htc_batt_info.guage_driver) {
+	case GUAGE_MODEM:
+#ifdef CONFIG_HTC_BATTCHG_SMEM
+		return htc_battery_show_smem(dev, attr, buf);
+#endif
+		break;
+	}
+	return 0;
+}
+
 static ssize_t htc_battery_show_batt_attr(struct device *dev,
 					 struct device_attribute *attr,
 					 char *buf)
@@ -1412,98 +1460,6 @@ dont_need_update:
 	return i;
 }
 
-static irqreturn_t tps65200_int_detection(int irq, void *data)
-{
-	struct htc_battery_tps65200_int *ip = data;
-
-	BATT_LOG("%s: over voltage is detected.", __func__);
-
-	disable_irq_nosync(ip->chg_int);
-
-	ip->tps65200_reg = 0;
-
-	schedule_delayed_work(&ip->int_work, msecs_to_jiffies(200));
-
-	return IRQ_HANDLED;
-}
-
-static void htc_battery_tps65200_int_func(struct work_struct *work)
-{
-	struct htc_battery_tps65200_int *ip;
-	int fault_bit;
-	ip = container_of(work, struct htc_battery_tps65200_int,
-			int_work.work);
-#ifdef CONFIG_HTC_BATTCHG_SMEM
-	if (!smem_batt_info) {
-		smem_batt_info = smem_alloc(SMEM_BATT_INFO,
-				sizeof(struct htc_batt_info_full));
-		if (!smem_batt_info) {
-			BATT_ERR("Update SMEM: allocate fail");
-			return;
-		}
-	}
-#endif
-	switch (ip->tps65200_reg) {
-	case CHECK_INT1:
-		/* read twice. First read to trigger TPS65200 clear fault bit
-		   on INT1. Second read to make sure that fault bit is cleared
-		   and call off ovp function.*/
-		fault_bit = tps_set_charger_ctrl(CHECK_INT1);
-		BATT_LOG("INT1 value: %d", fault_bit);
-		fault_bit = tps_set_charger_ctrl(CHECK_INT1);
-
-		if (fault_bit) {
-#ifdef CONFIG_HTC_BATTCHG_SMEM
-			smem_batt_info->over_vchg = 1;
-#else
-			htc_batt_info.rep.over_vchg = 1;
-#endif
-			power_supply_changed(&htc_power_supplies[CHARGER_BATTERY]);
-			schedule_delayed_work(&ip->int_work,
-					    msecs_to_jiffies(5000));
-			BATT_LOG("OVER_VOLTAGE: "
-				"over voltage fault bit on TPS65200 is raised:"
-				" %d", fault_bit);
-		} else {
-#ifdef CONFIG_HTC_BATTCHG_SMEM
-			smem_batt_info->over_vchg = 0;
-#else
-			htc_batt_info.rep.over_vchg = 0;
-#endif
-			cancel_delayed_work(&ip->int_work);
-			enable_irq(ip->chg_int);
-		}
-		break;
-	default:
-		fault_bit = tps_set_charger_ctrl(CHECK_INT2);
-		BATT_LOG("Read TPS65200 INT2 register value: %x", fault_bit);
-		if (fault_bit & 0x80) {
-			fault_bit = tps_set_charger_ctrl(CHECK_INT2);
-			BATT_LOG("Read TPS65200 INT2 register value: %x"
-				, fault_bit);
-			fault_bit = tps_set_charger_ctrl(CHECK_INT2);
-			BATT_LOG("Read TPS65200 INT2 register value: %x"
-				, fault_bit);
-			fault_bit = tps_set_charger_ctrl(CHECK_CONTROL);
-#ifdef CONFIG_HTC_BATTCHG_SMEM
-			smem_batt_info->reserve4 = 1;
-#endif
-			cancel_delayed_work(&ip->int_work);
-			enable_irq(ip->chg_int);
-		} else {
-			fault_bit = tps_set_charger_ctrl(CHECK_INT1);
-			BATT_LOG("Read TPS65200 INT1 register value: %x"
-				, fault_bit);
-			if (fault_bit & 0x40) {
-				ip->tps65200_reg = CHECK_INT1;
-				schedule_delayed_work(&ip->int_work,
-						msecs_to_jiffies(200));
-			}
-		}
-		break;
-	}
-}
-
 static void batt_charger_ctrl_func(struct work_struct *work)
 {
 	int rc;
@@ -1665,7 +1621,6 @@ static struct msm_rpc_server battery_server = {
 
 static int htc_battery_probe(struct platform_device *pdev)
 {
-	int rc = 0;
 	struct htc_battery_platform_data *pdata = pdev->dev.platform_data;
 
 	htc_batt_info.device_id = pdev->id;
@@ -1695,22 +1650,8 @@ static int htc_battery_probe(struct platform_device *pdev)
 	if (pdata->guage_driver == GUAGE_MODEM || pdata->m2a_cable_detect)
 		msm_rpc_create_server(&battery_server);
 
-	if (pdata->int_data.chg_int) {
-		BATT_LOG("init over voltage interrupt detection.");
-		INIT_DELAYED_WORK(&pdata->int_data.int_work,
-				htc_battery_tps65200_int_func);
-
-		rc = request_irq(pdata->int_data.chg_int,
-				tps65200_int_detection,
-				IRQF_TRIGGER_LOW,
-				"over_voltage_interrupt",
-				&pdata->int_data);
-
-		if (rc) {
-			BATT_LOG("request irq failed");
-			return rc;
-		}
-	}
+	if (pdata->charger == SWITCH_CHARGER_TPS65200)
+		tps_register_notifier(&tps_int_notifier);
 
 	charger_ctrl_stat = ENABLE_CHARGER;
 	INIT_WORK(&batt_charger_ctrl_work, batt_charger_ctrl_func);

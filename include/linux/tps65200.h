@@ -24,6 +24,7 @@
 #define NORMALTEMP_VREG		0XC9
 #define CHECK_INT1		0XCA
 #define CHECK_CONTROL		0xCB
+#define NORMALTEMP_VREG_HV	0xCC
 
 enum wled_ctl_t {
 	WLED_DISABLE = 0,
@@ -31,14 +32,27 @@ enum wled_ctl_t {
 	WLED_STATUS
 };
 
-struct tps65200_platform_data {
-	int charger_check;
-	int gpio_chg_stat;
+struct tps65200_chg_int_data {
+	int gpio_chg_int;
+	int tps65200_reg;
+	struct delayed_work int_work;
 };
 
-#if defined(CONFIG_TPS65200)
+struct tps65200_platform_data {
+	int gpio_chg_stat;
+	int gpio_chg_int;
+};
+
+struct tps65200_chg_int_notifier {
+	struct list_head notifier_link;
+	const char *name;
+	void (*func)(int int_reg, int value);
+};
+
+#ifdef CONFIG_TPS65200
 extern int tps_set_charger_ctrl(u32 ctl);
+extern int tps_register_notifier(struct tps65200_chg_int_notifier *notifier);
 #else
-static int tps_set_charger_ctrl(u32 ctl) {return 0 ; }
+static int tps_set_charger_ctrl(u32 ctl) { return 0 ; }
 #endif
 #endif
