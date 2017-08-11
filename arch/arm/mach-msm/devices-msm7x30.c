@@ -849,17 +849,17 @@ static struct resource resources_msm_rotator[] = {
 static struct msm_rot_clocks rotator_clocks[] = {
 	{
 		.clk_name = "rotator_clk",
-		.clk_type = ROTATOR_AXICLK_CLK,
+		.clk_type = ROTATOR_CORE_CLK,
 		.clk_rate = 0,
 	},
 	{
 		.clk_name = "rotator_pclk",
-		.clk_type = ROTATOR_PCLK_CLK,
+		.clk_type = ROTATOR_PCLK,
 		.clk_rate = 0,
 	},
 	{
 		.clk_name = "rotator_imem_clk",
-		.clk_type = ROTATOR_IMEMCLK_CLK,
+		.clk_type = ROTATOR_IMEM_CLK,
 		.clk_rate = 0,
 	},
 };

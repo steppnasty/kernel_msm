@@ -73,8 +73,10 @@ extern struct platform_device msm_device_dmov;
 
 extern struct platform_device msm_device_nand;
 extern struct platform_device msm_device_tssc;
-#ifdef CONFIG_MSM_ROTATOR
 extern struct platform_device msm_rotator_device;
+
+#ifdef CONFIG_MSM_BUS_SCALING
+extern struct msm_bus_scale_pdata rotator_bus_scale_pdata;
 #endif
 
 extern struct platform_device msm_device_tsif;
