@@ -29,18 +29,29 @@
 
 #ifndef DIAGFWD_H
 #define DIAGFWD_H
+#include <mach/msm_smd.h>
 
-void diagfwd_init(void);
+int diagfwd_init(void);
 void diagfwd_exit(void);
 void diag_process_hdlc(void *data, unsigned len);
 void __diag_smd_send_req(void);
 void __diag_smd_qdsp_send_req(void);
-int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr);
-int diagfwd_connect(void);
-int diagfwd_disconnect(void);
+void diag_usb_legacy_notifier(void *, unsigned, struct diag_request *);
+int diag_device_write(void *, int, struct diag_request *);
 int mask_request_validate(unsigned char mask_buf[]);
 
 /* State for diag forwarding */
+#ifdef CONFIG_DIAG_OVER_USB
+int diagfwd_connect(void);
+int diagfwd_disconnect(void);
+#endif
 extern int diag_debug_buf_idx;
 extern unsigned char diag_debug_buf[1024];
+
+
+#define SMD_FUNC_CLOSE 0
+#define SMD_FUNC_OPEN_DIAG 1
+#define SMD_FUNC_OPEN_BT 2
+void diag_smd_enable(smd_channel_t * ch, char *src, int mode);
+
 #endif

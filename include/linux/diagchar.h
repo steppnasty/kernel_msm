@@ -36,6 +36,7 @@
 #define PKT_TYPE			8
 #define DEINIT_TYPE			16
 #define MEMORY_DEVICE_LOG_TYPE		32
+#define USERMODE_DIAGFWD		64
 #define USB_MODE			1
 #define MEMORY_DEVICE_MODE		2
 #define NO_LOGGING_MODE			3
