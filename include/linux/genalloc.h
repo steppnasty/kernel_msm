@@ -52,7 +52,7 @@ extern int gen_pool_add_virt(struct gen_pool *, unsigned long, phys_addr_t,
  *
  * Returns 0 on success or a -ve errno on failure.
  */
-static inline int __must_check gen_pool_add(struct gen_pool *pool, unsigned long addr,
+static inline int gen_pool_add(struct gen_pool *pool, unsigned long addr,
 			       size_t size, int nid)
 {
 	return gen_pool_add_virt(pool, addr, -1, size, nid);
