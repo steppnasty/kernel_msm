@@ -282,6 +282,7 @@ obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-audio.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-keypad.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-microp.o
+obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-panel.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += htc_bdaddress.o htc_sleep_clk.o board-doubleshot-rfkill.o htc_fmtx_rfkill.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-mmc.o board-doubleshot-wifi.o
 obj-$(CONFIG_MACH_LEAD) += board-lead.o
