@@ -147,6 +147,7 @@ struct marimba_platform_data {
 	void (*marimba_shutdown) (void);
 	u32 (*bahama_setup) (void);
 	u32 (*bahama_shutdown) (int);
+	u32 (*bahama_core_config) (int type);
 };
 
 /*
