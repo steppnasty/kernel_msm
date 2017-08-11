@@ -1526,11 +1526,6 @@ static void __init msm_qsd_spi_init(void)
 }
 #ifndef CONFIG_MSM_SSBI
 static struct pm8058_platform_data pm8058_glacier_data = {
-	.pm_irqs = {
-		[PM8058_IRQ_KEYPAD - PM8058_FIRST_IRQ] = 74,
-		[PM8058_IRQ_KEYSTUCK - PM8058_FIRST_IRQ] = 75,
-		[PM8058_IRQ_CHGVAL - PM8058_FIRST_IRQ] = 15,
-	},
 	.init = &glacier_pm8058_gpios_init,
 	.num_subdevs = 4,
 	.sub_devices = {

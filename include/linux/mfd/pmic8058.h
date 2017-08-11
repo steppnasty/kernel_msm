@@ -240,8 +240,6 @@ struct pm8058_gpio {
 #define	PM8058_IRQ_KEYSTUCK	(PM8058_FIRST_MISC_IRQ + 1)
 #define PM8058_IRQ_CHGVAL	(PM8058_FIRST_MISC_IRQ + 2)
 
-#define PM8058_IRQS		NR_PMIC8058_IRQS
-
 #define PM8058_GPIOS		NR_PMIC8058_GPIO_IRQS
 #define PM8058_MPPS		NR_PMIC8058_MPP_IRQS
 
@@ -278,8 +276,6 @@ struct pm8058_sub_devices_data {
 };
 
 struct pm8058_platform_data {
-	/* This table is only needed for misc interrupts. */
-	unsigned int	pm_irqs[PM8058_IRQS];	/* block*8 + bit-pos */
 #ifdef CONFIG_MSM_SSBI
 	int					(*init)(struct device *dev);
 	/* child devices */
