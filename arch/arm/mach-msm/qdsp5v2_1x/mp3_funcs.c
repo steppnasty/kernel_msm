@@ -19,8 +19,6 @@
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 
-#include <linux/msm_audio.h>
-
 #include <mach/qdsp5v2_1x/qdsp5audppmsg.h>
 #include <mach/qdsp5v2_1x/qdsp5audplaycmdi.h>
 #include <mach/qdsp5v2_1x/qdsp5audplaymsg.h>

@@ -63,7 +63,6 @@
 #include <linux/fs.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
-#include <linux/msm_audio.h>
 #include <mach/qdsp5v2_1x/audio_dev_ctl.h>
 #include <mach/dal.h>
 #include <linux/kthread.h>
