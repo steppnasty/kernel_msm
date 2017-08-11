@@ -139,12 +139,6 @@ obj-$(CONFIG_MACH_MAHIMAHI) += board-mahimahi-microp.o
 obj-$(CONFIG_MACH_MAHIMAHI) += htc_acoustic_qsd.o
 obj-$(CONFIG_MACH_MAHIMAHI) += board-mahimahi-flashlight.o
 
-obj-$(CONFIG_MACH_INCREDIBLEC) += board-incrediblec.o panel-samsungwvga-tl2796a.o panel-sonywvga-s6d16a0x21.o board-incrediblec-tv.o
-obj-$(CONFIG_MACH_INCREDIBLEC) += board-incrediblec-keypad.o board-incrediblec-mmc.o
-obj-$(CONFIG_MACH_INCREDIBLEC) += board-incrediblec-rfkill.o board-incrediblec-audio.o
-obj-$(CONFIG_MACH_INCREDIBLEC) += board-incrediblec-wifi.o htc_awb_cal.o
-obj-$(CONFIG_MACH_INCREDIBLEC) += board-incrediblec-microp.o
-obj-$(CONFIG_MACH_INCREDIBLEC) += proc_engineerid.o
 obj-$(CONFIG_MACH_SUPERSONIC) += board-supersonic.o board-supersonic-panel.o
 obj-$(CONFIG_MACH_SUPERSONIC) += board-supersonic-keypad.o board-supersonic-mmc.o
 obj-$(CONFIG_MACH_SUPERSONIC) += board-supersonic-rfkill.o board-supersonic-audio.o
@@ -164,22 +158,6 @@ obj-$(CONFIG_MACH_BRAVOC) += board-bravoc-microp.o
 # MSM7x30 boards
 obj-$(CONFIG_ARCH_MSM7X30) += htc_wifi_nvs.o htc_awb_cal.o
 
-obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon.o
-obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon-keypad.o
-obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon-microp.o
-obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon-audio.o
-obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon-mmc.o board-lexikon-wifi.o
-obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon-rfkill.o
-obj-$(CONFIG_MACH_LEXIKON)+= board-lexikon-panel.o htc_bluetooth.o
-
-obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom.o
-obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-keypad.o
-obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-microp.o
-obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-audio.o
-obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-mmc.o board-kingdom-wifi.o
-obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-rfkill.o
-obj-$(CONFIG_MACH_KINGDOM)+= board-kingdom-panel.o htc_bluetooth.o
-
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-audio.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-camera.o
@@ -189,41 +167,6 @@ obj-$(CONFIG_MACH_GLACIER)+= board-glacier-mmc.o board-glacier-wifi.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-rfkill.o
 obj-$(CONFIG_MACH_GLACIER)+= htc_fmtx_rfkill.o
 obj-$(CONFIG_MACH_GLACIER)+= board-glacier-panel.o htc_bluetooth.o
-
-obj-$(CONFIG_MACH_ICON)+= board-icon.o
-obj-$(CONFIG_MACH_ICON)+= board-icon-keypad.o
-obj-$(CONFIG_MACH_ICON)+= board-icon-audio.o
-obj-$(CONFIG_MACH_ICON)+= board-icon-mmc.o board-icon-wifi.o
-obj-$(CONFIG_MACH_ICON)+= board-icon-rfkill.o
-obj-$(CONFIG_MACH_ICON)+= htc_fmtx_rfkill.o
-obj-$(CONFIG_MACH_ICON)+= board-icon-panel.o htc_bluetooth.o
-
-obj-$(CONFIG_MACH_FLYER)+= board-flyer.o
-obj-$(CONFIG_MACH_FLYER)+= board-flyer-keypad.o
-obj-$(CONFIG_MACH_FLYER)+= board-flyer-microp.o
-obj-$(CONFIG_MACH_FLYER)+= board-flyer-audio.o
-obj-$(CONFIG_MACH_FLYER)+= board-flyer-mmc.o board-flyer-wifi.o htc_awb_cal.o
-obj-$(CONFIG_MACH_FLYER)+= board-flyer-rfkill.o htc_bluetooth.o board-flyer-panel.o
-
-obj-$(CONFIG_MACH_EXPRESS)+= board-express.o panel-lgwsvga-ld070ws1-7x30.o
-obj-$(CONFIG_MACH_EXPRESS)+= board-express-keypad.o
-obj-$(CONFIG_MACH_EXPRESS)+= board-express-microp.o
-obj-$(CONFIG_MACH_EXPRESS)+= board-express-audio.o
-obj-$(CONFIG_MACH_EXPRESS)+= board-express-mmc.o board-express-wifi.o htc_awb_cal.o
-obj-$(CONFIG_MACH_EXPRESS)+= board-express-rfkill.o htc_bluetooth.o board-express-panel.o
-
-obj-$(CONFIG_MACH_EXPRESS_KT)+= board-express-kt.o panel-lgwsvga-ld070ws1-7x30.o
-obj-$(CONFIG_MACH_EXPRESS_KT)+= board-express-kt-keypad.o
-obj-$(CONFIG_MACH_EXPRESS_KT)+= board-express-kt-microp.o
-obj-$(CONFIG_MACH_EXPRESS_KT)+= board-express-kt-audio.o
-obj-$(CONFIG_MACH_EXPRESS_KT)+= board-express-kt-mmc.o board-express-kt-wifi.o htc_awb_cal.o
-obj-$(CONFIG_MACH_EXPRESS_KT)+= board-express-kt-rfkill.o htc_bluetooth.o board-express-kt-panel.o
-
-obj-$(CONFIG_MACH_DYNASTY)+= board-dynasty.o
-obj-$(CONFIG_MACH_DYNASTY)+= board-dynasty-keypad.o
-obj-$(CONFIG_MACH_DYNASTY)+= board-dynasty-microp.o
-obj-$(CONFIG_MACH_DYNASTY)+= board-dynasty-mmc.o board-dynasty-wifi.o htc_awb_cal.o
-obj-$(CONFIG_MACH_DYNASTY)+= board-dynasty-rfkill.o htc_bluetooth.o
 
 # MSM7200A boards
 obj-$(CONFIG_MACH_HERO) += board-hero.o board-hero-panel.o board-hero-keypad.o

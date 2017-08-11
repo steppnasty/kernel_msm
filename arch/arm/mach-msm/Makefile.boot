@@ -42,45 +42,15 @@ initrd_phys-$(CONFIG_MACH_DESIREC)           := 0x11A00000
 endif
 
 ifeq ($(CONFIG_ARCH_MSM7230),y)
-ifeq ($(CONFIG_MACH_FLYER),y)
-  zreladdr-y            := 0x04408000
-params_phys-y           := 0x04400100
-initrd_phys-y           := 0x05400000
-else
-ifeq ($(CONFIG_MACH_ICON),y)
-  zreladdr-y            := 0x04408000
-params_phys-y           := 0x04400100
-initrd_phys-y           := 0x05400000
-else
-ifeq ($(CONFIG_MACH_EXPRESS_KT),y)
-  zreladdr-y            := 0x04408000
-params_phys-y           := 0x04400100
-initrd_phys-y           := 0x05400000
-else
   zreladdr-y            := 0x04008000
 params_phys-y           := 0x04000100
 initrd_phys-y           := 0x05000000
 endif
-endif
-endif
-endif
 
 ifeq ($(CONFIG_ARCH_MSM7630),y)
-ifeq ($(CONFIG_MACH_EXPRESS),y)
-  zreladdr-y            := 0x05008000
-params_phys-y           := 0x05000100
-initrd_phys-y           := 0x06000000
-else
-ifeq ($(CONFIG_MACH_KINGDOM),y)
-  zreladdr-y            := 0x05008000
-params_phys-y           := 0x05000100
-initrd_phys-y           := 0x06000000
-else
   zreladdr-y            := 0x04A08000
 params_phys-y           := 0x04A00100
 initrd_phys-y           := 0x05A00000
-endif
-endif
 endif
 
 ifeq ($(CONFIG_ARCH_MSM8X60),y)

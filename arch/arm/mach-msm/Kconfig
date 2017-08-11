@@ -365,13 +365,6 @@ config MACH_INCREDIBLE
 	help
 	  Select this to support the Incredible device
 
-config MACH_INCREDIBLEC
-	depends on ARCH_QSD8X50
-	default n
-	bool "IncredibleC"
-	help
-	  Select this to support the IncredibleC device
-
 config MACH_SUPERSONIC
 	depends on ARCH_QSD8X50
 	default n
@@ -463,22 +456,6 @@ config MACH_CHACHA
 	help
 	  Support for Chacha (PDA phone).
 
-config MACH_LEXIKON
-       depends on ARCH_MSM7X30
-       depends on !MSM_STACKED_MEMORY
-       default n
-       bool "MSM7x30 LEXIKON"
-       help
-         Support for the Qualcomm MSM7x30 Lexikon board.
-
-config MACH_KINGDOM
-       depends on ARCH_MSM7X30
-       depends on !MSM_STACKED_MEMORY
-       default n
-       bool "MSM7x30 KINGDOM"
-       help
-         Support for the Qualcomm MSM7x30 Kingdom board.
-
 config MACH_GLACIER
        depends on ARCH_MSM7X30
        depends on !MSM_STACKED_MEMORY
@@ -486,49 +463,6 @@ config MACH_GLACIER
        bool "MSM7x30 GLACIER"
        help
          Support for the Qualcomm MSM7x30 Glacier board.
-
-config MACH_ICON
-       depends on ARCH_MSM7X30
-       depends on !MSM_STACKED_MEMORY
-       default n
-       bool "MSM7x30 ICON"
-       help
-         Support for the Qualcomm MSM7x30 Icon board.
-
-config MACH_DYNASTY
-       depends on ARCH_MSM7X30
-       depends on !MSM_STACKED_MEMORY
-       default n
-       bool "MSM7x30 DYNASTY"
-       help
-         Support for the Qualcomm MSM7x30 Dynasty board.
-
-config MACH_FLYER
-       depends on ARCH_MSM7X30
-       depends on !MSM_STACKED_MEMORY
-       default n
-       bool "MSM7x30 FLYER"
-       select MSM7X30_DDR2
-       help
-         Support for the Qualcomm MSM7x30 Flyer board.
-
-config MACH_EXPRESS
-       depends on ARCH_MSM7X30
-       depends on !MSM_STACKED_MEMORY
-       default n
-       bool "MSM7x30 EXPRESS"
-       select MSM7X30_DDR2
-       help
-         Support for the Qualcomm MSM7x30 Express board.
-
-config MACH_EXPRESS_KT
-       depends on ARCH_MSM7X30
-       depends on !MSM_STACKED_MEMORY
-       default n
-       bool "MSM7x30 EXPRESS_KT"
-       select MSM7X30_DDR2
-       help
-         Support for the Qualcomm MSM7x30 Express_kt board.
 
 config MACH_PYRAMID
 	depends on ARCH_MSM8X60
