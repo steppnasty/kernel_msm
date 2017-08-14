@@ -2457,6 +2457,30 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 	return value;
 }
 
+int android_show_function(char *buf)
+{
+	struct android_dev *dev = NULL;
+	struct android_configuration *conf = NULL;
+	unsigned length = 0;
+	struct usb_function *f;
+
+	list_for_each_entry(dev, &android_dev_list, list_item) {
+		if (!strncmp(dev->name, "android_usb", 11))
+			break;
+	}
+	list_for_each_entry(conf, &dev->configs, list_item) {
+		if (!strncmp(conf->usb_config.label, "android_usb", 11))
+			break;
+	}
+	list_for_each_entry(f, &conf->usb_config.functions, list) {
+		if (!strncmp(f->name, "Mass Storage Function", 21))
+			length += sprintf(buf + length, "mass_storage\n");
+		else
+			length += sprintf(buf + length, "%s\n", f->name);
+	}
+	return length;
+}
+
 static void android_disconnect(struct usb_gadget *gadget)
 {
 	struct usb_composite_dev *cdev = get_gadget_data(gadget);

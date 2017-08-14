@@ -134,7 +134,7 @@ static struct timer_list phy_status_timer;
 static void ept_prime_timer_func(unsigned long data);
 static void usb_do_work(struct work_struct *w);
 static void usb_do_remote_wakeup(struct work_struct *w);
-
+extern int android_show_function(char *buf);
 
 #define USB_STATE_IDLE    0
 #define USB_STATE_ONLINE  1
@@ -1428,6 +1428,27 @@ static irqreturn_t usb_interrupt(int irq, void *data)
 	}
 	return IRQ_HANDLED;
 }
+
+static ssize_t show_usb_function_switch(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t length;
+	length = android_show_function(buf);
+	return length;
+}
+
+static ssize_t store_usb_function_switch(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned u;
+
+	u = simple_strtoul(buf, NULL, 10);
+
+	return 0;
+}
+
+static DEVICE_ATTR(usb_function_switch, 0664,
+		show_usb_function_switch, store_usb_function_switch);
 
 static void usb_prepare(struct usb_info *ui)
 {
@@ -2753,6 +2774,11 @@ static int msm72k_probe(struct platform_device *pdev)
 	retval = usb_add_gadget_udc(&pdev->dev, &ui->gadget);
 	if (retval)
 		return usb_free(ui, retval);
+
+	retval = device_create_file(&ui->pdev->dev,
+		&dev_attr_usb_function_switch);
+	if (retval != 0)
+		pr_err("%s: dev_attr_usb_function_switch failed\n", __func__);
 
 	ui->sdev.name = DRIVER_NAME;
 	ui->sdev.print_name = print_switch_name;
