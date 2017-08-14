@@ -128,9 +128,8 @@ extern unsigned int user_debug;
 				    : : "r" (0) : "memory")
 #define dsb() __asm__ __volatile__ ("mcr p15, 0, %0, c7, c10, 4" \
 				    : : "r" (0) : "memory")
-#define dmb() do { __asm__ __volatile__ ("mcr p15, 0, %0, c7, c10, 5" \
-				: : "r" (0) : "memory"); \
-				arch_barrier_extra(); } while (0)
+#define dmb() __asm__ __volatile__ ("mcr p15, 0, %0, c7, c10, 5" \
+				: : "r" (0) : "memory")
 #elif defined(CONFIG_CPU_FA526)
 #define isb() __asm__ __volatile__ ("mcr p15, 0, %0, c7, c5, 4" \
 				    : : "r" (0) : "memory")
@@ -329,6 +328,8 @@ static inline unsigned long __xchg(unsigned long x, volatile void *ptr, int size
 
 extern void disable_hlt(void);
 extern void enable_hlt(void);
+
+void cpu_idle_wait(void);
 
 #include <asm-generic/cmpxchg-local.h>
 
