@@ -240,6 +240,9 @@ int __init glacier_init_panel(void)
 		return rc;
 	}
 
+	if (panel_type == 1)
+		msm_fb_pdata.invert_panel = 1;
+
 	rc = platform_device_register(&msm_fb_device);
 	if (rc)
 		return rc;

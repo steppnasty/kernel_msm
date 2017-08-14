@@ -1026,7 +1026,4 @@ void mdp4_wfd_init(int cndx);
 int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd, int cndx, int wait);
 #endif
 
-#ifdef CONFIG_MACH_GLACIER
-void mdp4_overlay_data_init(struct msm_fb_data_type *mfd);
-#endif
 #endif /* MDP_H */

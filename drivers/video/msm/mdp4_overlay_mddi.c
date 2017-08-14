@@ -1,5 +1,5 @@
 /* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
- * Modified 2014, Brian Stepp <steppnasty@gmail.com>
+ * Copyright (c) 2014-2017, Brian Stepp <steppnasty@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -921,9 +921,6 @@ void mdp4_overlay_update_mddi(struct msm_fb_data_type *mfd)
 
 	mdp4_overlay_setup_pipe_addr(mfd, pipe);
 
-#ifdef CONFIG_MACH_GLACIER
-	mdp4_overlay_data_init(mfd);
-#endif
 	mdp4_overlay_rgb_setup(pipe);
 
 	mdp4_overlay_reg_flush(pipe, 1);
