@@ -4,7 +4,6 @@
  *
  * Copyright (c) 2007-2012, The Linux Foundation. All rights reserved.
  * Copyright (C) 2007 Google Incorporated
- * Modified 2014, Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -31,6 +30,7 @@
 #include <linux/delay.h>
 #include <linux/mutex.h>
 #include <linux/pm_runtime.h>
+#include <linux/regulator/consumer.h>
 #include <asm/system.h>
 #include <asm/mach-types.h>
 #include <linux/semaphore.h>
@@ -42,6 +42,7 @@
 #ifdef CONFIG_FB_MSM_MDP40
 #include "mdp4.h"
 #endif
+#include "mipi_dsi.h"
 
 uint32 mdp4_extn_disp;
 
@@ -54,6 +55,8 @@ u32 mdp_max_clk = 200000000;
 u64 mdp_max_bw = 2000000000;
 
 static struct platform_device *mdp_init_pdev;
+static struct regulator *footswitch, *dsi_pll_vdda, *dsi_pll_vddio;
+static unsigned int mdp_footswitch_on;
 
 struct completion mdp_ppp_comp;
 struct semaphore mdp_ppp_mutex;
@@ -98,7 +101,7 @@ static struct delayed_work mdp_pipe_ctrl_worker;
 
 static boolean mdp_suspended = FALSE;
 ulong mdp4_display_intf;
-static DEFINE_MUTEX(mdp_suspend_mutex);
+DEFINE_MUTEX(mdp_suspend_mutex);
 
 #ifdef CONFIG_FB_MSM_MDP40
 struct mdp_dma_data dma2_data;
@@ -156,7 +159,6 @@ DEFINE_MUTEX(mdp_hist_lut_list_mutex);
 uint32_t mdp_block2base(uint32_t block)
 {
 	uint32_t base = 0x0;
-
 	switch (block) {
 	case MDP_BLOCK_DMA_P:
 		base = 0x90000;
@@ -1214,7 +1216,7 @@ error:
 static int _mdp_copy_hist_data(struct mdp_histogram_data *hist,
 						struct mdp_hist_mgmt *mgmt)
 {
-	int ret;
+	int ret = 0;
 
 	if (hist->c0) {
 		ret = copy_to_user(hist->c0, mgmt->c0,
@@ -2475,6 +2477,42 @@ static int mdp_irq_clk_setup(struct platform_device *pdev,
 	}
 	disable_irq(mdp_irq);
 
+	dsi_pll_vdda = regulator_get(&pdev->dev, "dsi_pll_vdda");
+	if (IS_ERR(dsi_pll_vdda)) {
+		dsi_pll_vdda = NULL;
+	} else {
+		if (mdp_rev == MDP_REV_42 || mdp_rev == MDP_REV_44) {
+			ret = regulator_set_voltage(dsi_pll_vdda, 1200000,
+				1200000);
+			if (ret) {
+				pr_err("set_voltage failed for dsi_pll_vdda, ret=%d\n",
+					ret);
+			}
+		}
+	}
+
+	dsi_pll_vddio = regulator_get(&pdev->dev, "dsi_pll_vddio");
+	if (IS_ERR(dsi_pll_vddio)) {
+		dsi_pll_vddio = NULL;
+	} else {
+		if (mdp_rev == MDP_REV_42) {
+			ret = regulator_set_voltage(dsi_pll_vddio, 1800000,
+				1800000);
+			if (ret) {
+				pr_err("set_voltage failed for dsi_pll_vddio, ret=%d\n",
+					ret);
+			}
+		}
+	}
+
+	footswitch = regulator_get(&pdev->dev, "fs_mdp");
+	if (IS_ERR(footswitch)) {
+		footswitch = NULL;
+	} else {
+		regulator_enable(footswitch);
+		mdp_footswitch_on = 1;
+	}
+
 	mdp_clk = clk_get(&pdev->dev, "mdp_clk");
 	if (IS_ERR(mdp_clk)) {
 		ret = PTR_ERR(mdp_clk);
@@ -3058,15 +3096,48 @@ static int mdp_probe(struct platform_device *pdev)
 	return rc;
 }
 
-unsigned int mdp_check_suspended(void)
+void mdp_footswitch_ctrl(boolean on)
 {
-	unsigned int ret;
-
 	mutex_lock(&mdp_suspend_mutex);
-	ret = mdp_suspended;
-	mutex_unlock(&mdp_suspend_mutex);
+	if (!mdp_suspended || mdp4_extn_disp || !footswitch ||
+		mdp_rev <= MDP_REV_41) {
+		mutex_unlock(&mdp_suspend_mutex);
+		return;
+	}
 
-	return ret;
+	if (dsi_pll_vddio)
+		regulator_enable(dsi_pll_vddio);
+
+	if (dsi_pll_vdda)
+		regulator_enable(dsi_pll_vdda);
+
+	mipi_dsi_prepare_clocks();
+	mipi_dsi_ahb_ctrl(1);
+	mipi_dsi_phy_ctrl(1);
+	mipi_dsi_clk_enable();
+
+	if (on && !mdp_footswitch_on) {
+		pr_debug("Enable MDP FS\n");
+		regulator_enable(footswitch);
+		mdp_footswitch_on = 1;
+	} else if (!on && mdp_footswitch_on) {
+		pr_debug("Disable MDP FS\n");
+		regulator_disable(footswitch);
+		mdp_footswitch_on = 0;
+	}
+
+	mipi_dsi_clk_disable();
+	mipi_dsi_phy_ctrl(0);
+	mipi_dsi_ahb_ctrl(0);
+	mipi_dsi_unprepare_clocks();
+
+	if (dsi_pll_vdda)
+		regulator_disable(dsi_pll_vdda);
+
+	if (dsi_pll_vddio)
+		regulator_disable(dsi_pll_vddio);
+
+	mutex_unlock(&mdp_suspend_mutex);
 }
 
 void mdp_free_splash_buffer(struct msm_fb_data_type *mfd)
@@ -3108,7 +3179,7 @@ static int mdp_suspend(struct platform_device *pdev, pm_message_t state)
 	if (pdev->id == 0) {
 		mdp_suspend_sub();
 		if (mdp_current_clk_on) {
-			printk(KERN_WARNING "MDP suspend failed\n");
+			printk(KERN_WARNING"MDP suspend failed\n");
 			return -EBUSY;
 		}
 	}
@@ -3125,10 +3196,12 @@ static void mdp_early_suspend(struct early_suspend *h)
 	mdp4_solidfill_commit(MDP4_MIXER1);
 	mdp4_dtv_set_black_screen();
 #endif
+	mdp_footswitch_ctrl(FALSE);
 }
 
 static void mdp_early_resume(struct early_suspend *h)
 {
+	mdp_footswitch_ctrl(TRUE);
 	mutex_lock(&mdp_suspend_mutex);
 	mdp_suspended = FALSE;
 	mutex_unlock(&mdp_suspend_mutex);
@@ -3137,7 +3210,10 @@ static void mdp_early_resume(struct early_suspend *h)
 
 static int mdp_remove(struct platform_device *pdev)
 {
-	/* free post processing memory */
+	if (footswitch != NULL)
+		regulator_put(footswitch);
+
+	/*free post processing memory*/
 	mdp_histogram_destroy();
 	mdp_hist_lut_destroy();
 	mdp_pp_initialized = FALSE;
