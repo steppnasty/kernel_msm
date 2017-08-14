@@ -1411,8 +1411,8 @@ static struct resource qsd_spi_resources[] = {
 	},
 };
 
-static struct platform_device qsdnew_device_spi = {
-	.name		= "spi_qsd_new",
+static struct platform_device qsd_device_spi = {
+	.name		= "spi_qsd",
 	.id		= 0,
 	.num_resources	= ARRAY_SIZE(qsd_spi_resources),
 	.resource	= qsd_spi_resources,
@@ -1512,9 +1512,7 @@ static int msm_qsd_spi_dma_config(void)
 }
 #endif
 static struct msm_spi_platform_data qsd_spi_pdata = {
-	.max_clock_speed = 26000000,
-	.clk_name = "core_clk",
-	.pclk_name = "iface_clk",
+	.max_clock_speed = 26331429,
 	.gpio_config  = msm_qsd_spi_gpio_config,
 	.gpio_release = msm_qsd_spi_gpio_release,
 //	.dma_config = msm_qsd_spi_dma_config,
@@ -1522,7 +1520,7 @@ static struct msm_spi_platform_data qsd_spi_pdata = {
 
 static void __init msm_qsd_spi_init(void)
 {
-	qsdnew_device_spi.dev.platform_data = &qsd_spi_pdata;
+	qsd_device_spi.dev.platform_data = &qsd_spi_pdata;
 }
 #ifndef CONFIG_MSM_SSBI
 static struct pm8058_platform_data pm8058_glacier_data = {

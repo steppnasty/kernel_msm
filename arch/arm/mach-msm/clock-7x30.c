@@ -2858,8 +2858,8 @@ static struct clk_local_ownership {
 	OWN(ROW1,  4, "usb_hs3_pclk",	usb_hs3_p_clk,	NULL),
 
 	OWN(ROW2,  3, "core_clk",	qup_i2c_clk,	"qup_i2c.4"),
-	OWN(ROW2,  1, "core_clk",	spi_clk,	"spi_qsd_new.0"),
-	OWN(ROW2,  1, "iface_clk",	spi_p_clk,	"spi_qsd_new.0"),
+	OWN(ROW2,  1, "core_clk",	spi_clk,	"spi_qsd.0"),
+	OWN(ROW2,  1, "iface_clk",	spi_p_clk,	"spi_qsd.0"),
 	OWN(ROW2,  9, "core_clk",	uart1_clk,	"msm_serial.0"),
 	OWN(ROW2,  6, "core_clk",	uart1dm_clk,	"msm_serial_hs.0"),
 	OWN(ROW2,  8, "core_clk",	uart2dm_clk,	"msm_serial_hs.1"),
