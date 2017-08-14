@@ -60,13 +60,33 @@
 
 #define MSM_PMEM_MDP_BASE	0x2DD00000
 #define MSM_PMEM_MDP_SIZE	0x02000000
-
-#define MSM_FB_BASE		0x2FD00000
-#define MSM_FB_SIZE		0x00300000
 #endif
 
-#define MSM_RAM_CONSOLE_BASE	MSM_HTC_RAM_CONSOLE_PHYS
-#define MSM_RAM_CONSOLE_SIZE	MSM_HTC_RAM_CONSOLE_SIZE
+#define MSM_SMI_BASE		0x38000000
+
+#define MSM_RAM_CONSOLE_BASE	0x40300000
+#define MSM_RAM_CONSOLE_SIZE	0x000E0000
+
+#define MSM_ION_SF_BASE		0x40400000
+#define MSM_ION_SF_SIZE		0x02000000
+
+#define MSM_ION_WB_BASE		0x42400000
+#define MSM_ION_WB_SIZE		0x00500000
+
+#define MSM_FB_BASE		0x42900000
+#define MSM_FB_SIZE		0x00500000
+
+#define MSM_FB_OV0_BASE		0x43000000
+#define MSM_FB_OV0_SIZE		0x00600000
+
+#define MSM_FB_OV1_BASE		0x43600000
+#define MSM_FB_OV1_SIZE		0x00600000
+
+#define MSM_PMEM_AUDIO_BASE	0x46400000
+#define MSM_PMEM_AUDIO_SIZE	0x00239000
+
+#define MSM_ION_CAMERA_BASE	0x6CD00000
+#define MSM_ION_CAMERA_SIZE	0x03300000
 
 /* GPIO definition */
 
@@ -189,5 +209,6 @@ int __init doubleshot_wifi_init(void);
 int __init doubleshot_init_mmc(void);
 int __init doubleshot_init_keypad(void);
 unsigned int doubleshot_get_engineerid(void);
+void msm8x60_allocate_fb_region(void);
 
 #endif /* __ARCH_ARM_MACH_MSM_BOARD_DOUBLESHOT_H */
