@@ -1,7 +1,7 @@
 /* linux/arch/arm/mach-msm/board-doubleshot-panel.c
  *
  * Copyright (c) 2011 HTC.
- * Copyright (C) Brian Stepp <steppnasty@gmail.com>
+ * Copyright (C) 2017 Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -26,6 +26,7 @@
 #include <linux/spi/spi.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/msm_ion.h>
 #include <mach/msm_fb.h>
 #include <mach/msm_iomap.h>
 #include <mach/panel_id.h>
@@ -645,7 +646,7 @@ static unsigned char doubleshot_shrink_pwm(int val)
 	return shrink_br;
 }
 
-static struct msm_panel_common_pdata mipi_panel_data = {
+static struct mipi_dsi_panel_platform_data mipi_panel_data = {
 	.shrink_pwm = doubleshot_shrink_pwm,
 };
 
@@ -655,6 +656,12 @@ static struct platform_device mipi_dsi_cmd_wvga_panel_device = {
 	.dev = {
 		.platform_data = &mipi_panel_data,
 	}
+};
+
+static struct resource msm_fb_resources[] = {
+	{
+		.flags = IORESOURCE_DMA,
+	},
 };
 
 static int msm_fb_detect_panel(const char *name)
@@ -678,31 +685,35 @@ static int msm_fb_detect_panel(const char *name)
 
 static struct msm_fb_platform_data msm_fb_pdata = {
 	.detect_client = msm_fb_detect_panel,
-	.width = 48,
-	.height = 80,
 };
 
 static struct platform_device msm_fb_device = {
 	.name   = "msm_fb",
 	.id     = 0,
+	.num_resources     = ARRAY_SIZE(msm_fb_resources),
+	.resource          = msm_fb_resources,
 	.dev.platform_data = &msm_fb_pdata,
-};
-
-int mdp_core_clk_rate_table[] = {
-	59080000,
-	128000000,
-	160000000,
-	200000000,
 };
 
 static struct msm_panel_common_pdata mdp_pdata = {
 	.gpio = 28,
-	.mdp_core_clk_rate = 200000000,
-	.mdp_core_clk_table = mdp_core_clk_rate_table,
-	.num_mdp_clk = ARRAY_SIZE(mdp_core_clk_rate_table),
+	.mdp_max_clk = 200000000,
 #ifdef CONFIG_MSM_BUS_SCALING
 	.mdp_bus_scale_table = &mdp_bus_scale_pdata,
 #endif
+	.mdp_rev = MDP_REV_41,
+#ifdef CONFIG_FB_MSM_OVERLAY0_WRITEBACK
+	.ov0_wb_size = MSM_FB_OV0_BASE,
+#endif
+#ifdef CONFIG_FB_MSM_OVERLAY1_WRITEBACK
+	.ov1_wb_size = MSM_FB_OV1_BASE,
+#endif
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+	.mem_hid = BIT(ION_CP_WB_HEAP_ID),
+#else
+	.mem_hid = MEMTYPE_EBI1,
+#endif
+	.mdp_iommu_split_domain = 0,
 };
 
 static void __init msm_fb_add_devices(void)
@@ -718,23 +729,24 @@ static void __init msm_fb_add_devices(void)
 #endif
 }
 
-/*
-TODO:
-1.find a better way to handle msm_fb_resources, to avoid passing it across file.
-2.error handling
- */
-int __init dot_init_panel(struct resource *res, size_t size)
+void __init msm8x60_allocate_fb_region(void)
+{
+	unsigned long size;
+
+	size = MSM_FB_SIZE;
+	msm_fb_resources[0].start = MSM_FB_BASE;
+	msm_fb_resources[0].end = msm_fb_resources[0].start + size - 1;
+	pr_info("allocating %lu bytes at %p (%lx physical) for fb\n",
+		size, __va(MSM_FB_BASE), (unsigned long)MSM_FB_BASE);
+}
+
+int __init doubleshot_init_panel(void)
 {
 	int ret;
 
-	pr_info("%s: res=%p, size=%d\n", __func__, res, size);
-	mipi_panel_data.shrink_pwm = doubleshot_shrink_pwm;
 	if (panel_type == PANEL_ID_DOT_HITACHI)
 		mipi_dsi_cmd_wvga_panel_device.name = "mipi_renesas";
 	pr_info("%s: %s\n", __func__, mipi_dsi_cmd_wvga_panel_device.name);
-
-	msm_fb_device.resource = res;
-	msm_fb_device.num_resources = size;
 
 	ret = platform_device_register(&msm_fb_device);
 	ret = platform_device_register(&mipi_dsi_cmd_wvga_panel_device);

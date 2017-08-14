@@ -1,6 +1,7 @@
 /* linux/arch/arm/mach-msm/board-doubleshot.c
  *
  * Copyright (C) 2010-2011 HTC Corporation.
+ * Copyright (c) 2017 Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -126,17 +127,25 @@
 #include <mach/rpc_hsusb.h>
 #include <mach/cable_detect.h>
 #include "rpm_stats.h"
+
+#include <linux/msm_ion.h>
+#include <mach/ion.h>
+
 #define MSM_SHARED_RAM_PHYS 0x40000000
 
 #ifdef CONFIG_PERFLOCK
 #include <mach/perflock.h>
 #endif
 
+#ifdef CONFIG_ION_MSM
+static struct platform_device ion_dev;
+#endif
+
 #ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
 int set_two_phase_freq(int cpufreq);
 #endif
 static unsigned int engineerid;
-int __init dot_init_panel(struct resource *res, size_t size);
+int __init doubleshot_init_panel(void);
 
 unsigned int doubleshot_get_engineerid(void)
 {
@@ -1300,15 +1309,6 @@ static struct platform_device msm_batt_device = {
 };
 #endif
 
-#ifdef CONFIG_FB_MSM_LCDC_DSUB
-/* VGA = 1440 x 900 x 4(bpp) x 2(pages)
-   prim = 1024 x 600 x 4(bpp) x 2(pages)
-   This is the difference. */
-#define MSM_FB_DSUB_PMEM_ADDER (0x9E3400-0x4B0000)
-#else
-#define MSM_FB_DSUB_PMEM_ADDER (0)
-#endif
-
 /* Sensors DSPS platform data */
 #ifdef CONFIG_MSM_DSPS
 static struct dsps_gpio_info dsps_gpios[] = {
@@ -1324,32 +1324,6 @@ static void __init msm8x60_init_dsps(void)
 }
 #endif /* CONFIG_MSM_DSPS */
 
-#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
-/* prim = 1024 x 600 x 4(bpp) x 2(pages)
- * hdmi = 1920 x 1080 x 2(bpp) x 1(page)
- * Note: must be multiple of 4096 */
-#define MSM_FB_SIZE roundup(0x300000 + 0x3F4800 + MSM_FB_DSUB_PMEM_ADDER, 4096)
-#elif defined(CONFIG_FB_MSM_TVOUT)
-/* prim = 1024 x 600 x 4(bpp) x 2(pages)
- * tvout = 720 x 576 x 2(bpp) x 2(pages)
- * Note: must be multiple of 4096 */
-#define MSM_FB_SIZE roundup(0x300000 + 0x195000 + MSM_FB_DSUB_PMEM_ADDER, 4096)
-#else /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
-#define MSM_FB_SIZE roundup(0x300000 + MSM_FB_DSUB_PMEM_ADDER, 4096) 
-#endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
-#define MSM_PMEM_SF_SIZE 0x2000000 /* 64 Mbytes */
-#define MSM_OVERLAY_BLT_SIZE   roundup(0x500000, 4096)
-
-#define MSM_PMEM_ADSP_SIZE         0x3300000
-#define MSM_PMEM_AUDIO_SIZE        0x239000
-
-#define MSM_PMEM_ADSP_BASE		(0x70000000 - MSM_PMEM_ADSP_SIZE)
-#define MSM_PMEM_AUDIO_BASE	(0x46400000)
-#define MSM_PMEM_SF_BASE	(0x40400000)
-#define MSM_OVERLAY_BLT_BASE	(MSM_PMEM_SF_BASE + MSM_PMEM_SF_SIZE)
-#define MSM_FB_BASE	(MSM_OVERLAY_BLT_BASE + MSM_OVERLAY_BLT_SIZE)
-
-#define MSM_SMI_BASE          0x38000000
 /* Kernel SMI PMEM Region for video core, used for Firmware */
 /* and encoder,decoder scratch buffers */
 /* Kernel SMI PMEM Region Should always precede the user space */
@@ -1362,32 +1336,16 @@ static void __init msm8x60_init_dsps(void)
 #define MSM_PMEM_SMIPOOL_BASE (PMEM_KERNEL_SMI_BASE + PMEM_KERNEL_SMI_SIZE)
 #define MSM_PMEM_SMIPOOL_SIZE 0x3D00000
 
-static unsigned fb_size = MSM_FB_SIZE;
-static int __init fb_size_setup(char *p)
-{
-	fb_size = memparse(p, NULL);
-	return 0;
-}
-early_param("fb_size", fb_size_setup);
+#define MSM_ION_MFC_BASE       (PMEM_KERNEL_SMI_BASE + PMEM_KERNEL_SMI_SIZE)
+#define MSM_ION_MFC_SIZE       0x03D00000
+
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+#define MSM_ION_HEAP_NUM	5
+#else
+#define MSM_ION_HEAP_NUM	1
+#endif
 
 #ifdef CONFIG_ANDROID_PMEM
-static unsigned pmem_sf_size = MSM_PMEM_SF_SIZE;
-static int __init pmem_sf_size_setup(char *p)
-{
-	pmem_sf_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_sf_size", pmem_sf_size_setup);
-
-static unsigned pmem_adsp_size = MSM_PMEM_ADSP_SIZE;
-
-static int __init pmem_adsp_size_setup(char *p)
-{
-	pmem_adsp_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_adsp_size", pmem_adsp_size_setup);
-
 static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
 
 static int __init pmem_audio_size_setup(char *p)
@@ -1397,47 +1355,6 @@ static int __init pmem_audio_size_setup(char *p)
 }
 early_param("pmem_audio_size", pmem_audio_size_setup);
 #endif
-
-static struct resource msm_fb_resources[] = {
-	{
-		.flags  = IORESOURCE_DMA,
-	},
-	/* for overlay write back operation */
-	{
-		.flags  = IORESOURCE_DMA,
-	},
-};
-
-static int msm_fb_detect_panel(const char *name)
-{
-	if (panel_type == PANEL_ID_DOT_HITACHI) {
-		if (!strcmp(name, "mipi_cmd_renesas_wvga"))
-		return 0;
-	} else if (panel_type == PANEL_ID_DOT_SONY ||
-		panel_type == PANEL_ID_DOT_SONY_C3) {
-		if (!strcmp(name, "mipi_cmd_novatek_wvga"))
-			return 0;
-	}
-#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
-	else if (!strcmp(name, "hdmi_msm"))
-		return 0;
-#endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
-
-	pr_warning("%s: not supported '%s'", __func__, name);
-	return -ENODEV;
-}
-
-static struct msm_fb_platform_data msm_fb_pdata = {
-	.detect_client = msm_fb_detect_panel,
-};
-
-static struct platform_device msm_fb_device = {
-	.name   = "msm_fb",
-	.id     = 0,
-	.num_resources     = ARRAY_SIZE(msm_fb_resources),
-	.resource          = msm_fb_resources,
-	.dev.platform_data = &msm_fb_pdata,
-};
 
 #ifdef CONFIG_BT
 static struct platform_device doubleshot_rfkill = {
@@ -1501,6 +1418,7 @@ static struct platform_device android_pmem_kernel_smi_device = {
 #endif
 
 #ifdef CONFIG_ANDROID_PMEM
+#ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 static struct android_pmem_platform_data android_pmem_pdata = {
 	.name = "pmem",
 	.allocator_type = PMEM_ALLOCATORTYPE_ALLORNOTHING,
@@ -1524,7 +1442,7 @@ static struct platform_device android_pmem_adsp_device = {
 	.id = 2,
 	.dev = { .platform_data = &android_pmem_adsp_pdata },
 };
-
+#endif
 static struct android_pmem_platform_data android_pmem_audio_pdata = {
 	.name = "pmem_audio",
 	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
@@ -1537,8 +1455,7 @@ static struct platform_device android_pmem_audio_device = {
 	.dev = { .platform_data = &android_pmem_audio_pdata },
 };
 
-
-
+#ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 static struct android_pmem_platform_data android_pmem_smipool_pdata = {
 	.name = "pmem_smipool",
 	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
@@ -1549,7 +1466,7 @@ static struct platform_device android_pmem_smipool_device = {
 	.id = 7,
 	.dev = { .platform_data = &android_pmem_smipool_pdata },
 };
-
+#endif
 #endif
 
 #define GPIO_BACKLIGHT_PWM0 0
@@ -1611,49 +1528,11 @@ static struct platform_device hdmi_msm_device = {
 };
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
 
-static unsigned char doubleshot_shrink_pwm(int val)
-{
-	unsigned char shrink_br;
-
-	if (val < 30)
-		shrink_br = 9;
-	else if ((val >= 30) && (val <= 143))
-		shrink_br = 152 * (val - 30) / 113 + 9;
-	else
-		shrink_br = 94 * (val - 143) / 112 + 161;
-
-	return shrink_br;
-}
-
-static struct msm_panel_common_pdata mipi_panel_data = {
-	.shrink_pwm = doubleshot_shrink_pwm,
-};
-
-static struct platform_device mipi_dsi_cmd_wvga_panel_device = {
-	.name = "mipi_novatek",
-	.id = 0,
-	.dev = {
-		.platform_data = &mipi_panel_data,
-	}
-};
-
 static void __init msm8x60_allocate_memory_regions(void)
 {
 	unsigned long size;
 
-	size = MSM_FB_SIZE;
-	msm_fb_resources[0].start = MSM_FB_BASE;
-	msm_fb_resources[0].end = msm_fb_resources[0].start + size - 1;
-	pr_info("allocating %lu bytes at %p (%lx physical) for fb\n",
-		size, __va(MSM_FB_BASE), (unsigned long)MSM_FB_BASE);
-
-	msm_fb_resources[1].start = MSM_OVERLAY_BLT_BASE;
-	msm_fb_resources[1].end = msm_fb_resources[1].start +
-		MSM_OVERLAY_BLT_SIZE - 1;
-	pr_info("allocating %lu bytes at %p (%lx physical) for "
-		"overlay write back\n", (unsigned long)MSM_OVERLAY_BLT_SIZE,
-		__va(MSM_OVERLAY_BLT_BASE),
-		(unsigned long)MSM_OVERLAY_BLT_BASE);
+	msm8x60_allocate_fb_region();
 
 #ifdef CONFIG_KERNEL_PMEM_SMI_REGION
 	size = PMEM_KERNEL_SMI_SIZE;
@@ -1667,24 +1546,6 @@ static void __init msm8x60_allocate_memory_regions(void)
 #endif
 
 #ifdef CONFIG_ANDROID_PMEM
-	size = pmem_adsp_size;
-	if (size) {
-		android_pmem_adsp_pdata.start = MSM_PMEM_ADSP_BASE;
-		android_pmem_adsp_pdata.size = size;
-		pr_info("allocating %lu bytes at %p (%lx physical) for adsp "
-			"pmem arena\n", size, __va(MSM_PMEM_ADSP_BASE),
-			(unsigned long)MSM_PMEM_ADSP_BASE);
-	}
-
-	size = MSM_PMEM_SMIPOOL_SIZE;
-	if (size) {
-		android_pmem_smipool_pdata.start = MSM_PMEM_SMIPOOL_BASE;
-		android_pmem_smipool_pdata.size = size;
-		pr_info("allocating %lu bytes at %lx physical for user"
-			" smi  pmem arena\n", size,
-			(unsigned long) MSM_PMEM_SMIPOOL_BASE);
-	}
-
 	size = MSM_PMEM_AUDIO_SIZE;
 	if (size) {
 		android_pmem_audio_pdata.start = MSM_PMEM_AUDIO_BASE;
@@ -1693,15 +1554,16 @@ static void __init msm8x60_allocate_memory_regions(void)
 			"pmem arena\n", size, __va(MSM_PMEM_AUDIO_BASE),
 			(unsigned long)MSM_PMEM_AUDIO_BASE);
 	}
-
-	size = pmem_sf_size;
+#ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
+	size = MSM_PMEM_SMIPOOL_SIZE;
 	if (size) {
-		android_pmem_pdata.start = MSM_PMEM_SF_BASE;
-		android_pmem_pdata.size = size;
-		pr_info("allocating %lu bytes at %p (%lx physical) for sf "
-			"pmem arena\n", size,  __va(MSM_PMEM_SF_BASE),
-			(unsigned long)MSM_PMEM_SF_BASE);
+		android_pmem_smipool_pdata.start = MSM_PMEM_SMIPOOL_BASE;
+		android_pmem_smipool_pdata.size = size;
+		pr_info("allocating %lu bytes at %lx physical for user"
+			" smi  pmem arena\n", size,
+			(unsigned long) MSM_PMEM_SMIPOOL_BASE);
 	}
+#endif
 #endif
 }
 
@@ -2465,15 +2327,16 @@ static struct platform_device *surf_devices[] __initdata = {
 	&android_pmem_kernel_smi_device,
 #endif
 #ifdef CONFIG_ANDROID_PMEM
+#ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 	&android_pmem_device,
 	&android_pmem_adsp_device,
-	&android_pmem_audio_device,
 	&android_pmem_smipool_device,
+#endif
+	&android_pmem_audio_device,
 #endif
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
 #endif
-	&msm_fb_device,
 	&msm_kgsl_3d0,
 #ifdef CONFIG_MSM_KGSL_2D
 	&msm_kgsl_2d0,
@@ -2578,7 +2441,88 @@ static struct platform_device *surf_devices[] __initdata = {
 	&msm_tsens_device,
 #endif
 	&scm_log_device,
+#ifdef CONFIG_ION_MSM
+	&ion_dev,
+#endif
 };
+
+#ifdef CONFIG_ION_MSM
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+static struct ion_cp_heap_pdata cp_mfc_ion_pdata = {
+	.permission_type = IPT_TYPE_MFC_SHAREDMEM,
+	.align = PAGE_SIZE,
+};
+
+static struct ion_cp_heap_pdata cp_wb_ion_pdata = {
+	.permission_type = IPT_TYPE_MDP_WRITEBACK,
+	.align = PAGE_SIZE,
+};
+
+static struct ion_co_heap_pdata co_ion_pdata = {
+	.adjacent_mem_id = INVALID_HEAP_ID,
+	.align = PAGE_SIZE,
+};
+#endif
+
+/**
+ * These heaps are listed in the order they will be allocated.
+ * Don't swap the order unless you know what you are doing!
+ */
+struct ion_platform_data ion_pdata = {
+	.nr = MSM_ION_HEAP_NUM,
+	.heaps = {
+		{
+			.id	= ION_SYSTEM_HEAP_ID,
+			.type	= ION_HEAP_TYPE_SYSTEM,
+			.name	= ION_VMALLOC_HEAP_NAME,
+		},
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+		{
+			.id	= ION_CP_MFC_HEAP_ID,
+			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.name	= ION_MFC_HEAP_NAME,
+			.base	= MSM_ION_MFC_BASE,
+			.size	= MSM_ION_MFC_SIZE,
+			.memory_type = ION_SMI_TYPE,
+			.extra_data = (void *) &cp_mfc_ion_pdata,
+		},
+		{
+			.id	= ION_SF_HEAP_ID,
+			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.name	= ION_SF_HEAP_NAME,
+			.base	= MSM_ION_SF_BASE,
+			.size	= MSM_ION_SF_SIZE,
+			.memory_type = ION_EBI_TYPE,
+			.extra_data = (void *)&co_ion_pdata,
+		},
+		{
+			.id	= ION_CAMERA_HEAP_ID,
+			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.name	= ION_CAMERA_HEAP_NAME,
+			.base	= MSM_ION_CAMERA_BASE,
+			.size	= MSM_ION_CAMERA_SIZE,
+			.memory_type = ION_EBI_TYPE,
+			.extra_data = (void *)&co_ion_pdata,
+		},
+		{
+			.id	= ION_CP_WB_HEAP_ID,
+			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.name	= ION_WB_HEAP_NAME,
+			.base	= MSM_ION_WB_BASE,
+			.size	= MSM_ION_WB_SIZE,
+			.memory_type = ION_EBI_TYPE,
+			.extra_data = (void *) &cp_wb_ion_pdata,
+		},
+#endif
+	}
+};
+
+static struct platform_device ion_dev = {
+	.name = "ion-msm",
+	.id = 1,
+	.dev = { .platform_data = &ion_pdata },
+};
+#endif
 
 #ifdef CONFIG_PMIC8058
 #define PMIC_GPIO_SDC3_DET 34
@@ -5059,10 +5003,6 @@ static void __init doubleshot_init(void)
 #ifdef CONFIG_MSM_DSPS
 	msm8x60_init_dsps();
 #endif
-	if (panel_type == PANEL_ID_DOT_HITACHI)
-		mipi_dsi_cmd_wvga_panel_device.name = "mipi_renesas";
-	pr_info("%s: %s\n", __func__, mipi_dsi_cmd_wvga_panel_device.name);
-
 	platform_add_devices(msm8660_footswitch,
 			     msm8660_num_footswitch);
 
@@ -5088,7 +5028,7 @@ static void __init doubleshot_init(void)
 #endif
 	}
 
-	dot_init_panel(msm_fb_resources, ARRAY_SIZE(msm_fb_resources));
+	doubleshot_init_panel();
 	register_i2c_devices();
 #ifdef CONFIG_USB_ANDROID
 	doubleshot_add_usb_devices();
