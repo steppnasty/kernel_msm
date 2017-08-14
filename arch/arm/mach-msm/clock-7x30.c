@@ -2826,7 +2826,7 @@ static struct clk_local_ownership {
 	OWN(APPS2,  4, "mdp_lcdc_pclk_clk", mdp_lcdc_pclk_clk, NULL),
 	OWN(APPS2,  4, "mdp_pclk",	mdp_p_clk,	NULL),
 	OWN(APPS2,  4, "iface_clk",	mdp_p_clk,	"footswitch-pcom.4"),
-	OWN(APPS2, 28, "mdp_vsync_clk", mdp_vsync_clk,	NULL),
+	OWN(APPS2, 28, "vsync_clk", mdp_vsync_clk,	"mdp.0"),
 	OWN(APPS2,  5, "ref_clk",	tsif_ref_clk,	"msm_tsif.0"),
 	OWN(APPS2,  5, "iface_clk",	tsif_p_clk,	"msm_tsif.0"),
 	{ CLK_LOOKUP("tv_src_clk",      tv_clk.c,       NULL),

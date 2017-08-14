@@ -3646,7 +3646,7 @@ static struct clk_lookup msm_clocks_8x60[] = {
 	CLK_LOOKUP("jpegd_clk",		jpegd_clk.c,		NULL),
 	CLK_LOOKUP("mdp_clk",		mdp_clk.c,		NULL),
 	CLK_LOOKUP("core_clk",		mdp_clk.c,	"footswitch-8x60.4"),
-	CLK_LOOKUP("mdp_vsync_clk",	mdp_vsync_clk.c,		NULL),
+	CLK_LOOKUP("vsync_clk",		mdp_vsync_clk.c,	"mdp.0"),
 	CLK_LOOKUP("vsync_clk",		mdp_vsync_clk.c, "footswitch-8x60.4"),
 	CLK_LOOKUP("pixel_lcdc_clk",	pixel_lcdc_clk.c,		NULL),
 	CLK_LOOKUP("pixel_lcdc_clk",	pixel_lcdc_clk.c, "footswitch-8x60.4"),
