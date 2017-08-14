@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Brian Stepp <steppnasty@gmail.com>
+ * Copyright (C) 2014-2017 Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -479,7 +479,6 @@ static int __devinit mddi_client_glacier_init(void)
 {
 	int ret;
 	struct msm_panel_info *pinfo;
-	u32 id;
 
 	ret = platform_driver_register(&mddi_client_driver);
 	if (!ret) {
