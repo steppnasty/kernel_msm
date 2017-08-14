@@ -556,7 +556,7 @@ static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init)
 	return 0;
 }
 #endif
-#if defined(CONFIG_USB_GADGET_MSM_72K) || defined(CONFIG_USB_EHCI_MSM)
+#if defined(CONFIG_USB_MSM_72K) || defined(CONFIG_USB_EHCI_MSM)
 static struct msm_otg_platform_data msm_otg_pdata = {
 	/* if usb link is in sps there is no need for
 	 * usb pclk as dayatona fabric clock will be
@@ -4072,7 +4072,7 @@ static void __init msm8x60_init_buses(void)
 	msm_device_ssbi3.dev.platform_data = &msm_ssbi3_pdata;
 #endif
 #endif /* CONFIG_MSM8X60_SSBI */
-#if defined(CONFIG_USB_GADGET_MSM_72K) || defined(CONFIG_USB_EHCI_HCD)
+#if defined(CONFIG_USB_MSM_72K) || defined(CONFIG_USB_EHCI_HCD)
 	msm_device_otg.dev.platform_data = &msm_otg_pdata;
 #endif
 #ifdef CONFIG_SERIAL_MSM_HS
