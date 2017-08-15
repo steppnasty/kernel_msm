@@ -35,7 +35,6 @@
 #define OJ_POWEROFF                 0
 #define CURCIAL_OJ_POWER            85
 #define BURST_DATA_SIZE             7
-#define OJ_DEVICE_ID                0x0D
 #define OJ_REGISTER_WRITE           0x7B
 #define OJ_REGISTER_REQUEST         0x7C
 #define OJ_REGISTER_READ            0x7D
@@ -97,9 +96,25 @@ static uint16_t	index;
 static int __devinit curcial_oj_probe(struct platform_device *pdev);
 static int __devexit curcial_oj_remove(struct platform_device *pdev);
 
+static int curcial_oj_suspend(struct platform_device *pdev, pm_message_t mesg)
+{
+	if (my_oj->share_power == false) {
+		my_oj->oj_poweron(OJ_POWEROFF);
+	}
+	return 0;
+}
+
+static int curcial_oj_resume(struct platform_device *pdev)
+{
+	my_oj->oj_poweron(OJ_POWERON);
+	return 0;
+}
+
 static struct platform_driver curcial_oj_device_driver = {
 	.probe    = curcial_oj_probe,
 	.remove   = __devexit_p(curcial_oj_remove),
+	.suspend  = curcial_oj_suspend,
+	.resume   = curcial_oj_resume,
 	.driver   = {
 		.name   = CURCIAL_OJ_NAME,
 		.owner  = THIS_MODULE,
@@ -179,8 +194,8 @@ static int curcial_oj_init(void)
 
 	for (i = 0;i < OJ_RETRY; i++ ) {
 	id = curcial_oj_register_read(0x00);
-	if (id == OJ_DEVICE_ID) {
-		printk(KERN_INFO"OpticalJoystick Device ID: %02x\n", OJ_DEVICE_ID);
+	if (id == my_oj->device_id) {
+		printk(KERN_INFO"OpticalJoystick Device ID: %02x\n", my_oj->device_id);
 		id = curcial_oj_register_read(0x01);
 		printk(KERN_INFO"OJ Driver: Revision : %02x\n", id);
 			break;
@@ -593,9 +608,8 @@ static void curcial_oj_early_suspend(struct early_suspend *h)
 	printk(KERN_ERR"%s: enter\n", __func__);
 	oj->oj_shutdown(1);
 	curcial_oj_polling_mode(OJ_POLLING_DISABLE);
-	if (oj->share_power == false) {
-		oj->oj_poweron(OJ_POWEROFF);
-	}
+	if (oj->reset_pin)
+		oj->oj_reset(0);
 	microp_spi_vote_enable(SPI_OJ, 0);
 
 }
@@ -605,6 +619,15 @@ static void curcial_oj_late_resume(struct early_suspend *h)
 	struct curcial_oj_platform_data	*oj;
 	atomic_set(&suspend_flag, 0);
 	oj = container_of(h, struct curcial_oj_platform_data, early_suspend);
+
+	if (oj->reset_pin) {
+		ndelay(20);
+		oj->oj_reset(1);
+	} else if (!oj->share_power) {
+		oj->oj_poweron(OJ_POWEROFF);
+		msleep(40);
+	}
+
 	printk(KERN_ERR"%s: enter\n", __func__);
 	if (!curcial_oj_init())
 		microp_spi_vote_enable(SPI_OJ, 0);
