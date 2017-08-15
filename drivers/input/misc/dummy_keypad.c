@@ -21,8 +21,8 @@
 #include <linux/interrupt.h>
 #include <linux/wakelock.h>
 #include <linux/platform_device.h>
-#include <asm/mach-types.h>
 #include <linux/slab.h>
+#include <asm/mach-types.h>
 
 #define DRIVER_NAME "dummy_keypad"
 const unsigned short _usb_hut_keymap[29] = {
@@ -37,15 +37,6 @@ const unsigned short _usb_hut_keymap[29] = {
 	KEY_SEND,
 	/* STAR(*) and POUND(#) */
 	KEY_SWITCHVIDEOMODE, KEY_KBDILLUMTOGGLE
-};
-
-const unsigned short _usb_hut_keymap_speedy[29] = {
-	KEY_1, KEY_2, KEY_3, KEY_4,
-	KEY_5, KEY_6, KEY_7, KEY_8,
-	KEY_9, KEY_0,
-	KEY_HOME, KEY_END, KEY_COMPOSE, KEY_BACK,
-	KEY_SWITCHVIDEOMODE, KEY_KBDILLUMTOGGLE,
-	KEY_SEND
 };
 
 struct dummy_keypad_struct {
@@ -67,10 +58,7 @@ static int dummy_keypad_init_func(void)
 		goto kzalloc_fail;
 	}
 	dummy_keypad->keypad_name = DRIVER_NAME;
-	if (machine_is_speedy())
-		dummy_keypad->usb_hut_keymap = _usb_hut_keymap_speedy;
-	else
-		dummy_keypad->usb_hut_keymap = _usb_hut_keymap;
+	dummy_keypad->usb_hut_keymap = _usb_hut_keymap;
 	dummy_keypad->usb_hut_keymap_size = ARRAY_SIZE(_usb_hut_keymap);
 
 	dummy_keypad->input_dev = input_allocate_device();
