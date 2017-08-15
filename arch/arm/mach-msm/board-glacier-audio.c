@@ -1,6 +1,7 @@
 /* linux/arch/arm/mach-msm/board-glacier-audio.c
  *
  * Copyright (C) 2010-2011 HTC Corporation.
+ * Copyright (c) 2015-2017, Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -24,7 +25,7 @@
 #include <mach/qdsp5v2_1x/snddev_ecodec.h>
 #include <mach/qdsp5v2_1x/audio_def.h>
 #include <mach/qdsp5v2_1x/voice.h>
-#include <mach/htc_acoustic_7x30.h>
+#include <mach/htc_acoustic.h>
 #include <linux/delay.h>
 
 static struct mutex bt_sco_lock;

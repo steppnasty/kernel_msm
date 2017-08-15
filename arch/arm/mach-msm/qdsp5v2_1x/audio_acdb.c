@@ -82,7 +82,7 @@
 #include <mach/qdsp5v2_1x/audio_acdb_def.h>
 
 #include <mach/htc_acdb.h>
-#include <mach/htc_acoustic_7x30.h>
+#include <mach/htc_acoustic.h>
 
 /* this is the ACDB device ID */
 #define DALDEVICEID_ACDB		0x02000069

@@ -96,7 +96,10 @@ obj-$(CONFIG_ARCH_MSM7X30) += dal_axi.o
 obj-$(CONFIG_MSM_ADSP) += qdsp5/
 obj-$(CONFIG_MSM_ADSP_COMP) += qdsp5_comp/
 obj-$(CONFIG_MSM7KV2_AUDIO) += qdsp5v2/
+obj-$(CONFIG_MSM7KV2_AUDIO) += htc_acoustic.o htc_acdb_7x30.o
 obj-$(CONFIG_MSM7KV2_1X_AUDIO) += qdsp5v2_1x/
+obj-$(CONFIG_MSM7KV2_1X_AUDIO) += htc_acoustic.o htc_acdb_7x30.o
+obj-$(CONFIG_HTC_ACOUSTIC_QSD) += htc_acoustic_qsd.o
 obj-$(CONFIG_MSM8X60_AUDIO) += qdsp6v2/
 obj-$(CONFIG_MSM8X60_AUDIO) += htc_acoustic_8x60.o
 obj-$(CONFIG_MSM_HW3D) += hw3d.o
@@ -121,13 +124,6 @@ endif
 
 obj-$(CONFIG_CPU_FREQ) += cpufreq.o
 
-ifndef CONFIG_ARCH_MSM8X60
-obj-$(CONFIG_HTC_ACOUSTIC) += htc_acoustic.o
-endif
-
-obj-$(CONFIG_HTC_ACOUSTIC_QSD) += htc_acoustic_qsd.o
-obj-$(CONFIG_MSM7KV2_AUDIO) += htc_acoustic_7x30.o htc_acdb_7x30.o
-obj-$(CONFIG_MSM7KV2_1X_AUDIO) += htc_acoustic_7x30.o htc_acdb_7x30.o
 obj-$(CONFIG_SENSORS_AKM8976) += htc_akm_cal.o
 
 obj-$(CONFIG_MACH_MAHIMAHI) += board-mahimahi.o board-mahimahi-panel.o

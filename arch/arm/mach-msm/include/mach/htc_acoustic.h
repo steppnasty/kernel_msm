@@ -1,4 +1,4 @@
-/* include/asm/mach-msm/htc_acoustic_7x30.h
+/* include/asm/mach-msm/htc_acoustic.h
  *
  * Copyright (C) 2010 HTC Corporation.
  *
@@ -12,8 +12,8 @@
  * GNU General Public License for more details.
  *
  */
-#ifndef _ARCH_ARM_MACH_MSM_HTC_ACOUSTIC_7X30_H_
-#define _ARCH_ARM_MACH_MSM_HTC_ACOUSTIC_7X30_H_
+#ifndef _ARCH_ARM_MACH_MSM_HTC_ACOUSTIC_H_
+#define _ARCH_ARM_MACH_MSM_HTC_ACOUSTIC_H_
 #define PROPERTY_VALUE_MAX  92
 
 struct acoustic_tables {
