@@ -255,9 +255,12 @@ obj-$(CONFIG_ARCH_MSM_FLASHLIGHT) += msm_flashlight.o
 
 obj-$(CONFIG_TROUT_BATTCHG_DOCK) += htc_one_wire.o
 obj-$(CONFIG_TROUT_BATTCHG) += htc_battery_trout.o
+ifdef CONFIG_ARCH_MSM8X60
+obj-$(CONFIG_HTC_BATTCHG) += htc_battery_8x60.o
+else
 obj-$(CONFIG_HTC_BATTCHG) += htc_battery.o
+endif
 obj-$(CONFIG_HTC_BATT_CORE) += htc_battery_core.o
-obj-$(CONFIG_HTC_BATT8x60) += htc_battery_8x60.o
 obj-$(CONFIG_HTC_PWRSINK) += htc_pwrsink.o
 obj-$(CONFIG_MSM_RMT_STORAGE_SERVER) += rmt_storage_server.o
 obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o

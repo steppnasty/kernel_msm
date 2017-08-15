@@ -22,9 +22,8 @@
 #include <linux/debugfs.h>
 #include <linux/wakelock.h>
 #include <linux/gpio.h>
-#include <linux/rtc.h>
 #include <linux/workqueue.h>
-#include <mach/htc_battery_core.h>
+#include <mach/htc_battery.h>
 #include <linux/android_alarm.h>
 
 static ssize_t htc_battery_show_property(struct device *dev,

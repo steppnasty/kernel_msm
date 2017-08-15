@@ -81,10 +81,9 @@
 #include <mach/msm_serial_hs.h>
 #include <mach/msm_iomap.h>
 #include <asm/mach/mmc.h>
-#include <mach/htc_battery_core.h>
-#include <mach/htc_battery_8x60.h>
 #include <linux/tps65200.h>
 #include <mach/msm_hsusb.h>
+#include <mach/htc_battery.h>
 #ifdef CONFIG_MSM_DSPS
 #include <mach/msm_dsps.h>
 #endif
@@ -779,12 +778,13 @@ static struct platform_device flashlight_device = {
 };
 #endif
 
-#ifdef CONFIG_HTC_BATT8x60
+#ifdef CONFIG_HTC_BATTCHG
 static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.guage_driver = GUAGE_NONE,
 	.gpio_mbat_in = MSM_GPIO_TO_INT(DOUBLESHOT_GPIO_MBAT_IN),
 	.gpio_mbat_in_trigger_level = MBAT_IN_LOW_TRIGGER,
 	.charger = SWITCH_CHARGER_TPS65200,
+	.is_wireless_charger = wireless_charger_detect,
 	.mpp_data = {
 		{XOADC_MPP_3, PM_MPP_AIN_AMUX_CH6},
 		{XOADC_MPP_5, PM_MPP_AIN_AMUX_CH6},
@@ -2133,7 +2133,7 @@ static struct platform_device *surf_devices[] __initdata = {
 #ifdef CONFIG_SENSORS_M_ADC
 	&msm_adc_device,
 #endif
-#ifdef CONFIG_HTC_BATT8x60
+#ifdef CONFIG_HTC_BATTCHG
 	&htc_battery_pdev,
 #endif
 	&htc_headset_mgr,

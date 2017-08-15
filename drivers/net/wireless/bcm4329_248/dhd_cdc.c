@@ -63,8 +63,7 @@ extern int dhd_get_dtim_skip(dhd_pub_t *dhd);
 #define ROUND_UP_MARGIN	2048 	/* Biggest SDIO block size possible for
 				 * round off at the end of buffer
 				 */
-
-extern int usb_get_connect_type(void); // msm72k_udc.c
+extern int htc_usb_get_connect_type(void); // msm72k_udc.c
 
 #ifdef BCM4329_LOW_POWER
 extern char gatewaybuf[8+1]; //HTC_KlocWork
@@ -692,7 +691,7 @@ char iovbuf[32];
 				/* Kernel suspended */
 				DHD_TRACE(("%s: force extra Suspend setting \n", __FUNCTION__));
 #if 0
-				if (usb_get_connect_type() == 0) {
+				if (htc_usb_get_connect_type() == 0) {
 					dhdcdc_set_ioctl(dhd, 0, WLC_SET_PM,
 						(char *)&power_mode,
 						sizeof(power_mode));
@@ -707,7 +706,7 @@ char iovbuf[32];
 				 *  Note that side effect is chance to miss BC/MC packet
 				*/
 				bcn_li_dtim = dhd_get_dtim_skip(dhd);
-				if (usb_get_connect_type() == 0) {
+				if (htc_usb_get_connect_type() == 0) {
 					bcm_mkiovar("bcn_li_dtim", (char *)&bcn_li_dtim,
 						4, iovbuf, sizeof(iovbuf));
 					dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf,
@@ -986,7 +985,6 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #ifdef GET_CUSTOM_MAC_ENABLE
 	struct ether_addr ea_addr;
 #endif /* GET_CUSTOM_MAC_ENABLE */
-	uint32 nmode = 0;
 	pdhd = dhd;
 
 	dhd_os_proto_block(dhd);
@@ -1266,10 +1264,12 @@ int dhdhtc_update_wifi_power_mode(int is_screen_off)
 		printf("power active. ctrl_mask: 0x%x\n", dhdhtc_power_ctrl_mask);
 		pm_type = PM_OFF;
 		dhdcdc_set_ioctl(dhd, 0, WLC_SET_PM, &pm_type, sizeof(pm_type));
-	}  else if  (dhdcdc_power_active_while_plugin && usb_get_connect_type()) {
-		printf("power active. usb_type:%d\n", usb_get_connect_type());
+#if CONFIG_HTC_BATTCHG
+	}  else if  (dhdcdc_power_active_while_plugin && htc_usb_get_connect_type()) {
+		printf("power active. usb_type:%d\n", htc_usb_get_connect_type());
 		pm_type = PM_OFF;
 		dhdcdc_set_ioctl(dhd, 0, WLC_SET_PM, &pm_type, sizeof(pm_type));
+#endif
 	} else {
 		if (is_screen_off && !dhdcdc_wifiLock)
 			pm_type = PM_MAX;

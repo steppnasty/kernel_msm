@@ -24,8 +24,7 @@
 #include <mach/board.h>
 #include <asm/mach-types.h>
 #include <mach/board_htc.h>
-#include <mach/htc_battery_core.h>
-#include <mach/htc_battery_8x60.h>
+#include <mach/htc_battery.h>
 #include <linux/workqueue.h>
 #include <linux/slab.h>
 #include <linux/tps65200.h>
@@ -48,6 +47,8 @@ static struct kset *htc_batt_kset;
 static int htc_batt_phone_call;
 module_param_named(phone_call, htc_batt_phone_call,
 			int, S_IRUGO | S_IWUSR | S_IWGRP);
+static LIST_HEAD(notify_list);
+static DEFINE_MUTEX(notify_lock);
 
 struct htc_battery_info {
 	int device_id;
@@ -71,6 +72,8 @@ struct htc_battery_info {
 
 	int guage_driver;
 	int charger;
+	enum usb_connect_type connect_type;
+	int (*is_wireless_charger)(void);
 };
 static struct htc_battery_info htc_batt_info;
 
@@ -91,10 +94,6 @@ struct htc_battery_timer {
 static struct htc_battery_timer htc_batt_timer;
 
 static void cable_status_notifier_func(int online);
-static struct t_cable_status_notifier cable_status_notifier = {
-	.name = "htc_battery_8x60",
-	.func = cable_status_notifier_func,
-};
 
 static int htc_battery_initial;
 static int htc_full_level_flag;
@@ -111,6 +110,49 @@ static void tps_int_notifier_func(int int_reg, int value)
 		htc_batt_info.rep.over_vchg = (unsigned int)value;
 		htc_battery_core_update_changed();
 	}
+}
+
+void htc_usb_chg_connected(enum chg_type chg_type)
+{
+	struct htc_usb_status_notifier *notifier;
+	enum usb_connect_type cable_type;
+
+	if (!htc_battery_initial)
+		return;
+
+	mutex_lock(&notify_lock);
+	if (chg_type == USB_CHG_TYPE__SDP) {
+		pr_info("not AC charger\n");
+		cable_type = CONNECT_TYPE_USB;
+	} else if (chg_type == USB_CHG_TYPE__WALLCHARGER) {
+		pr_info("AC charger\n");
+		cable_type = CONNECT_TYPE_AC;
+	} else
+		cable_type = CONNECT_TYPE_NONE;
+	if ((cable_type > CONNECT_TYPE_WIRELESS) &&
+		(htc_batt_info.is_wireless_charger)) {
+		if (htc_batt_info.is_wireless_charger())
+			cable_type = CONNECT_TYPE_WIRELESS;
+	}
+	htc_batt_info.connect_type = cable_type;
+	list_for_each_entry(notifier, &notify_list, notifier_link) {
+		/* Notify other drivers about source. */
+		if (notifier->func != NULL)
+			notifier->func(htc_batt_info.connect_type);
+	}
+	cable_status_notifier_func(cable_type);
+	mutex_unlock(&notify_lock);
+}
+
+int htc_usb_register_notifier(struct htc_usb_status_notifier *notifier)
+{
+	if (!notifier || !notifier->name || !notifier->func)
+		return -EINVAL;
+
+	mutex_lock(&notify_lock);
+	list_add(&notifier->notifier_link, &notify_list);
+	mutex_unlock(&notify_lock);
+	return 0;
 }
 
 static int batt_alarm_config(unsigned long lower_threshold,
@@ -133,6 +175,12 @@ static int batt_alarm_config(unsigned long lower_threshold,
 done:
 	return rc;
 }
+
+int htc_usb_get_connect_type(void)
+{
+	return htc_batt_info.connect_type;
+}
+EXPORT_SYMBOL(htc_usb_get_connect_type);
 
 static int battery_alarm_notifier_func(struct notifier_block *nfb,
 					unsigned long value, void *data);
@@ -467,7 +515,6 @@ static long htc_batt_ioctl(struct file *filp,
 
 		BATT_LOG("ioctl: battery level update: %u",
 			htc_batt_info.rep.level);
-
 		htc_battery_core_update_changed();
 		break;
 	}
@@ -689,9 +736,12 @@ static int htc_battery_probe(struct platform_device *pdev)
 	htc_battery_core_ptr->func_set_full_level = htc_batt_set_full_level;
 	htc_battery_core_register(&pdev->dev, htc_battery_core_ptr);
 
+	if (pdata->is_wireless_charger)
+		htc_batt_info.is_wireless_charger = pdata->is_wireless_charger;
 	htc_batt_info.device_id = pdev->id;
 	htc_batt_info.guage_driver = pdata->guage_driver;
 	htc_batt_info.charger = pdata->charger;
+	htc_batt_info.connect_type = CONNECT_TYPE_NONE;
 	htc_batt_info.rep.full_level = 100;
 
 	htc_batt_info.is_open = 0;
@@ -795,7 +845,6 @@ static int __init htc_battery_init(void)
 	wake_lock_init(&htc_batt_timer.battery_lock, WAKE_LOCK_SUSPEND,
 			"htc_battery_8x60");
 	mutex_init(&htc_batt_info.info_lock);
-	cable_detect_register_notifier(&cable_status_notifier);
 	platform_driver_register(&htc_battery_driver);
 
 	/* init battery parameters. */
