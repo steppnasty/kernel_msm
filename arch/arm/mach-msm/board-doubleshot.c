@@ -759,166 +759,7 @@ static struct platform_device flashlight_device = {
 	},
 };
 #endif
-static uint32_t camera_off_gpio_table[] = {
-	GPIO_CFG(137, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* CAM1_RST# */
-	GPIO_CFG(138, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* CAM2_RST# */
-	GPIO_CFG(140, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* CAM2_PWDN */
-	GPIO_CFG(32, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA),	/* CAM_MCLK */
-	GPIO_CFG(DOUBLESHOT_CAM_I2C_SDA, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA),		/* CAM_I2C_SDA */
-	GPIO_CFG(DOUBLESHOT_CAM_I2C_SCL, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),		/* CAM_I2C_SCL */
-	GPIO_CFG(141, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* CAM_SEL */
-};
 
-static uint32_t camera_on_gpio_table[] = {
-	GPIO_CFG(DOUBLESHOT_CAM_I2C_SDA, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA),		/* CAM_I2C_SDA */
-	GPIO_CFG(DOUBLESHOT_CAM_I2C_SCL, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),		/* CAM_I2C_SCL */
-	GPIO_CFG(32, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA),	/* CAM_MCLK */
-	GPIO_CFG(137, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* CAM1_RST# */
-	GPIO_CFG(138, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* CAM2_RST# */
-	GPIO_CFG(140, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* CAM2_PWDN */
-	GPIO_CFG(141, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* CAM_SEL */
-};
-
-static int camera_sensor_power_enable(char *power, unsigned volt)
-{
-	struct regulator *sensor_power;
-	int rc;
-	if (power == NULL)
-		return -ENODEV;
-
-	sensor_power = regulator_get(NULL, power);
-	if (IS_ERR(sensor_power)) {
-		pr_err("[CAM]%s: Unable to get %s\n", __func__, power);
-		return -ENODEV;
-	}
-	rc = regulator_set_voltage(sensor_power, volt, volt);
-	if (rc) {
-		pr_err("[CAM]%s: unable to set %s voltage to %d rc:%d\n",
-			__func__, power, volt, rc);
-	}
-	rc = regulator_enable(sensor_power);
-	if (rc) {
-		pr_err("[CAM]%s: Enable regulator %s failed\n", __func__, power);
-	}
-	regulator_put(sensor_power);
-	return rc;
-}
-
-
-static int camera_sensor_power_disable(char *power)
-{
-	struct regulator *sensor_power;
-	int rc;
-	if (power == NULL)
-		return -ENODEV;
-
-	sensor_power = regulator_get(NULL, power);
-	if (IS_ERR(sensor_power)) {
-		pr_err("[CAM]%s: Unable to get %s\n", __func__, power);
-		return -ENODEV;
-	}
-	rc = regulator_disable(sensor_power);
-	if (rc) {
-		pr_err("[CAM]%s: Enable regulator %s failed\n", __func__, power);
-	}
-	regulator_put(sensor_power);
-	return rc;
-
-}
-
-static int Doubleshot_sensor_vreg_on(void)
-{
-	int rc;
-	pr_info("[CAM]%s\n", __func__);
-	/* DOT Main camera VCM power */
-	rc = camera_sensor_power_enable("8058_l10", 2850000);
-	/*pr_info("[CAM]sensor_power_enable(\"8058_l10\", 2850) == %d\n", rc);*/
-	/* DOT Main/2nd IO and 2nd VDD*/
-	rc = camera_sensor_power_enable("8058_l12", 1800000);
-	/*pr_info("[CAM]sensor_power_enable(\"8058_l12\", 1800) == %d\n", rc);*/
-	udelay(50);
-	/* DOT Main / 2nd camera Analog power */
-	rc = camera_sensor_power_enable("8058_l15", 2800000);
-	/*pr_info("[CAM]sensor_power_enable(\"8058_l15\", 2850) == %d\n", rc);*/
-	udelay(50);
-	/* Main Digital power */
-	if (system_rev >= 1) {
-		/* XB board and after ... */
-		rc = camera_sensor_power_enable("8058_l24", 1200000);
-		pr_info("Apply XB board camera digital power pin L24\n");
-	} else {
-		/* XA board */
-		rc = camera_sensor_power_enable("8058_l23", 1200000);
-		pr_info("Apply XA board camera digital power pin L23\n");
-	}
-	/*pr_info("[CAM]sensor_power_enable(\"8058_l23\", 1200) == %d\n", rc);*/
-
-	mdelay(1);
-
-	return rc;
-}
-
-static int Doubleshot_sensor_vreg_off(void)
-{
-	int rc;
-	pr_info("[CAM]%s\n", __func__);
-	/* main / 2nd camera digital power */
-	if (system_rev >= 1) {
-		/* XB board and after ... */
-		rc = camera_sensor_power_disable("8058_l24");
-	} else {
-		/* XA board */
-		rc = camera_sensor_power_disable("8058_l23");
-	}
-	/*pr_info("[CAM]sensor_power_disable(\"8058_l23\") == %d\n", rc);*/
-
-	/* main / 2nd camera analog power */
-	rc = camera_sensor_power_disable("8058_l15");
-	/*pr_info("[CAM]sensor_power_disable(\"8058_l15\") == %d\n", rc);*/
-
-	/* IO power off */
-	rc = camera_sensor_power_disable("8058_l12");
-	/*pr_info("[CAM]sensor_power_disable(\"8058_l12\") == %d\n", rc);*/
-
-	/* main camera VCM power */
-	rc = camera_sensor_power_disable("8058_l10");
-	/*pr_info("[CAM]sensor_power_disable(\"8058_l10\") == %d\n", rc);*/
-
-	mdelay(10);
-
-	return rc;
-}
-
-#define CLK_SWITCH 141
-static void Doubleshot_maincam_clk_switch(void)
-{
-	int rc = 0;
-	pr_info("[CAM]Doing clk switch (Main Cam)\n");
-	rc = gpio_request(CLK_SWITCH, "imx105");
-	if (rc < 0)
-		pr_err("[CAM]GPIO (%d) request fail\n", CLK_SWITCH);
-	else
-		gpio_direction_output(CLK_SWITCH, 0);
-	gpio_free(CLK_SWITCH);
-
-	mdelay(1);
-	return;
-}
-
-static void Doubleshot_seccam_clk_switch(void)
-{
-	int rc = 0;
-	pr_info("[CAM]Doing clk switch (2nd Cam)\n");
-	rc = gpio_request(CLK_SWITCH, "mt9v113");
-
-	if (rc < 0)
-		pr_err("[CAM]GPIO (%d) request fail\n", CLK_SWITCH);
-	else
-		gpio_direction_output(CLK_SWITCH, 1);
-
-	gpio_free(CLK_SWITCH);
-	return;
-}
 #ifdef CONFIG_HTC_BATT8x60
 static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.guage_driver = GUAGE_NONE,
@@ -953,178 +794,6 @@ static void config_gpio_table(uint32_t *table, int len)
 		}
 	}
 }
-
-#define GPIO_CAM_EN (GPIO_EXPANDER_GPIO_BASE + 13)
-static void doubleshot_config_camera_on_gpios(void)
-{
-	config_gpio_table(camera_on_gpio_table,
-		ARRAY_SIZE(camera_on_gpio_table));
-}
-
-static void doubleshot_config_camera_off_gpios(void)
-{
-	config_gpio_table(camera_off_gpio_table,
-		ARRAY_SIZE(camera_off_gpio_table));
-}
-static struct msm_camera_device_platform_data msm_camera_device_data = {
-	.camera_gpio_on  = doubleshot_config_camera_on_gpios,
-	.camera_gpio_off = doubleshot_config_camera_off_gpios,
-	.ioext.csiphy = 0x04800000,
-	.ioext.csisz  = 0x00000400,
-	.ioext.csiirq = CSI_0_IRQ,
-	.ioclk.mclk_clk_rate = 24000000,
-	.ioclk.vfe_clk_rate  = 266667000,
-};
-
-static struct msm_camera_device_platform_data msm_camera_device_data_web_cam = {
-	.camera_gpio_on  = doubleshot_config_camera_on_gpios,
-	.camera_gpio_off = doubleshot_config_camera_off_gpios,
-	.ioext.csiphy = 0x04900000,
-	.ioext.csisz  = 0x00000400,
-	.ioext.csiirq = CSI_1_IRQ,
-	.ioclk.mclk_clk_rate = 24000000,
-	.ioclk.vfe_clk_rate  = 228570000,
-};
-
-static struct resource msm_camera_resources[] = {
-	{
-		.start	= 0x04500000,
-		.end	= 0x04500000 + SZ_1M - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.start	= VFE_IRQ,
-		.end	= VFE_IRQ,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
-static struct msm_camera_sensor_flash_src msm_flash_src = {
-	.flash_sr_type				= MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
-	.camera_flash				= flashlight_control,
-};
-
-static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
-	.low_temp_limit		= 5,
-	.low_cap_limit		= 30,
-};
-
-#ifdef CONFIG_IMX105
-static struct msm_camera_sensor_flash_data flash_imx105 = {
-	.flash_type		= MSM_CAMERA_FLASH_LED,
-	.flash_src		= &msm_flash_src
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_imx105_data = {
-	.sensor_name	= "imx105",
-	.sensor_reset	= 137,/*Main Cam RST*/
-	.sensor_pwd		= 139,/*Main Cam PWD*/
-	.vcm_pwd		= 58,/*VCM_PD*/
-	.vcm_enable		= 1,
-	.camera_power_on = Doubleshot_sensor_vreg_on,
-	.camera_power_off = Doubleshot_sensor_vreg_off,
-	.camera_clk_switch = Doubleshot_maincam_clk_switch,
-	.pdata			= &msm_camera_device_data,
-	.resource		= msm_camera_resources,
-	.num_resources	= ARRAY_SIZE(msm_camera_resources),
-	.flash_data		= &flash_imx105,
-	.flash_cfg = &msm_camera_sensor_flash_cfg,
-	.power_down_disable = false, /* true: disable pwd down function */
-	.mirror_mode = 0,
-	.cam_select_pin = CLK_SWITCH,
-	.csi_if			= 1,
-	.dev_node		= 0
-};
-struct platform_device msm_camera_sensor_imx105 = {
-	.name	= "msm_camera_imx105",
-	.dev	= {
-		.platform_data = &msm_camera_sensor_imx105_data,
-	},
-};
-#endif
-
-#ifdef CONFIG_S5K3H2YX
-static struct msm_camera_sensor_flash_data flash_s5k3h2yx = {
-	.flash_type = MSM_CAMERA_FLASH_LED,
-	.flash_src = &msm_flash_src
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_s5k3h2yx_data = {
-	.sensor_name	= "s5k3h2yx",
-	.sensor_reset = 0,
-	.sensor_pwd = 137,
-	.vcm_pwd = 58,
-	.vcm_enable = 1,
-	.camera_power_on = Doubleshot_sensor_vreg_on,
-	.camera_power_off = Doubleshot_sensor_vreg_off,
-	.camera_clk_switch = Doubleshot_maincam_clk_switch,
-	.pdata			= &msm_camera_device_data,
-	.resource		= msm_camera_resources,
-	.num_resources	= ARRAY_SIZE(msm_camera_resources),
-	.flash_data		= &flash_s5k3h2yx,
-	.flash_cfg = &msm_camera_sensor_flash_cfg,
-	.power_down_disable = false, /* true: disable pwd down function */
-	.mirror_mode = 0,
-	.cam_select_pin = CLK_SWITCH,
-	.csi_if			= 1,
-	.dev_node		= 0
-};
-
-struct platform_device msm_camera_sensor_s5k3h2yx = {
-	.name	= "msm_camera_s5k3h2yx",
-	.dev	= {
-		.platform_data = &msm_camera_sensor_s5k3h2yx_data,
-	},
-};
-#endif
-
-#ifdef CONFIG_MT9V113
-static struct msm_camera_sensor_flash_data flash_mt9v113 = {
-	.flash_type		= MSM_CAMERA_FLASH_NONE,
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data = {
-	.sensor_name	= "mt9v113",
-	.sensor_reset	= 138,/*2nd Cam RST*/
-	.sensor_pwd		= 140,/*2nd Cam PWD*/
-	.camera_clk_switch = Doubleshot_seccam_clk_switch,
-	.camera_power_on = Doubleshot_sensor_vreg_on,
-	.camera_power_off = Doubleshot_sensor_vreg_off,
-	.pdata			= &msm_camera_device_data_web_cam,
-	.resource		= msm_camera_resources,
-	.num_resources	= ARRAY_SIZE(msm_camera_resources),
-	.flash_data             = &flash_mt9v113,
-	.power_down_disable = false, /* true: disable pwd down function */
-	.mirror_mode = 0,
-	.cam_select_pin = CLK_SWITCH,
-	.csi_if			= 1,
-	.dev_node		= 1
-};
-
-static void __init msm8x60_init_camera(void)
-{
-	msm_camera_sensor_webcam.name = "msm_camera_webcam";
-	msm_camera_sensor_webcam.dev.platform_data = &msm_camera_sensor_mt9v113_data;
-}
-#endif
-
-static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
-#ifdef CONFIG_IMX105
-	{
-		I2C_BOARD_INFO("imx105", 0x1A >>1),
-	},
-#endif
-#ifdef CONFIG_S5K3H2YX
-	{
-		I2C_BOARD_INFO("s5k3h2yx", 0x20 >> 1),
-	},
-#endif
-#ifdef CONFIG_MT9V113
-	{
-		I2C_BOARD_INFO("mt9v113", 0x3C),
-	},
-#endif
-};
-
 
 #ifdef CONFIG_MSM_GEMINI
 static struct resource msm_gemini_resources[] = {
@@ -2421,16 +2090,6 @@ static struct platform_device *surf_devices[] __initdata = {
 	&hdmi_msm_device,
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
 	&mipi_dsi_cmd_wvga_panel_device,
-
-#ifdef CONFIG_IMX105
-	&msm_camera_sensor_imx105,
-#endif
-#ifdef CONFIG_S5K3H2YX
-	&msm_camera_sensor_s5k3h2yx,
-#endif
-#ifdef CONFIG_MT9V113
-	&msm_camera_sensor_webcam,
-#endif
 
 #ifdef CONFIG_MSM_GEMINI
 	&msm_gemini_device,
@@ -3885,14 +3544,6 @@ static struct i2c_registry msm8x60_i2c_devices[] __initdata = {
 	},
 #endif
 #endif /* CONFIG_MSM8X60_SSBI */
-#ifdef CONFIG_MSM_CAMERA
-    {
-		I2C_SURF | I2C_FFA,
-		MSM_GSBI4_QUP_I2C_BUS_ID,
-		msm_camera_boardinfo,
-		ARRAY_SIZE(msm_camera_boardinfo),
-	},
-#endif
 	{
 		I2C_SURF | I2C_FFA,
 		MSM_GSBI7_QUP_I2C_BUS_ID,
@@ -3960,6 +3611,14 @@ static void register_i2c_devices(void)
 #ifdef CONFIG_I2C
 	u8 mach_mask = 0;
 	int i;
+#ifdef CONFIG_MSMB_CAMERA
+	struct i2c_registry doubleshot_camera_i2c_devices = {
+		I2C_SURF | I2C_FFA,
+		MSM_GSBI4_QUP_I2C_BUS_ID,
+		doubleshot_camera_board_info.board_info,
+		doubleshot_camera_board_info.num_i2c_board_info,
+	};
+#endif
 
 	/* Build the matching 'supported_machs' bitmask */
 	if (machine_is_doubleshot())
@@ -3997,6 +3656,12 @@ static void register_i2c_devices(void)
 	}
 	i2c_register_board_info(MSM_GSBI5_QUP_I2C_BUS_ID,
 		msm_i2c_gsbi5_info, ARRAY_SIZE(msm_i2c_gsbi5_info));
+#ifdef CONFIG_MSMB_CAMERA
+	if (doubleshot_camera_i2c_devices.machs & mach_mask)
+		i2c_register_board_info(doubleshot_camera_i2c_devices.bus,
+			doubleshot_camera_i2c_devices.info,
+			doubleshot_camera_i2c_devices.len);
+#endif
 #endif
 }
 
@@ -5036,6 +4701,9 @@ static void __init doubleshot_init(void)
 #endif
 	msm8x60_init_tlmm();
 	msm8x60_init_gpiomux(msm8x60_htc_gpiomux_cfgs);
+#ifdef CONFIG_MSMB_CAMERA
+	doubleshot_init_cam();
+#endif
 	msm8x60_init_mmc();
 
 #ifdef CONFIG_MSM_DSPS
@@ -5043,8 +4711,6 @@ static void __init doubleshot_init(void)
 #endif
 	platform_add_devices(msm8660_footswitch,
 			     msm8660_num_footswitch);
-
-	msm8x60_init_camera();
 
 	/* Accessory */
 	printk(KERN_INFO "[HS_BOARD] (%s) system_rev = %d\n", __func__,

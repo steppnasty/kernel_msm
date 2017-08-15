@@ -1,6 +1,7 @@
 /* linux/arch/arm/mach-msm/board-doubleshot.h
  *
  * Copyright (C) 2010-2011 HTC Corporation.
+ * Copyright (c) 2017, Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -210,5 +211,9 @@ int __init doubleshot_init_mmc(void);
 int __init doubleshot_init_keypad(void);
 unsigned int doubleshot_get_engineerid(void);
 void msm8x60_allocate_fb_region(void);
+#ifdef CONFIG_MSMB_CAMERA
+extern struct msm_camera_board_info doubleshot_camera_board_info;
+void doubleshot_init_cam(void);
+#endif
 
 #endif /* __ARCH_ARM_MACH_MSM_BOARD_DOUBLESHOT_H */
