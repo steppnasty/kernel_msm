@@ -98,8 +98,9 @@
 #include <mach/board_htc.h>
 #include <linux/i2c/isl9519.h>
 #include <mach/tpa2051d3.h>
-#ifdef CONFIG_USB_ANDROID
-#include <linux/usb/android_composite.h>
+#ifdef CONFIG_USB_G_ANDROID
+#include <linux/usb/android.h>
+#include <mach/usbdiag.h>
 #endif
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/machine.h>
@@ -125,8 +126,6 @@
 #include "mpm.h"
 #include "clock-8x60.h"
 
-#include <mach/htc_usb.h>
-#include <mach/rpc_hsusb.h>
 #include <mach/cable_detect.h>
 #include "rpm_stats.h"
 
@@ -422,7 +421,6 @@ static struct msm_cpuidle_state msm_cstates[] __initdata = {
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
 };
 
-static int doubleshot_phy_init_seq[] = { 0x06, 0x36, 0x0C, 0x31, 0x31, 0x32, 0x1, 0x0E, 0x1, 0x11, -1 };
 static struct regulator *ldo6_3p3;
 static struct regulator *ldo7_1p8;
 
@@ -538,14 +536,7 @@ static int msm_hsusb_ldo_enable(int on)
 	return ret < 0 ? ret : 0;
  }
 
-static struct msm_hsusb_platform_data msm_hsusb_pdata = {
-	.phy_init_seq	= doubleshot_phy_init_seq,
-	.ldo_init	= msm_hsusb_ldo_init,
-	.ldo_enable	= msm_hsusb_ldo_enable,
-	.pclk_src_name	= "dfab_usb_hs_clk",
-};
-
-#ifdef CONFIG_USB_EHCI_MSM
+#ifdef CONFIG_USB_EHCI_MSM_72K
 static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 {
 	static int vbus_is_on;
@@ -563,18 +554,17 @@ static struct msm_usb_host_platform_data msm_usb_host_pdata = {
 };
 #endif
 
-#if defined(CONFIG_USB_MSM_72K) || defined(CONFIG_USB_EHCI_MSM)
+#if defined(CONFIG_USB_MSM_72K) || defined(CONFIG_USB_EHCI_MSM_72K)
 static struct msm_otg_platform_data msm_otg_pdata = {
 	/* if usb link is in sps there is no need for
 	 * usb pclk as dayatona fabric clock will be
 	 * used instead
 	 */
 	.usb_in_sps = 1,
-	.pclk_src_name		 = "dfab_usb_hs_clk",
 	.pemp_level		 = PRE_EMPHASIS_WITH_20_PERCENT,
 	.cdr_autoreset		 = CDR_AUTO_RESET_DISABLE,
 	.se1_gating		 = SE1_GATING_DISABLE,
-#ifdef CONFIG_USB_EHCI_MSM
+#ifdef CONFIG_USB_EHCI_MSM_72K
 	.vbus_power = msm_hsusb_vbus_power,
 #endif
 	.ldo_init		 = msm_hsusb_ldo_init,
@@ -658,32 +648,71 @@ static struct platform_device cable_detect_device = {
 	},
 };
 
-#ifdef CONFIG_USB_ANDROID
-static struct usb_mass_storage_platform_data mass_storage_pdata = {
-	.nluns		= 1,
-	.vendor		= "HTC",
-	.product	= "Android Phone",
+#ifdef CONFIG_USB_MSM_72K
+static struct msm_hsusb_gadget_platform_data msm_gadget_pdata = {
+	.is_phy_status_timer_on = 1,
+};
+#endif
+
+#ifdef CONFIG_USB_G_ANDROID
+
+#define PID_MAGIC_ID		0x71432909
+#define SERIAL_NUM_MAGIC_ID	0x61945374
+#define SERIAL_NUMBER_LENGTH	127
+#define DLOAD_USB_BASE_ADD	0x2A05F0C8
+
+struct magic_num_struct {
+	uint32_t pid;
+	uint32_t serial_num;
 };
 
-static struct platform_device usb_mass_storage_device = {
-	.name	= "usb_mass_storage",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &mass_storage_pdata,
-	},
+struct dload_struct {
+	uint32_t	reserved1;
+	uint32_t	reserved2;
+	uint32_t	reserved3;
+	uint16_t	reserved4;
+	uint16_t	pid;
+	char		serial_number[SERIAL_NUMBER_LENGTH];
+	uint16_t	reserved5;
+	struct magic_num_struct
+			magic_struct;
 };
+
+static int usb_diag_update_pid_and_serial_num(uint32_t pid, const char *snum)
+{
+	struct dload_struct __iomem *dload = 0;
+
+	dload = ioremap(DLOAD_USB_BASE_ADD, sizeof(*dload));
+	if (!dload) {
+		pr_err("%s: cannot remap I/O memory region: %08x\n",
+					__func__, DLOAD_USB_BASE_ADD);
+		return -ENXIO;
+	}
+
+	pr_debug("%s: dload:%p pid:%x serial_num:%s\n",
+				__func__, dload, pid, snum);
+	/* update pid */
+	dload->magic_struct.pid = PID_MAGIC_ID;
+	dload->pid = pid;
+
+	/* update serial number */
+	dload->magic_struct.serial_num = 0;
+	if (!snum)
+		return 0;
+
+	dload->magic_struct.serial_num = SERIAL_NUM_MAGIC_ID;
+	strncpy(dload->serial_number, snum, SERIAL_NUMBER_LENGTH);
+	dload->serial_number[SERIAL_NUMBER_LENGTH - 1] = '\0';
+
+	iounmap(dload);
+
+	return 0;
+}
 
 static struct android_usb_platform_data android_usb_pdata = {
-	.vendor_id	= 0x0BB4,
-	.product_id	= 0x0cae,
-	.version	= 0x0100,
-	.product_name		= "Android Phone",
-	.manufacturer_name	= "HTC",
-	.num_products = ARRAY_SIZE(usb_products),
-	.products = usb_products,
-	.num_functions = ARRAY_SIZE(usb_functions_all),
-	.functions = usb_functions_all,
+	.update_pid_and_serial_num = usb_diag_update_pid_and_serial_num,
 };
+
 static struct platform_device android_usb_device = {
 	.name	= "android_usb",
 	.id		= -1,
@@ -691,13 +720,6 @@ static struct platform_device android_usb_device = {
 		.platform_data = &android_usb_pdata,
 	},
 };
-
-static int __init board_serialno_setup(char *serialno)
-{
-	android_usb_pdata.serial_number = serialno;
-	return 1;
-}
-__setup("androidboot.serialno=", board_serialno_setup);
 #endif
 
 static struct resource msm_vpe_resources[] = {
@@ -2058,8 +2080,14 @@ static struct platform_device *surf_devices[] __initdata = {
 #ifdef CONFIG_MSM_DSPS
 	&msm_dsps_device,
 #endif
-#ifdef CONFIG_USB_ANDROID_QCT_DIAG
-       &usb_diag_device,
+#if defined(CONFIG_USB_MSM_72K) || defined(CONFIG_USB_EHCI_HCD)
+	&msm_device_otg,
+#endif
+#ifdef CONFIG_USB_MSM_72K
+	&msm_device_gadget_peripheral,
+#endif
+#ifdef CONFIG_USB_G_ANDROID
+	&android_usb_device,
 #endif
 #ifdef CONFIG_BATTERY_MSM
 	&msm_batt_device,
@@ -3693,6 +3721,11 @@ static void __init msm8x60_init_buses(void)
 #if defined(CONFIG_USB_MSM_72K) || defined(CONFIG_USB_EHCI_HCD)
 	msm_device_otg.dev.platform_data = &msm_otg_pdata;
 #endif
+
+#ifdef CONFIG_USB_MSM_72K
+	msm_device_gadget_peripheral.dev.platform_data = &msm_gadget_pdata;
+#endif
+
 #ifdef CONFIG_SERIAL_MSM_HS
 	msm_uart_dm1_pdata.rx_wakeup_irq = gpio_to_irq(DOUBLESHOT_GPIO_BT_HOST_WAKE);
 	msm_device_uart_dm1.name = "msm_serial_hs_brcm"; /* for brcm */
@@ -4580,29 +4613,6 @@ static struct msm_rpm_platform_data msm_rpm_data = {
 };
 #endif
 
-
-#ifdef CONFIG_USB_ANDROID
-static void doubleshot_add_usb_devices(void)
-{
-	printk("%s\n", __func__);
-	android_usb_pdata.products[0].product_id =
-		android_usb_pdata.product_id;
-
-#if defined(CONFIG_USB_OTG)
-	msm_otg_pdata.idgnd_gpio = DOUBLESHOT_GPIO_USB_ID;
-	msm_device_otg.dev.platform_data = &msm_otg_pdata;
-	msm_device_hsusb_host.dev.platform_data = &msm_usb_host_pdata;
-
-	platform_device_register(&msm_device_otg);
-#endif
-
-	msm_device_hsusb.dev.platform_data = &msm_hsusb_pdata;
-	config_doubleshot_usb_id_gpios(0);
-	platform_device_register(&msm_device_hsusb);
-	platform_device_register(&usb_mass_storage_device);
-	platform_device_register(&android_usb_device);
-}
-#endif
 int __initdata irq_ignore_tbl[] =
 {
 	MSM_GPIO_TO_INT(64),
@@ -4728,7 +4738,7 @@ static void __init doubleshot_init(void)
 	if (machine_is_doubleshot()) {
 		platform_add_devices(surf_devices,
 				     ARRAY_SIZE(surf_devices));
-#ifdef CONFIG_USB_EHCI_MSM
+#ifdef CONFIG_USB_EHCI_MSM_72K
 		msm_add_host(0, &msm_usb_host_pdata);
 #endif
 	}
@@ -4737,9 +4747,7 @@ static void __init doubleshot_init(void)
 
 	fixup_i2c_configs();
 	register_i2c_devices();
-#ifdef CONFIG_USB_ANDROID
-	doubleshot_add_usb_devices();
-#endif
+	config_doubleshot_usb_id_gpios(0);
 	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
 	msm_cpuidle_set_states(msm_cstates, ARRAY_SIZE(msm_cstates),
 				msm_pm_data);
