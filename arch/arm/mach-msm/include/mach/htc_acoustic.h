@@ -21,19 +21,36 @@ struct acoustic_tables {
 	char adie[PROPERTY_VALUE_MAX];
 	char spkamp[PROPERTY_VALUE_MAX];
 	char acdb[PROPERTY_VALUE_MAX];
+#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
 	char aic3254_dsp[PROPERTY_VALUE_MAX];
+#elif defined(CONFIG_MSM8X60_AUDIO)
+	char tpa2051[PROPERTY_VALUE_MAX];
+	char tpa2026[PROPERTY_VALUE_MAX];
+	char tpa2028[PROPERTY_VALUE_MAX];
+#endif
 };
 
 struct acoustic_ops {
 	void (*enable_mic_bias)(int en, int shift);
 	int (*support_audience)(void);
 	int (*support_aic3254) (void);
+#if defined(CONFIG_MSM8X60_AUDIO)
+	int (*support_adie) (void);
+#endif
 	int (*support_back_mic) (void);
+#if defined(CONFIG_MSM8X60_AUDIO)
+	int (*support_receiver)(void);
+#endif
 	void (*mic_disable) (int mic);
 	void (*mute_headset_amp) (int en);
 	void (*get_acoustic_tables)(struct acoustic_tables *tb);
+#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
 	void (*enable_back_mic) (int en);
 	void (*enable_usb_headset)(int en);
+#elif defined(CONFIG_MSM8X60_AUDIO)
+	int (*support_aic3254_use_mclk) (void);
+	int (*get_speaker_channels) (void);
+#endif
 };
 
 void acoustic_register_ops(struct acoustic_ops *ops);

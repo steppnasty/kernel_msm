@@ -101,7 +101,7 @@ obj-$(CONFIG_MSM7KV2_1X_AUDIO) += qdsp5v2_1x/
 obj-$(CONFIG_MSM7KV2_1X_AUDIO) += htc_acoustic.o htc_acdb_7x30.o
 obj-$(CONFIG_HTC_ACOUSTIC_QSD) += htc_acoustic_qsd.o
 obj-$(CONFIG_MSM8X60_AUDIO) += qdsp6v2/
-obj-$(CONFIG_MSM8X60_AUDIO) += htc_acoustic_8x60.o
+obj-$(CONFIG_MSM8X60_AUDIO) += htc_acoustic.o
 obj-$(CONFIG_MSM_HW3D) += hw3d.o
 
 ifdef CONFIG_PM

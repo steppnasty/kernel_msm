@@ -22,18 +22,26 @@
 #include <linux/gfp.h>
 #include <linux/uaccess.h>
 #include <linux/slab.h>
+#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
 #include <linux/mfd/msm-adie-codec.h>
 #include <mach/qdsp5v2/snddev_icodec.h>
 #include <mach/qdsp5v2/audio_dev_ctl.h>
 #include <mach/qdsp5v2/audio_acdb.h>
+#include <mach/htc_acdb.h>
+#elif defined(CONFIG_MSM8X60_AUDIO)
+#include <mach/qdsp6v2/snddev_icodec.h>
+#include <mach/qdsp6v2/snddev_ecodec.h>
+#include <mach/qdsp6v2/audio_dev_ctl.h>
+#include <mach/qdsp6v2/q6afe.h>
+#endif
 #include <mach/htc_acoustic.h>
+#if defined(CONFIG_HTC_HEADSET_MGR)
 #include <mach/htc_headset_mgr.h>
+#endif
 
 #include <mach/msm_smd.h>
 #include <mach/msm_rpcrouter.h>
 #include "smd_private.h"
-
-#include <mach/htc_acdb.h>
 
 #define ACOUSTIC_IOCTL_MAGIC 'p'
 #define ACOUSTIC_ADIE_SIZE	_IOW(ACOUSTIC_IOCTL_MAGIC, 15, size_t)
@@ -50,8 +58,16 @@
 #define ACOUSTIC_GET_BACK_MIC_STATE	_IOW(ACOUSTIC_IOCTL_MAGIC, 31, int)
 #define ACOUSTIC_MUTE_HEADSET 	_IOW(ACOUSTIC_IOCTL_MAGIC, 32, int)
 #define ACOUSTIC_GET_TABLES 	_IOW(ACOUSTIC_IOCTL_MAGIC, 33, unsigned)
+#define ACOUSTIC_UPDATE_AIC3254_INFO	_IOW(ACOUSTIC_IOCTL_MAGIC, 36, unsigned int)
+#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
 #define ACOUSTIC_ENABLE_BACK_MIC	_IOW(ACOUSTIC_IOCTL_MAGIC, 34, unsigned)
-#define ACOUSTIC_UPDATE_AIC3254_INFO	_IOW(ACOUSTIC_IOCTL_MAGIC, 36, unsigned)
+#elif defined(CONFIG_MSM8X60_AUDIO)
+#define ACOUSTIC_SET_MICBIAS 	_IOW(ACOUSTIC_IOCTL_MAGIC, 34, unsigned)
+#define ACOUSTIC_SET_AFELOOPBACK _IOW(ACOUSTIC_IOCTL_MAGIC, 35, int)
+#define ACOUSTIC_GET_RECEIVER_STATE		_IOW(ACOUSTIC_IOCTL_MAGIC, 37, int)
+#define ACOUSTIC_SET_WB_SAMPLE_RATE		_IOW(ACOUSTIC_IOCTL_MAGIC, 38, int)
+#define ACOUSTIC_GET_SPEAKER_CHANNELS		_IOW(ACOUSTIC_IOCTL_MAGIC, 39, int)
+#endif
 
 #define D(fmt, args...) printk(KERN_INFO "[AUD] htc-acoustic: "fmt, ##args)
 #define E(fmt, args...) printk(KERN_ERR "[AUD] htc-acoustic: "fmt, ##args)
@@ -68,7 +84,6 @@
 extern void *htc_acdb_data;
 
 struct audio_config_database *db;
-struct acdb_config temp;
 static struct mutex api_lock;
 static struct mutex rpc_connect_lock;
 static struct acoustic_ops *the_ops;
@@ -122,7 +137,7 @@ static int is_rpc_connect(void)
 			pr_aud_err("%s: init rpc failed! rc = %ld\n",
 				__func__, PTR_ERR(endpoint));
 			mutex_unlock(&rpc_connect_lock);
-			return -1;
+			return -EFAULT;
 		}
 	}
 	mutex_unlock(&rpc_connect_lock);
@@ -144,16 +159,11 @@ static int acoustic_release(struct inode *inode, struct file *file)
 static long
 acoustic_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	int rc = 0, i, j, setting_sz;
-	int reg_dev = 0;
+	int rc = 0;
 	size_t sz;
-	struct profile_action_info act_info;
+
 	struct msm_snddev_info *dev_info;
-	struct snddev_icodec_state *icodec;
-	struct adie_codec_hwsetting_entry *entry;
-	struct adie_codec_action_unit *htc_adie_ptr;
 	struct acdb_id cur_acdb_id;
-	char filename[64];
 	struct aic3254_info cur_aic3254_info;
 
 	mutex_lock(&api_lock);
@@ -182,7 +192,25 @@ acoustic_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 
 		break;
-	case ACOUSTIC_UPDATE_ADIE:
+	case ACOUSTIC_UPDATE_ADIE: {
+		int i, j, setting_sz;
+		int reg_dev = 0;
+		struct profile_action_info act_info;
+		struct snddev_icodec_state *icodec;
+		struct adie_codec_hwsetting_entry *entry;
+		struct adie_codec_action_unit *htc_adie_ptr;
+#if defined(CONFIG_MSM8X60_AUDIO)
+		int support_adie = 0;
+
+		if (the_ops->support_adie)
+			support_adie = the_ops->support_adie();
+
+		if (!support_adie)
+			break;
+#endif
+
+		pr_aud_info("%s: update adie table\n", __func__);
+
 		if (copy_from_user(&act_info, (void *)arg,
 			sizeof(struct profile_action_info))) {
 			E("copy_from_user failed\n");
@@ -253,7 +281,7 @@ acoustic_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		action_offset +=
 			act_info.act_sz * sizeof(struct adie_codec_action_unit);
 		break;
-
+	}
 	case ACOUSTIC_UPDATE_ACDB:
 		if (copy_from_user(&cur_acdb_id, (void *)arg,
 			sizeof(struct acdb_id))) {
@@ -317,7 +345,7 @@ acoustic_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		D("support_a1026: %d\n", support_a1026);
 		if (copy_to_user((void *) arg,
 			&support_a1026, sizeof(int))) {
-			E("acoustic_ioctl: get engineerID failed\n");
+			E("acoustic_ioctl: fail to get support a1026 status.\n");
 			rc = -EFAULT;
 		}
 		break;
@@ -344,11 +372,15 @@ acoustic_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			the_ops->mic_disable(mic);
 		break;
 	}
-	case ACOUSTIC_REINIT_ACDB:
+	case ACOUSTIC_REINIT_ACDB: {
+#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+		char filename[64];
 		rc = copy_from_user(&filename, (void *)arg, sizeof(filename));
 		if (!rc)
 			rc = htc_reinit_acdb(filename);
+#endif
 		break;
+	}
 	case ACOUSTIC_GET_BACK_MIC_STATE: {
 		int support_back_mic = 0;
 		if (the_ops->support_back_mic)
@@ -380,27 +412,21 @@ acoustic_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			memset(tb.adie, '\0', PROPERTY_VALUE_MAX);
 			memset(tb.spkamp, '\0', PROPERTY_VALUE_MAX);
 			memset(tb.acdb, '\0', PROPERTY_VALUE_MAX);
+#if defined(CONFIG_MSM8X60_AUDIO)
+			memset(tb.tpa2051, '\0', PROPERTY_VALUE_MAX);
+#endif
 			the_ops->get_acoustic_tables(&tb);
 			if (copy_to_user((void *) arg,
 				&tb, sizeof(tb))) {
 				E("acoustic_ioctl: ACOUSTIC_ACOUSTIC_GET_TABLES failed\n");
 				rc = -EFAULT;
 			}
-		}
-		else
+		} else
 			rc = -EFAULT;
+
 		break;
 	}
-	case ACOUSTIC_ENABLE_BACK_MIC:  {
-		int en = 0;
-		if (copy_from_user(&en, (void *)arg, sizeof(int))) {
-			rc = -EFAULT;
-			break;
-		}
-		if (the_ops->enable_back_mic)
-			the_ops->enable_back_mic(en);
-		break;
-	}
+
 	case ACOUSTIC_UPDATE_AIC3254_INFO:
 		if (copy_from_user(&cur_aic3254_info, (void *)arg,
 			sizeof(struct aic3254_info))) {
@@ -413,6 +439,75 @@ acoustic_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		rc = update_aic3254_info(&cur_aic3254_info);
 		break;
+#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+	case ACOUSTIC_ENABLE_BACK_MIC:  {
+		int en = 0;
+		if (copy_from_user(&en, (void *)arg, sizeof(int))) {
+			rc = -EFAULT;
+			break;
+		}
+		if (the_ops->enable_back_mic)
+			the_ops->enable_back_mic(en);
+		break;
+	}
+#elif defined(CONFIG_MSM8X60_AUDIO)
+	case ACOUSTIC_SET_MICBIAS: {
+		int en;
+		if (copy_from_user(&en, (void *)arg, sizeof(int))) {
+			rc = -EFAULT;
+			break;
+		}
+
+		D("acoustic_ioctl: ACOUSTIC_SET_MICBIAS %d\n", en);
+
+		if (the_ops->enable_mic_bias)
+			the_ops->enable_mic_bias(en, 1);
+		break;
+	}
+
+	case ACOUSTIC_SET_AFELOOPBACK: {
+		int en;
+		if (copy_from_user(&en, (void *)arg, sizeof(int))) {
+			rc = -EFAULT;
+			break;
+		}
+
+		D("acoustic_ioctl: ACOUSTIC_SET_AFELOOPBACK %d result: %d \n", en, afe_loopback(en, 0, 1));
+		break;
+	}
+
+	case ACOUSTIC_GET_RECEIVER_STATE: {
+
+		int support_receiver = 1;
+		if (the_ops->support_receiver)
+			support_receiver= the_ops->support_receiver();
+		D("support_receiver: %d\n", support_receiver);
+		if (copy_to_user((void *) arg,
+			&support_receiver, sizeof(int))) {
+			E("acoustic_ioctl: ACOUSTIC_GET_RECEIVER failed\n");
+			rc = -EFAULT;
+		}
+		break;
+	}
+	case ACOUSTIC_SET_WB_SAMPLE_RATE: {
+		msm_set_voc_freq(16000, 16000);
+		break;
+	}
+	case ACOUSTIC_GET_SPEAKER_CHANNELS: {
+
+		int channel = 2;
+		if (the_ops->get_speaker_channels)
+			channel = the_ops->get_speaker_channels();
+		D("get_speaker_channels: %d\n", channel);
+		if (copy_to_user((void *) arg,
+			&channel, sizeof(int))) {
+			E("acoustic_ioctl: ACOUSTIC_GET_SPEAKER_CHANNELS\n");
+			rc = -EFAULT;
+		}
+		break;
+	}
+#endif
+
 	default:
 		rc = -EINVAL;
 	}

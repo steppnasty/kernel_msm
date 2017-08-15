@@ -26,7 +26,7 @@
 #include <mach/qdsp6v2/snddev_icodec.h>
 #include <mach/qdsp6v2/snddev_ecodec.h>
 #include <mach/qdsp6v2/snddev_hdmi.h>
-#include <mach/htc_acoustic_8x60.h>
+#include <mach/htc_acoustic.h>
 
 #include "board-doubleshot.h"
 #include "board-doubleshot-audio-data.h"
