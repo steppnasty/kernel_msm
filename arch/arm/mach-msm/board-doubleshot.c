@@ -59,7 +59,6 @@
 #include <linux/bma250.h>
 #include <mach/panel_id.h>
 #include <mach/atmega_microp.h>
-#include <linux/msm-charger.h>
 #include <linux/i2c.h>
 #include <linux/i2c/sx150x.h>
 #include <linux/smsc911x.h>
@@ -555,16 +554,6 @@ static struct msm_usb_host_platform_data msm_usb_host_pdata = {
 };
 #endif
 
-#if defined(CONFIG_BATTERY_MSM8X60) && !defined(CONFIG_USB_EHCI_MSM)
-static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init)
-{
-	if (init)
-		msm_charger_register_vbus_sn(callback);
-	else
-		msm_charger_unregister_vbus_sn(callback);
-	return 0;
-}
-#endif
 #if defined(CONFIG_USB_MSM_72K) || defined(CONFIG_USB_EHCI_MSM)
 static struct msm_otg_platform_data msm_otg_pdata = {
 	/* if usb link is in sps there is no need for
@@ -579,14 +568,8 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 #ifdef CONFIG_USB_EHCI_MSM
 	.vbus_power = msm_hsusb_vbus_power,
 #endif
-#if defined(CONFIG_BATTERY_MSM8X60) && !defined(CONFIG_USB_EHCI_MSM)
-	.pmic_notif_init         = msm_hsusb_pmic_notif_init,
-#endif
 	.ldo_init		 = msm_hsusb_ldo_init,
 	.ldo_enable		 = msm_hsusb_ldo_enable,
-#ifdef CONFIG_BATTERY_MSM8X60
-	.chg_vbus_draw = msm_charger_vbus_draw,
-#endif
 	.drv_ampl		= HS_DRV_AMPLITUDE_DEFAULT,
 
 };
@@ -1602,24 +1585,6 @@ static struct platform_device msm_rpm_log_device = {
 };
 #endif
 
-#ifdef CONFIG_BATTERY_MSM8X60
-static struct msm_charger_platform_data msm_charger_data = {
-	.safety_time = 180,
-	.update_time = 1,
-	.max_voltage = 4200,
-	.min_voltage = 3200,
-	.resume_voltage = 4100,
-};
-
-static struct platform_device msm_charger_device = {
-	.name = "msm-charger",
-	.id = -1,
-	.dev = {
-		.platform_data = &msm_charger_data,
-	}
-};
-#endif
-
 static struct regulator_consumer_supply rpm_vreg_supply[RPM_VREG_ID_MAX] = {
 	[RPM_VREG_ID_PM8058_L0]  = REGULATOR_SUPPLY("8058_l0", NULL),
 	[RPM_VREG_ID_PM8058_L1]  = REGULATOR_SUPPLY("8058_l1", NULL),
@@ -2369,9 +2334,6 @@ static struct platform_device *surf_devices[] __initdata = {
 #endif
 #if defined(CONFIG_MSM_RPM_STATS_LOG)
 	&msm_rpm_stat_device,
-#endif
-#ifdef CONFIG_BATTERY_MSM8X60
-	&msm_charger_device,
 #endif
 	&msm_device_vidc,
 	&msm_aux_pcm_device,
