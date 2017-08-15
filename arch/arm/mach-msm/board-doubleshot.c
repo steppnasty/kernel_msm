@@ -107,6 +107,9 @@
 #include <mach/rpm.h>
 #include <mach/rpm-regulator.h>
 #include <mach/socinfo.h>
+#include <mach/gpiomux.h>
+
+#include "gpiomux-8x60.h"
 #include "board-doubleshot.h"
 #include "devices.h"
 #include "devices-msm8x60.h"
@@ -117,8 +120,6 @@
 #include "rpm_log.h"
 #include "timer.h"
 #include "saw-regulator.h"
-#include "gpiomux.h"
-#include "gpiomux-8x60.h"
 #include "rpm-regulator.h"
 #include "sysinfo-8x60.h"
 #include "mpm.h"

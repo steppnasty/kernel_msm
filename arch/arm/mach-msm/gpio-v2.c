@@ -32,7 +32,7 @@
 #include <linux/mfd/pmic8058.h>
 #include <mach/mpp.h>
 #include <mach/scm-io.h>
-#include "gpiomux.h"
+#include <mach/gpiomux.h>
 #include "mpm.h"
 #include "pm.h"
 
