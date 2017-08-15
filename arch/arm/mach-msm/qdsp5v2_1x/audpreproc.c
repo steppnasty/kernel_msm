@@ -21,7 +21,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/wakelock.h>
-#include <mach/msm_adsp_1x.h>
+#include <mach/msm_adsp.h>
 
 #include <mach/qdsp5v2_1x/audpreproc.h>
 

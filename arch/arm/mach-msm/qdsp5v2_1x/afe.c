@@ -62,7 +62,7 @@
 #include <mach/qdsp5v2_1x/qdsp5afecmdi.h>
 #include <mach/qdsp5v2_1x/qdsp5afemsg.h>
 #include <mach/qdsp5v2_1x/afe.h>
-#include <mach/msm_adsp_1x.h>
+#include <mach/msm_adsp.h>
 
 #define AFE_MAX_TIMEOUT 500 /* 500 ms */
 #define AFE_MAX_CLNT 6 /* 6 HW path defined so far */

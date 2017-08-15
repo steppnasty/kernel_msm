@@ -32,7 +32,7 @@
 #include <asm/atomic.h>
 #include <asm/ioctls.h>
 
-#include <mach/msm_adsp_1x.h>
+#include <mach/msm_adsp.h>
 #include <mach/qdsp5v2_1x/qdsp5audreccmdi.h>
 #include <mach/qdsp5v2_1x/qdsp5audrecmsg.h>
 #include <mach/qdsp5v2_1x/audpreproc.h>

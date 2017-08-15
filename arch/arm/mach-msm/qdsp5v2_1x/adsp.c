@@ -37,7 +37,7 @@
 #include <linux/io.h>
 #include <mach/msm_iomap.h>
 #include <mach/clk.h>
-#include <mach/msm_adsp_1x.h>
+#include <mach/msm_adsp.h>
 #include "adsp.h"
 
 #define INT_ADSP INT_ADSP_A9_A11

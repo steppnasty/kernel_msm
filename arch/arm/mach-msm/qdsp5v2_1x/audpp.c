@@ -29,7 +29,7 @@
 #include <asm/atomic.h>
 #include <asm/ioctls.h>
 #include <mach/board.h>
-#include <mach/msm_adsp_1x.h>
+#include <mach/msm_adsp.h>
 
 #include <mach/qdsp5v2_1x/qdsp5audppcmdi.h>
 #include <mach/qdsp5v2_1x/qdsp5audppmsg.h>

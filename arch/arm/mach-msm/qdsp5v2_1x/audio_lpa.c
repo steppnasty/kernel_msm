@@ -32,7 +32,7 @@
 #include <linux/slab.h>
 #include <asm/atomic.h>
 #include <asm/ioctls.h>
-#include <mach/msm_adsp_1x.h>
+#include <mach/msm_adsp.h>
 
 #include <linux/msm_audio.h>
 #include <mach/qdsp5v2_1x/audio_dev_ctl.h>

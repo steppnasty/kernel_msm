@@ -14,10 +14,6 @@
  *
  */
 
-#if defined(CONFIG_ARCH_MSM8X60)
-#include "msm_adsp-8x60.h"
-#endif
-
 #ifndef __ASM__ARCH_MSM_ADSP_H
 #define __ASM__ARCH_MSM_ADSP_H
 
