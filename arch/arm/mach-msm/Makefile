@@ -89,7 +89,7 @@ obj-$(CONFIG_MSM_RPC_SDIO_XPRT) += rpcrouter_sdio_xprt.o
 obj-$(CONFIG_MSM_RPCSERVERS) += rpc_server_dog_keepalive.o
 obj-$(CONFIG_MSM_RPCSERVERS) += rpc_server_time_remote.o
 obj-$(CONFIG_MSM_SMD) += smd_tty.o smd_qmi.o
-
+obj-$(CONFIG_MSM_RPC_OEM_RAPI) += oem_rapi_client.o
 obj-$(CONFIG_MSM_DALRPC) += dal.o
 obj-$(CONFIG_MSM_DALRPC_TEST) += dal_remotetest.o
 obj-$(CONFIG_ARCH_MSM7X30) += dal_axi.o
