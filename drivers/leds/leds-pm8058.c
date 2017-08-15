@@ -22,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/rtc.h>
 #include <linux/slab.h>
+#include <linux/wakelock.h>
 
 #define LED_ALM(x...) do { \
 struct timespec ts; \
@@ -37,6 +38,7 @@ tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec); \
 /* static struct pw8058_pwm_config pwm_conf; */
 static struct workqueue_struct *g_led_work_queue;
 static int duties[64];
+struct wake_lock pmic_led_wake_lock;
 
 static int bank_to_id(int bank)
 {
@@ -65,10 +67,17 @@ static int bank_to_id(int bank)
 static void pwm_lut_delayed_fade_out(struct work_struct *work)
 {
 	struct pm8058_led_data *ldata;
-
+	int id, mode;
 	ldata = container_of(work, struct pm8058_led_data,
 			     led_delayed_work.work);
+	id = bank_to_id(ldata->bank);
+	mode = (id == PM_PWM_LED_KPD) ? PM_PWM_CONF_PWM1 :
+					PM_PWM_CONF_PWM1 + (ldata->bank - 4);
+	printk(KERN_INFO "%s +\n", __func__);
 	pm8058_pwm_lut_enable(ldata->pwm_led, 0);
+	pm8058_pwm_config_led(ldata->pwm_led, id, mode, 0);
+	wake_unlock(&pmic_led_wake_lock);
+	printk(KERN_INFO "%s -\n", __func__);
 }
 
 static void led_blink_do_work(struct work_struct *work)
@@ -78,9 +87,11 @@ static void led_blink_do_work(struct work_struct *work)
 	ldata = container_of(work, struct pm8058_led_data,
 			     led_delayed_work.work);
 
+	printk(KERN_INFO "%s +\n", __func__);
 	pwm_config(ldata->pwm_led, ldata->duty_time_ms * 1000,
 		   ldata->period_us);
 	pwm_enable(ldata->pwm_led);
+	printk(KERN_INFO "%s -\n", __func__);
 }
 
 static void led_work_func(struct work_struct *work)
@@ -88,8 +99,9 @@ static void led_work_func(struct work_struct *work)
 	struct pm8058_led_data *ldata;
 
 	ldata = container_of(work, struct pm8058_led_data, led_work);
-	LED_ALM("%s led alarm led work -" , ldata->ldev.name);
+	LED_ALM("%s led alarm led work +" , ldata->ldev.name);
 	pwm_disable(ldata->pwm_led);
+	LED_ALM("%s led alarm led work -" , ldata->ldev.name);
 }
 
 static void led_alarm_handler(struct alarm *alarm)
@@ -97,8 +109,9 @@ static void led_alarm_handler(struct alarm *alarm)
 	struct pm8058_led_data *ldata;
 
 	ldata = container_of(alarm, struct pm8058_led_data, led_alarm);
-	LED_ALM("%s led alarm trigger -", ldata->ldev.name);
+	LED_ALM("%s led alarm trigger +", ldata->ldev.name);
 	queue_work(g_led_work_queue, &ldata->led_work);
+	LED_ALM("%s led alarm trigger -", ldata->ldev.name);
 }
 
 static void pm8058_pwm_led_brightness_set(struct led_classdev *led_cdev,
@@ -113,7 +126,7 @@ static void pm8058_pwm_led_brightness_set(struct led_classdev *led_cdev,
 
 	brightness = (brightness > LED_FULL) ? LED_FULL : brightness;
 	brightness = (brightness < LED_OFF) ? LED_OFF : brightness;
-	printk(KERN_INFO "%s: bank %d brightness %d\n", __func__,
+	printk(KERN_INFO "%s: bank %d brightness %d +\n", __func__,
 	       ldata->bank, brightness);
 
 	if (brightness) {
@@ -129,6 +142,8 @@ static void pm8058_pwm_led_brightness_set(struct led_classdev *led_cdev,
 #endif
 		pwm_enable(ldata->pwm_led);
 	}
+	printk(KERN_INFO "%s: bank %d brightness %d -\n", __func__,
+	       ldata->bank, brightness);
 }
 
 static void pm8058_drvx_led_brightness_set(struct led_classdev *led_cdev,
@@ -140,6 +155,7 @@ static void pm8058_drvx_led_brightness_set(struct led_classdev *led_cdev,
 	int milliamps;
 
 	ldata = container_of(led_cdev, struct pm8058_led_data, ldev);
+
 	pwm_disable(ldata->pwm_led);
 	cancel_delayed_work_sync(&ldata->led_delayed_work);
 
@@ -149,7 +165,7 @@ static void pm8058_drvx_led_brightness_set(struct led_classdev *led_cdev,
 
 	brightness = (brightness > LED_FULL) ? LED_FULL : brightness;
 	brightness = (brightness < LED_OFF) ? LED_OFF : brightness;
-	printk(KERN_INFO "%s: bank %d brightness %d\n", __func__,
+	printk(KERN_INFO "%s: bank %d brightness %d +\n", __func__,
 	       ldata->bank, brightness);
 
 	if (brightness) {
@@ -175,29 +191,31 @@ static void pm8058_drvx_led_brightness_set(struct led_classdev *led_cdev,
 		}
 	} else {
 		if (ldata->flags & PM8058_LED_LTU_EN) {
-			if (ldata->flags & PM8058_LED_FADE_EN) {
-				pduties = &duties[ldata->start_index +
-						  ldata->duites_size];
-				pm8058_pwm_lut_config(ldata->pwm_led,
-						      ldata->period_us,
-						      pduties,
-						      ldata->duty_time_ms,
-						      ldata->start_index +
-						      ldata->duites_size,
-						      ldata->duites_size,
-						      0, 0,
-						      ldata->lut_flag);
-				pm8058_pwm_lut_enable(ldata->pwm_led, 1);
-				queue_delayed_work(g_led_work_queue,
-						   &ldata->led_delayed_work,
-						   msecs_to_jiffies(1000));
-				return;
-			}
-			pm8058_pwm_lut_enable(ldata->pwm_led, 0);
+			wake_lock(&pmic_led_wake_lock);
+			pduties = &duties[ldata->start_index +
+					  ldata->duites_size];
+			pm8058_pwm_lut_config(ldata->pwm_led,
+					      ldata->period_us,
+					      pduties,
+					      ldata->duty_time_ms,
+					      ldata->start_index +
+					      ldata->duites_size,
+					      ldata->duites_size,
+					      0, 0,
+					      ldata->lut_flag);
+			pm8058_pwm_lut_enable(ldata->pwm_led, 1);
+			queue_delayed_work(g_led_work_queue,
+					   &ldata->led_delayed_work,
+					   msecs_to_jiffies(ldata->duty_time_ms * ldata->duty_time_ms));
+
+			printk(KERN_INFO "%s: bank %d fade out brightness %d -\n", __func__,
+			ldata->bank, brightness);
+			return;
 		} else
 			pwm_disable(ldata->pwm_led);
 		pm8058_pwm_config_led(ldata->pwm_led, id, mode, 0);
 	}
+	printk(KERN_INFO "%s: bank %d brightness %d -\n", __func__, ldata->bank, brightness);
 }
 
 static ssize_t pm8058_led_blink_store(struct device *dev,
@@ -227,7 +245,7 @@ static ssize_t pm8058_led_blink_store(struct device *dev,
 		pm8058_pwm_config_led(ldata->pwm_led, id, mode,
 				      ldata->out_current);
 
-	printk(KERN_INFO "%s: bank %d blink %d\n", __func__, ldata->bank, val);
+	printk(KERN_INFO "%s: bank %d blink %d +\n", __func__, ldata->bank, val);
 
 	switch (val) {
 	case -1: /* stop flashing */
@@ -282,9 +300,11 @@ static ssize_t pm8058_led_blink_store(struct device *dev,
 		pwm_enable(ldata->pwm_led);
 		break;
 	default:
+		printk(KERN_INFO "%s: bank %d blink %d -\n", __func__, ldata->bank, val);
 		return -EINVAL;
 	}
 
+	printk(KERN_INFO "%s: bank %d blink %d -\n", __func__, ldata->bank, val);
 	return count;
 }
 
@@ -330,8 +350,8 @@ static ssize_t pm8058_led_off_timer_store(struct device *dev,
 	led_cdev = (struct led_classdev *)dev_get_drvdata(dev);
 	ldata = container_of(led_cdev, struct pm8058_led_data, ldev);
 
-	/*printk(KERN_INFO "Setting %s off_timer to %d min %d sec\n",
-					   led_cdev->name, min, sec);*/
+	printk(KERN_INFO "Setting %s off_timer to %d min %d sec +\n",
+					   led_cdev->name, min, sec);
 
 	off_timer = min * 60 + sec;
 
@@ -343,7 +363,8 @@ static ssize_t pm8058_led_off_timer_store(struct device *dev,
 		alarm_start_range(&ldata->led_alarm, next_alarm, next_alarm);
 		LED_ALM("led alarm start -");
 	}
-
+	printk(KERN_INFO "Setting %s off_timer to %d min %d sec -\n",
+					   led_cdev->name, min, sec);
 	return count;
 }
 
@@ -378,7 +399,7 @@ static ssize_t pm8058_led_currents_store(struct device *dev,
 	led_cdev = (struct led_classdev *)dev_get_drvdata(dev);
 	ldata = container_of(led_cdev, struct pm8058_led_data, ldev);
 
-	printk(KERN_INFO "%s: bank %d currents %d\n", __func__, ldata->bank,
+	printk(KERN_INFO "%s: bank %d currents %d +\n", __func__, ldata->bank,
 	       currents);
 
 	ldata->out_current = currents;
@@ -387,6 +408,8 @@ static ssize_t pm8058_led_currents_store(struct device *dev,
 	if (currents)
 		ldata->ldev.brightness_set(led_cdev, 255);
 
+	printk(KERN_INFO "%s: bank %d currents %d -\n", __func__, ldata->bank,
+	       currents);
 	return count;
 }
 
@@ -416,6 +439,8 @@ static int pm8058_led_probe(struct platform_device *pdev)
 	}
 
 	dev_set_drvdata(&pdev->dev, ldata);
+
+	wake_lock_init(&pmic_led_wake_lock, WAKE_LOCK_SUSPEND, "pmic_led");
 
 	g_led_work_queue = create_workqueue("led");
 	if (!g_led_work_queue)
@@ -571,6 +596,7 @@ err_create_work_queue:
 	kfree(ldata);
 
 err_exit:
+	wake_lock_destroy(&pmic_led_wake_lock);
 	return ret;
 }
 
@@ -608,6 +634,7 @@ static int __devexit pm8058_led_remove(struct platform_device *pdev)
 					   &dev_attr_currents);
 	}
 
+	wake_lock_destroy(&pmic_led_wake_lock);
 	destroy_workqueue(g_led_work_queue);
 	kfree(ldata);
 
