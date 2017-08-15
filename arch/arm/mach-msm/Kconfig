@@ -337,26 +337,12 @@ config MACH_MAHIMAHI
 	help
 	  Select this to support the Mahi-Mahi device
 
-config MACH_BRAVO
-	depends on ARCH_QSD8X50
-	default n
-	bool "Bravo"
-	help
-	  Select this to support the Bravo device
-
 config MACH_PASSIONC
 	depends on ARCH_QSD8X50
 	default n
 	bool "PassionC"
 	help
 	  Select this to support the PassionC device
-
-config MACH_BRAVOC
-	depends on ARCH_QSD8X50
-	default n
-	bool "BravoC"
-	help
-	  Select this to support the BravoC device
 
 config MACH_INCREDIBLE
 	depends on ARCH_QSD8X50

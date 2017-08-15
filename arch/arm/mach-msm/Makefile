@@ -140,16 +140,6 @@ obj-$(CONFIG_MACH_SUPERSONIC) += board-supersonic-keypad.o board-supersonic-mmc.
 obj-$(CONFIG_MACH_SUPERSONIC) += board-supersonic-rfkill.o board-supersonic-audio.o
 obj-$(CONFIG_MACH_SUPERSONIC) += board-supersonic-wifi.o htc_awb_cal.o
 obj-$(CONFIG_MACH_SUPERSONIC) += board-supersonic-microp.o
-obj-$(CONFIG_MACH_BRAVO) += board-bravo.o panel-samsungwvga-tl2796a.o panel-sonywvga-s6d16a0x21.o
-obj-$(CONFIG_MACH_BRAVO) += board-bravo-keypad.o board-bravo-mmc.o
-obj-$(CONFIG_MACH_BRAVO) += board-bravo-rfkill.o
-obj-$(CONFIG_MACH_BRAVO) += board-bravo-audio.o board-bravo-wifi.o htc_awb_cal.o
-obj-$(CONFIG_MACH_BRAVO) += board-bravo-microp.o
-obj-$(CONFIG_MACH_BRAVOC) += board-bravoc.o panel-samsungwvga-tl2796a.o panel-sonywvga-s6d16a0x21.o
-obj-$(CONFIG_MACH_BRAVOC) += board-bravoc-keypad.o board-bravoc-mmc.o
-obj-$(CONFIG_MACH_BRAVOC) += board-bravoc-rfkill.o board-bravoc-audio.o
-obj-$(CONFIG_MACH_BRAVOC) += board-bravoc-wifi.o htc_awb_cal.o
-obj-$(CONFIG_MACH_BRAVOC) += board-bravoc-microp.o
 
 # MSM7x30 boards
 obj-$(CONFIG_ARCH_MSM7X30) += htc_wifi_nvs.o htc_awb_cal.o
