@@ -23,6 +23,10 @@
 #include <linux/wakelock.h>
 #include <linux/irq.h>
 
+#ifdef CONFIG_ARCH_MSM8X60
+static struct workqueue_struct *ks_queue;
+#endif
+
 enum {
 	DEBOUNCE_UNSTABLE     = BIT(0),	/* Got irq, while debouncing */
 	DEBOUNCE_PRESSED      = BIT(1),
@@ -37,19 +41,26 @@ enum {
 struct gpio_key_state {
 	struct gpio_switch_state *ds;
 	uint8_t debounce;
+#ifdef CONFIG_ARCH_MSM8X60
+	struct work_struct work;
+#endif
 };
 
 struct gpio_switch_state {
 	struct gpio_event_input_devs *input_devs;
 	const struct gpio_event_switch_info *info;
+#ifndef CONFIG_ARCH_MSM8X60
 	struct hrtimer timer;
+#endif
 	int use_irq;
+	int irq_status;
 	int debounce_count;
 	spinlock_t irq_lock;
 	struct wake_lock wake_lock;
 	struct gpio_key_state key_state[0];
 };
 
+#ifndef CONFIG_ARCH_MSM8X60
 static enum hrtimer_restart gpio_event_switch_timer_func(struct hrtimer *timer)
 {
 	int i;
@@ -161,6 +172,46 @@ static enum hrtimer_restart gpio_event_switch_timer_func(struct hrtimer *timer)
 
 	return HRTIMER_NORESTART;
 }
+#endif
+
+void switch_reprort_keycode(struct gpio_key_state *ks)
+{
+	struct gpio_switch_state *ds = ks->ds;
+	int keymap_index = ks - ds->key_state;
+	const struct gpio_event_direct_entry *key_entry;
+	int pressed;
+	int pin_state;
+
+	key_entry = &ds->info->keymap[keymap_index];
+
+	pin_state = gpio_get_value(key_entry->gpio);
+	pressed = pin_state ^ !(ds->info->flags & GPIOEDF_ACTIVE_HIGH);
+	set_irq_type(gpio_to_irq(key_entry->gpio),
+		pin_state ? IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
+
+	if (ds->info->flags & GPIOEDF_PRINT_KEYS)
+		KEY_LOGI("switch_reprort_keycode: key %d-%d, %d "
+			"(%d) changed to %d\n",
+			ds->info->type, key_entry->code, keymap_index,
+			key_entry->gpio, pressed);
+
+	input_event(ds->input_devs->dev[key_entry->dev],
+		ds->info->type, key_entry->code, pressed);
+	if (key_entry->code == SW_LID && get_kp_irq_mode()) {
+		if (ds->info->set_qty_irq)
+			ds->info->set_qty_irq(pressed);
+	}
+
+	enable_irq(gpio_to_irq(key_entry->gpio));
+}
+
+#ifdef CONFIG_ARCH_MSM8X60
+static void keypad_do_work(struct work_struct *w)
+{
+	struct gpio_key_state *ks = container_of(w, struct gpio_key_state, work);
+	switch_reprort_keycode(ks);
+}
+#endif
 
 static irqreturn_t gpio_event_switch_irq_handler(int irq, void *dev_id)
 {
@@ -169,8 +220,6 @@ static irqreturn_t gpio_event_switch_irq_handler(int irq, void *dev_id)
 	int keymap_index = ks - ds->key_state;
 	const struct gpio_event_direct_entry *key_entry;
 	unsigned long irqflags;
-	int pressed;
-	int pin_state;
 
 	if (!ds->use_irq)
 		return IRQ_HANDLED;
@@ -183,9 +232,11 @@ static irqreturn_t gpio_event_switch_irq_handler(int irq, void *dev_id)
 			ks->debounce = DEBOUNCE_UNKNOWN;
 			if (ds->debounce_count++ == 0) {
 				wake_lock(&ds->wake_lock);
+#ifndef CONFIG_ARCH_MSM8X60
 				hrtimer_start(
 					&ds->timer, ds->info->debounce_time,
 					HRTIMER_MODE_REL);
+#endif
 			}
 			if (ds->info->flags & GPIOEDF_PRINT_KEY_DEBOUNCE)
 				KEY_LOGD("gpio_event_switch_irq_handler: "
@@ -198,23 +249,12 @@ static irqreturn_t gpio_event_switch_irq_handler(int irq, void *dev_id)
 		}
 		spin_unlock_irqrestore(&ds->irq_lock, irqflags);
 	} else {
-		pin_state = gpio_get_value(key_entry->gpio);
-		pressed = pin_state ^ !(ds->info->flags & GPIOEDF_ACTIVE_HIGH);
-		set_irq_type(irq,
-			pin_state ? IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
-
-		if (ds->info->flags & GPIOEDF_PRINT_KEYS)
-			KEY_LOGI("gpio_event_switch_irq_handler: key %d-%d, %d "
-				"(%d) changed to %d\n",
-				ds->info->type, key_entry->code, keymap_index,
-				key_entry->gpio, pressed);
-
-		input_event(ds->input_devs->dev[key_entry->dev],
-			ds->info->type, key_entry->code, pressed);
-		if (key_entry->code == SW_LID && get_kp_irq_mode()) {
-			if (ds->info->set_qty_irq)
-				ds->info->set_qty_irq(pressed);
-		}
+		disable_irq_nosync(irq);
+#ifdef CONFIG_ARCH_MSM8X60
+		queue_work(ks_queue, &ks->work);
+#else
+		switch_reprort_keycode(ks);
+#endif
 	}
 	return IRQ_HANDLED;
 }
@@ -230,16 +270,24 @@ static int gpio_event_switch_request_irqs(struct gpio_switch_state *ds)
 		err = irq = gpio_to_irq(ds->info->keymap[i].gpio);
 		if (err < 0)
 			goto err_gpio_get_irq_num_failed;
+#ifdef CONFIG_ARCH_MSM8X60
+		INIT_WORK(&ds->key_state[i].work, keypad_do_work);
+		set_irq_flags(irq, IRQF_VALID | IRQF_NOAUTOEN);
+#endif
 		req_flags = gpio_get_value(ds->info->keymap[i].gpio) ?
 				IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH;
-		err = request_irq(irq, gpio_event_switch_irq_handler,
+		err = request_any_context_irq(irq, gpio_event_switch_irq_handler,
 				  req_flags, "gpio_switchs", &ds->key_state[i]);
-		if (err) {
+		if (err < 0) {
 			KEY_LOGE("[GPIO SWITCH] request_irq "
 				"failed for input %d, irq %d\n",
 				ds->info->keymap[i].gpio, irq);
 			goto err_request_irq_failed;
 		}
+
+#ifdef CONFIG_ARCH_MSM8X60
+		queue_work(ks_queue, &ds->key_state[i].work);
+#endif
 
 		if (!ds->info->keymap[i].not_wakeup_src)
 			enable_irq_wake(irq);
@@ -263,54 +311,62 @@ int gpio_event_switch_func(struct gpio_event_input_devs *input_devs,
 	int i;
 	int irq;
 	unsigned long irqflags;
-	static int irq_status = 1;
 	struct gpio_event_switch_info *di;
 	struct gpio_switch_state *ds = *data;
 
 	di = container_of(info, struct gpio_event_switch_info, info);
 
 	if (func == GPIO_EVENT_FUNC_SUSPEND) {
-		irq_status = !(gpio_event_get_quickboot_status() & 0x01);
-		KEY_LOGI("%s: set irq_status = %d\n", __func__, irq_status);
+		ds->irq_status = !(gpio_event_get_quickboot_status() & 0x01);
+		KEY_LOGI("%s: set irq_status = %d\n", __func__, ds->irq_status);
 
 		if (ds->use_irq) {
-			if (irq_status)
+			if (ds->irq_status)
 				return 0;
 			for (i = 0; i < di->keymap_size; i++) {
 				irq = gpio_to_irq(di->keymap[i].gpio);
 				disable_irq_nosync(irq);
-				KEY_LOGD("%s: disable irq=%d,gpio=%d\n",
+				KEY_LOGI("%s: disable irq=%d,gpio=%d\n",
 					__func__, irq, di->keymap[i].gpio);
 			}
-
+#ifndef CONFIG_ARCH_MSM8X60
 			if (hrtimer_cancel(&ds->timer))
 				wake_unlock(&ds->wake_lock);
-
-			for (i = 0; i < di->keymap_size; i++, ds->debounce_count++) {
+#endif
+			for (i = 0; i < di->keymap_size; i++) {
 				if (ds->key_state[i].debounce == DEBOUNCE_UNSTABLE)
 					enable_irq(gpio_to_irq(di->keymap[i].gpio));
 				ds->key_state[i].debounce = DEBOUNCE_UNKNOWN;
 			}
-		} else
+			ds->debounce_count = di->keymap_size;
+		} else {
+#ifndef CONFIG_ARCH_MSM8X60
 			hrtimer_cancel(&ds->timer);
+#endif
+		}
 
 		return 0;
 	}
 	if (func == GPIO_EVENT_FUNC_RESUME) {
-		KEY_LOGI("%s: previous irq_status = %d\n", __func__, irq_status);
+		KEY_LOGI("%s: previous irq_status = %d\n", __func__, ds->irq_status);
 
 		if (ds->use_irq) {
-			if (irq_status)
+			if (ds->irq_status)
 				return 0;
 			for (i = 0; i < di->keymap_size; i++) {
 				irq = gpio_to_irq(di->keymap[i].gpio);
 				enable_irq(irq);
-				KEY_LOGD("%s: enable irq=%d,gpio=%d\n",
+				KEY_LOGI("%s: enable irq=%d,gpio=%d\n",
 					__func__, irq, di->keymap[i].gpio);
 			}
-			irq_status = 1;
+			ds->irq_status = 1;
 		}
+#ifdef CONFIG_ARCH_MSM8X60
+		for (i = 0; i < di->keymap_size; i++)
+			queue_work(ks_queue, &ds->key_state[i].work);
+#else
 		hrtimer_start(&ds->timer, ktime_set(0, 0), HRTIMER_MODE_REL);
+#endif
 
 		return 0;
 	}
@@ -366,27 +422,34 @@ int gpio_event_switch_func(struct gpio_event_input_devs *input_devs,
 		}
 		if (di->setup_switch_gpio)
 			di->setup_switch_gpio();
-
+#ifdef CONFIG_ARCH_MSM8X60
+		ks_queue = create_singlethread_workqueue("ks_queue");
+#endif
 		ret = gpio_event_switch_request_irqs(ds);
 
 		spin_lock_irqsave(&ds->irq_lock, irqflags);
 		ds->use_irq = ret == 0;
+		ds->irq_status = ds->use_irq;
 
 		KEY_LOGI("GPIO Switch Driver: Start gpio switchs for %s%s in %s "
 			"mode\n", input_devs->dev[0]->name,
 			(input_devs->count > 1) ? "..." : "",
 			ret == 0 ? "interrupt" : "polling");
 
+#ifndef CONFIG_ARCH_MSM8X60
 		hrtimer_init(&ds->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		ds->timer.function = gpio_event_switch_timer_func;
 		hrtimer_start(&ds->timer, ktime_set(0, 0), HRTIMER_MODE_REL);
+#endif
 		spin_unlock_irqrestore(&ds->irq_lock, irqflags);
 		return 0;
 	}
 
 	ret = 0;
 	spin_lock_irqsave(&ds->irq_lock, irqflags);
+#ifndef CONFIG_ARCH_MSM8X60
 	hrtimer_cancel(&ds->timer);
+#endif
 	if (ds->use_irq) {
 		for (i = di->keymap_size - 1; i >= 0; i--) {
 			free_irq(gpio_to_irq(di->keymap[i].gpio),
