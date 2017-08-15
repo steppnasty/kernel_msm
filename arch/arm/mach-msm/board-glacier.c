@@ -73,6 +73,9 @@
 #include <mach/atmega_microp.h>
 #include <mach/htc_battery.h>
 #include <linux/tps65200.h>
+#ifdef CONFIG_BT
+#include <mach/htc_bdaddress.h>
+#endif
 #include <mach/htc_fmtx_rfkill.h>
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
@@ -1810,26 +1813,6 @@ struct platform_device glacier_bcm_bt_lpm_device = {
         },
 };
 
-#define ATAG_BDADDR 0x43294329  /* mahimahi bluetooth address tag */
-#define ATAG_BDADDR_SIZE 4
-#define BDADDR_STR_SIZE 18
-
-static char bdaddr[BDADDR_STR_SIZE];
-extern unsigned char *get_bt_bd_ram(void);
-
-static void bt_export_bd_address(void)
-{
-        unsigned char cTemp[6];
-
-        memcpy(cTemp, get_bt_bd_ram(), 6);
-        sprintf(bdaddr, "%02x:%02x:%02x:%02x:%02x:%02x",
-                cTemp[0], cTemp[1], cTemp[2], cTemp[3], cTemp[4], cTemp[5]);
-        printk(KERN_INFO "BT HW address=%s\n", bdaddr);
-}
-
-module_param_string(bdaddr, bdaddr, sizeof(bdaddr), S_IWUSR | S_IRUGO);
-MODULE_PARM_DESC(bdaddr, "bluetooth address");
-
 #elif defined(CONFIG_SERIAL_MSM_HS)
 static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
 	.rx_wakeup_irq = MSM_GPIO_TO_INT(GLACIER_GPIO_BT_HOST_WAKE),
@@ -1842,31 +1825,6 @@ static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
 	.host_wakeup_pin = GLACIER_GPIO_BT_HOST_WAKE,
 
 };
-
-/* for bcm */
-static char bdaddress[20];
-extern unsigned char *get_bt_bd_ram(void);
-
-static void bt_export_bd_address(void)
-{
-	unsigned char cTemp[6];
-
-	memcpy(cTemp, get_bt_bd_ram(), 6);
-	sprintf(bdaddress, "%02x:%02x:%02x:%02x:%02x:%02x",
-		cTemp[0], cTemp[1], cTemp[2], cTemp[3], cTemp[4], cTemp[5]);
-	printk(KERN_INFO "YoYo--BD_ADDRESS=%s\n", bdaddress);
-}
-
-module_param_string(bdaddress, bdaddress, sizeof(bdaddress), S_IWUSR | S_IRUGO);
-MODULE_PARM_DESC(bdaddress, "BT MAC ADDRESS");
-
-static char bt_chip_id[10] = "bcm4329";
-module_param_string(bt_chip_id, bt_chip_id, sizeof(bt_chip_id), S_IWUSR | S_IRUGO);
-MODULE_PARM_DESC(bt_chip_id, "BT's chip id");
-
-static char bt_fw_version[10] = "v2.0.38";
-module_param_string(bt_fw_version, bt_fw_version, sizeof(bt_fw_version), S_IWUSR | S_IRUGO);
-MODULE_PARM_DESC(bt_fw_version, "BT's fw version");
 #endif
 
 static struct resource ram_console_resources[] = {
@@ -2133,8 +2091,9 @@ static void __init glacier_init(void)
 
 	msm_clock_init(&msm7x30_clock_init_data);
 
-	/* for bcm */
+#ifdef CONFIG_BT
 	bt_export_bd_address();
+#endif
 
 #if defined(CONFIG_MSM_SERIAL_DEBUGGER)
 	if (!opt_disable_uart2)
