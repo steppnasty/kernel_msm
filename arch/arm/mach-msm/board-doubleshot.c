@@ -634,10 +634,6 @@ static struct cable_detect_platform_data cable_detect_pdata = {
 		.usbid_mpp	=  XOADC_MPP_4,
 		.usbid_amux	= PM_MPP_AIN_AMUX_CH5,
 	},
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
-	.dock_detect	= 1, /* detect desk dock */
-	.dock_pin_gpio  = DOUBLESHOT_GPIO_DOCK_PIN,
-#endif
 };
 
 static struct platform_device cable_detect_device = {

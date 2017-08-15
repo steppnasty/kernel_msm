@@ -30,13 +30,6 @@
 
 #ifdef CONFIG_HTC_HEADSET_MGR
 #include <mach/htc_headset_mgr.h>
-#ifdef CONFIG_HTC_HEADSET_MISC
-#include <mach/htc_headset_misc.h>
-#endif
-#endif
-
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-#include "../video/msm_8x60/sii9234/TPI.h"
 #endif
 
 static int vbus;
@@ -75,24 +68,7 @@ struct cable_detect_info {
 	int ac_9v_gpio;
 	void (*configure_ac_9v_gpio) (int);
 	u8 mhl_internal_3v3;
-
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
-	bool dock_detect;
-	int dockpin_irq;
-	int dock_pin_gpio;
-	uint8_t dock_pin_state;
-	struct delayed_work dock_work_isr;
-	struct delayed_work dock_work;
-#endif
 } the_cable_info;
-
-// -----------------------------------------------------------------------------
-//                         External routine declaration
-// -----------------------------------------------------------------------------
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-extern void sii9234_mhl_device_wakeup(void);
-#endif //CONFIG_FB_MSM_HDMI_MHL_SII9234
-
 
 // -----------------------------------------------------------------------------
 //                               Routine prototype
@@ -102,11 +78,6 @@ static irqreturn_t vbus_irq_handler(int irq, void *dev_id);
 static int cable_detect_get_adc(void);
 static int mhl_detect(struct cable_detect_info *pInfo);
 static void usb_id_detect_init(struct cable_detect_info *info);
-#endif
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
-static void dock_isr_work(struct work_struct *w);
-static void dock_detect_work(struct work_struct *w);
-static void dock_detect_init(struct cable_detect_info *pInfo);
 #endif
 static DEFINE_MUTEX(cable_notify_sem);
 static void send_cable_connect_notify(int cable_type)
@@ -206,45 +177,12 @@ static void check_vbus_in(struct work_struct *w)
 	vbus_in = (level) ? 0:1;
 	CABLE_INFO("%s: vbus = %d, vbus_in = %d\n", __func__, vbus, vbus_in);
 
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-	if (pInfo->cable_redetect) {
-		CABLE_INFO("mhl re-detect\n");
-		disable_irq_nosync(pInfo->idpin_irq);
-		queue_delayed_work(pInfo->cable_detect_wq,
-			&pInfo->cable_detect_work, ADC_DELAY);
-	}
-#endif
-
 	if (vbus != vbus_in) {
 		vbus = vbus_in;
 
 		if (pInfo->usb_uart_switch)
 			pInfo->usb_uart_switch(!vbus);
 		msm_hsusb_set_vbus_state(vbus_in);
-
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
-		if (pInfo->dock_detect) {
-			if (vbus) {
-				if (pInfo->dockpin_irq)
-					enable_irq(pInfo->dockpin_irq);
-			} else {
-				disable_irq_nosync(pInfo->dockpin_irq);
-				if (cancel_delayed_work_sync(&pInfo->dock_work_isr))
-					enable_irq(pInfo->dockpin_irq);
-
-				if (cancel_delayed_work_sync(&pInfo->dock_work)) {
-					if (pInfo->dock_pin_state == 0)
-						set_irq_type(pInfo->dockpin_irq,
-							IRQF_TRIGGER_LOW);
-				}
-				if (pInfo->accessory_type == DOCK_STATE_DESK) {
-					pInfo->dock_pin_state |= 0x80;
-					queue_delayed_work(pInfo->cable_detect_wq,
-							&pInfo->dock_work, 0);
-				}
-			}
-		}
-#endif
 	}
 	enable_irq(pInfo->vbus_mpp_irq);
 	CABLE_INFO("%s: Enable vbus irq ++\n", __func__);
@@ -274,9 +212,6 @@ static int cable_detect_get_type(struct cable_detect_info *pInfo)
 		else {
 			if (pInfo->mhl_reset_gpio != 0)
 				gpio_set_value(pInfo->mhl_reset_gpio, 1); /* Reset High */
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-			D2ToD3();
-#endif
 			if (adc > 150 && adc < 220)
 				type = DOCK_STATE_CAR;
 			else if (adc > 370 && adc < 440)
@@ -345,18 +280,6 @@ static void cable_detect_handler(struct work_struct *w)
 		headset_ext_detect(USB_AUDIO_OUT);
 #endif
 		break;
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-	case DOCK_STATE_MHL:
-		CABLE_INFO("MHL inserted\n");
-		switch_set_state(&dock_switch, DOCK_STATE_MHL);
-		pInfo->accessory_type = DOCK_STATE_MHL;
-
-		if (!pInfo->mhl_internal_3v3 && !vbus)
-			send_cable_connect_notify(CONNECT_TYPE_INTERNAL);
-
-		sii9234_mhl_device_wakeup();
-		break;
-#endif
 #if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
 	case DOCK_STATE_USB_HOST:
 		CABLE_INFO("USB Host inserted\n");
@@ -391,12 +314,6 @@ static void cable_detect_handler(struct work_struct *w)
 				pInfo->usb_dpdn_switch(PATH_USB);
 			pInfo->accessory_type = DOCK_STATE_UNDOCKED;
 			break;
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-		case DOCK_STATE_MHL:
-			CABLE_INFO("MHL removed\n");
-			switch_set_state(&dock_switch, DOCK_STATE_UNDOCKED);
-			break;
-#endif
 #if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
 		case DOCK_STATE_USB_HOST:
 			CABLE_INFO("USB host cable removed\n");
@@ -417,10 +334,6 @@ static void cable_detect_handler(struct work_struct *w)
 	value = gpio_get_value(pInfo->usb_id_pin_gpio);
 	CABLE_INFO("%s ID pin %d, type %d\n", __func__,
 				value, pInfo->accessory_type);
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-	if (pInfo->accessory_type == DOCK_STATE_MHL)
-		return;
-#endif
 	if (pInfo->accessory_type == DOCK_STATE_UNDOCKED)
 		set_irq_type(pInfo->idpin_irq,
 			value ? IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
@@ -495,11 +408,7 @@ static int mhl_detect(struct cable_detect_info *pInfo)
 	CABLE_INFO("[2nd] accessory adc = 0x%x\n", adc_value);
 
 	if ((pInfo->mhl_version_ctrl_flag) || (adc_value >= 776 && adc_value <= 1020))
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-		type = DOCK_STATE_MHL;
-#else
 		type = DOCK_STATE_UNDEFINED;
-#endif
 	else {
 #if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
 		type = DOCK_STATE_USB_HOST;
@@ -509,9 +418,6 @@ static int mhl_detect(struct cable_detect_info *pInfo)
 
 		if (pInfo->mhl_reset_gpio != 0)
 			gpio_set_value(pInfo->mhl_reset_gpio, 1);	/* Reset High */
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-		D2ToD3();
-#endif
 	}
 	if (pInfo->config_usb_id_gpios)
 		pInfo->config_usb_id_gpios(0);
@@ -591,149 +497,7 @@ static void usb_id_detect_init(struct cable_detect_info *pInfo)
 err:
 	free_irq(pInfo->idpin_irq, 0);
 }
-
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-static void mhl_status_notifier_func(bool isMHL, int charging_type)
-{
-	struct cable_detect_info *pInfo = &the_cable_info;
-	int id_pin = gpio_get_value(pInfo->usb_id_pin_gpio);
-	static uint8_t mhl_connected;
-
-	CABLE_INFO("%s: isMHL %d, charging type %d, id_pin %d\n",
-				__func__, isMHL, charging_type, id_pin);
-	if (pInfo->accessory_type != DOCK_STATE_MHL) {
-		CABLE_INFO("%s: accessory is not MHL, type %d\n",
-					__func__, pInfo->accessory_type);
-		return;
-	}
-
-#ifdef CONFIG_HTC_HEADSET_MISC
-	headset_mhl_audio_jack_enable(isMHL);
-#endif
-
-	if (!isMHL) {
-		CABLE_INFO("MHL removed\n");
-
-		if (pInfo->usb_dpdn_switch)
-			pInfo->usb_dpdn_switch(PATH_USB);
-
-		if (pInfo->mhl_1v2_power)
-			pInfo->mhl_1v2_power(0);
-
-		send_cable_connect_notify(CONNECT_TYPE_NONE);
-
-#ifdef MHL_REDETECT
-		if (mhl_connected == 0) {
-			CABLE_INFO("MHL re-detect\n");
-			set_irq_type(pInfo->idpin_irq,
-				id_pin ? IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
-			pInfo->cable_redetect = 1;
-		}
-#endif
-		mhl_connected = 0;
-
-		pInfo->accessory_type = DOCK_STATE_UNDOCKED;
-
-		enable_irq(pInfo->idpin_irq);
-		return;
-	} else {
-		mhl_connected = 1;
-		set_irq_type(pInfo->idpin_irq,
-			id_pin ? IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
-
-		if (charging_type > CONNECT_TYPE_NONE)
-			send_cable_connect_notify(charging_type);
-#if 0
-		else if (vbus)
-			send_cable_connect_notify(CONNECT_TYPE_USB);
-#endif
-	}
-}
-
-static struct t_mhl_status_notifier mhl_status_notifier = {
-	.name = "mhl_detect",
-	.func = mhl_status_notifier_func,
-};
-#endif /*CONFIG_FB_MSM_HDMI_MHL_SII9234*/
 #endif /*CONFIG_CABLE_DETECT_ACCESSORY*/
-
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
-static irqreturn_t dock_interrupt(int irq, void *data)
-{
-	struct cable_detect_info *pInfo = data;
-	disable_irq_nosync(pInfo->dockpin_irq);
-	cancel_delayed_work(&pInfo->dock_work);
-	queue_delayed_work(pInfo->cable_detect_wq,
-			&pInfo->dock_work_isr, DOCK_DET_DELAY);
-	return IRQ_HANDLED;
-}
-static void dock_isr_work(struct work_struct *w)
-{
-	struct cable_detect_info *pInfo = container_of(
-			w, struct cable_detect_info, dock_work_isr.work);
-	pInfo->dock_pin_state = gpio_get_value(pInfo->dock_pin_gpio);
-
-	if (pInfo->dock_pin_state == 1)
-		set_irq_type(pInfo->dockpin_irq, IRQF_TRIGGER_LOW);
-	else
-		set_irq_type(pInfo->dockpin_irq, IRQF_TRIGGER_HIGH);
-	queue_delayed_work(pInfo->cable_detect_wq,
-			&pInfo->dock_work, DOCK_DET_DELAY);
-	enable_irq(pInfo->dockpin_irq);
-}
-static void dock_detect_work(struct work_struct *w)
-{
-	struct cable_detect_info *pInfo = container_of(
-			w, struct cable_detect_info, dock_work.work);
-	int value;
-
-	value = gpio_get_value(pInfo->dock_pin_gpio);
-	CABLE_INFO("%s: dock_pin = %s\n", __func__, value ? "high" : "low");
-	if (pInfo->dock_pin_state != value && (pInfo->dock_pin_state & 0x80) == 0) {
-		CABLE_ERR("%s: dock_pin_state changed\n", __func__);
-		return;
-	}
-
-	if (value == 0 && vbus) {
-		if (pInfo->accessory_type == DOCK_STATE_DESK)
-			return;
-		set_irq_type(pInfo->dockpin_irq, IRQF_TRIGGER_HIGH);
-		switch_set_state(&dock_switch, DOCK_STATE_DESK);
-		pInfo->accessory_type = DOCK_STATE_DESK;
-		CABLE_INFO("dock: set state %d\n", DOCK_STATE_DESK);
-	} else {
-		if (pInfo->accessory_type == DOCK_STATE_UNDOCKED)
-			return;
-		set_irq_type(pInfo->dockpin_irq, IRQF_TRIGGER_LOW);
-		switch_set_state(&dock_switch, DOCK_STATE_UNDOCKED);
-		pInfo->accessory_type = DOCK_STATE_UNDOCKED;
-		CABLE_INFO("dock: set state %d\n", DOCK_STATE_UNDOCKED);
-	}
-}
-static void dock_detect_init(struct cable_detect_info *pInfo)
-{
-	int ret;
-
-	CABLE_INFO("%s in, gpio %d, irq %d\n",
-			__func__, pInfo->dock_pin_gpio, pInfo->dockpin_irq);
-	if (pInfo->dock_pin_gpio == 0)
-		return;
-	if (pInfo->dockpin_irq == 0)
-		pInfo->dockpin_irq = gpio_to_irq(pInfo->dock_pin_gpio);
-
-	set_irq_flags(pInfo->dockpin_irq, IRQF_VALID | IRQF_NOAUTOEN);
-	ret = request_any_context_irq(pInfo->dockpin_irq, dock_interrupt,
-				IRQF_TRIGGER_LOW, "dock_irq", pInfo);
-	if (ret < 0) {
-		CABLE_ERR("[GPIO DOCK] %s: request_irq failed\n", __func__);
-		return;
-	}
-	CABLE_INFO("%s: dock irq %d\n", __func__, pInfo->dockpin_irq);
-
-	if (vbus)
-		enable_irq(pInfo->dockpin_irq);
-}
-#endif
 
 static ssize_t vbus_status_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -834,11 +598,6 @@ static int cable_detect_probe(struct platform_device *pdev)
 		if (pInfo->config_usb_id_gpios)
 			pInfo->config_usb_id_gpios(0);
 #endif
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
-		pInfo->dock_detect = pdata->dock_detect;
-		pInfo->dock_pin_gpio = pdata->dock_pin_gpio;
-#endif
-
 		if (pdata->is_wireless_charger)
 			pInfo->is_wireless_charger = pdata->is_wireless_charger;
 #ifdef CONFIG_CABLE_DETECT_ACCESSORY
@@ -896,14 +655,6 @@ static int cable_detect_probe(struct platform_device *pdev)
 	CABLE_INFO("USB_ID ADC = %d\n", cable_detect_get_adc());
 
 	usb_id_detect_init(pInfo);
-#endif
-
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
-	if (pInfo->dock_detect) {
-		INIT_DELAYED_WORK(&pInfo->dock_work_isr, dock_isr_work);
-		INIT_DELAYED_WORK(&pInfo->dock_work, dock_detect_work);
-		dock_detect_init(pInfo);
-	}
 #endif
 
 	queue_delayed_work(pInfo->cable_detect_wq,
@@ -970,13 +721,6 @@ static void usb_status_notifier_func(int cable_type)
 				cable_type = CONNECT_TYPE_WIRELESS;
 		}
 	}
-#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
-	if (!pInfo->mhl_internal_3v3 &&
-			pInfo->accessory_type == DOCK_STATE_MHL) {
-		CABLE_INFO("%s: MHL detected. Do nothing\n", __func__);
-		return;
-	}
-#endif
 	pInfo->connect_type = cable_type;
 	send_cable_connect_notify(cable_type);
 #endif
@@ -993,9 +737,6 @@ static int __init cable_detect_init(void)
 	the_cable_info.connect_type = CONNECT_TYPE_NONE;
 	usb_register_notifier(&usb_status_notifier);
 
-#if (defined(CONFIG_CABLE_DETECT_ACCESSORY) && defined(CONFIG_FB_MSM_HDMI_MHL_SII9234))
-		mhl_detect_register_notifier(&mhl_status_notifier);
-#endif
 	return platform_driver_register(&cable_detect_driver);
 
 }

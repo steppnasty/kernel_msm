@@ -39,18 +39,12 @@ enum dpdn_path_type {
 	PATH_UART,
 };
 
-#if 0
-static struct switch_dev dock_switch = {
-	.name = "dock",
-};
-#endif
-
 struct usb_id_mpp_config_data {
 	u32 usbid_mpp;
 	u32 usbid_amux;
 };
 
- struct cable_detect_platform_data {
+struct cable_detect_platform_data {
 	int vbus_mpp_gpio;
 	int vbus_mpp_irq;
 	void (*vbus_mpp_config)(void);
@@ -73,11 +67,6 @@ struct usb_id_mpp_config_data {
 	int ac_9v_gpio;
 	void (*configure_ac_9v_gpio) (int);
 	u8 mhl_internal_3v3;
-
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
-	bool dock_detect;
-	int dock_pin_gpio;
-#endif
 };
 
 extern int cable_get_connect_type(void);
