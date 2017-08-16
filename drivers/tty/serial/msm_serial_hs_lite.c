@@ -1126,10 +1126,10 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 						     "gsbi_resource");
 		if (unlikely(!gsbi_resource))
 			return -ENXIO;
-		msm_hsl_port->clk = clk_get(&pdev->dev, "gsbi_uart_clk");
-		msm_hsl_port->pclk = clk_get(&pdev->dev, "gsbi_pclk");
+		msm_hsl_port->clk = clk_get(&pdev->dev, "core_clk");
+		msm_hsl_port->pclk = clk_get(&pdev->dev, "iface_clk");
 	} else {
-		msm_hsl_port->clk = clk_get(&pdev->dev, "uartdm_clk");
+		msm_hsl_port->clk = clk_get(&pdev->dev, "core_clk");
 		msm_hsl_port->pclk = NULL;
 	}
 
