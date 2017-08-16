@@ -1052,6 +1052,13 @@ config MSM_RPCSERVER_HANDSET
 	  headset switch and clamshell state.
 endif
 
+config MSM_SMD0_WQ
+	bool "SMD0 TTY Workqueue"
+	depends on (ARCH_MSM8X60)
+	default y
+	help
+	  Independent tty workqueue for SMD0
+
 config MSM_RPCSERVERS
 	depends on MSM_ONCRPCROUTER
 	default y
