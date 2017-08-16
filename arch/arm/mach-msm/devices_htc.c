@@ -3,7 +3,6 @@
  * Copyright (C) 2008 Google, Inc.
  * Copyright (C) 2007-2009 HTC Corporation.
  * Author: Thomas Tsai <thomas_tsai@htc.com>
- * Modified 2014, Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -63,24 +62,6 @@ void __init msm_add_devices(void)
 #else
 #define PM_LIBVERS      0x10001
 #endif
-
-static struct platform_device *msm_serial_devices[] __initdata = {
-	&msm_device_uart1,
-	&msm_device_uart2,
-	&msm_device_uart3,
-	#ifdef CONFIG_SERIAL_MSM_HS
-	&msm_device_uart_dm1,
-	&msm_device_uart_dm2,
-	#endif
-};
-
-int __init msm_add_serial_devices(unsigned num)
-{
-	if (num > MSM_SERIAL_NUM)
-		return -EINVAL;
-
-	return platform_device_register(msm_serial_devices[num]);
-}
 
 #define ATAG_SMI 0x4d534D71
 /* setup calls mach->fixup, then parse_tags, parse_cmdline

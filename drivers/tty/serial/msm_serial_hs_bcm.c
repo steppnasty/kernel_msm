@@ -35,7 +35,7 @@
  * GPIO on the UART CTS, and the first RX byte is known (for example, with the
  * Bluetooth Texas Instruments HCILL protocol), since the first RX byte will
  * always be lost. RTS will be asserted even while the UART is off in this mode
- * of operation. See msm_serial_hs_platform_data.rx_wakeup_irq.
+ * of operation. See msm_serial_hs_platform_data.wakeup_irq.
  */
 
 #include <linux/module.h>
@@ -1850,10 +1850,10 @@ static int msm_hs_probe(struct platform_device *pdev)
 	if (unlikely(set_irq_wake(uport->irq, 1)))
 		return -ENXIO;
 
-	if (pdata == NULL || pdata->rx_wakeup_irq < 0)
+	if (pdata == NULL || pdata->wakeup_irq < 0)
 		msm_uport->rx_wakeup.irq = -1;
 	else {
-		msm_uport->rx_wakeup.irq = pdata->rx_wakeup_irq;
+		msm_uport->rx_wakeup.irq = pdata->wakeup_irq;
 		msm_uport->rx_wakeup.ignore = 1;
 		msm_uport->rx_wakeup.inject_rx = pdata->inject_rx_on_wakeup;
 		msm_uport->rx_wakeup.rx_to_inject = pdata->rx_to_inject;

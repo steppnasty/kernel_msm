@@ -50,11 +50,8 @@
 #include <mach/gpio.h>
 #include <mach/board.h>
 #include <mach/board_htc.h>
-#include <mach/msm_serial_hs.h>
 #include <mach/camera2.h>
-#ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
 #include <mach/bcm_bt_lpm.h>
-#endif
 
 #include <mach/hardware.h>
 #include <mach/msm_hsusb.h>
@@ -94,6 +91,7 @@
 #include "spm.h"
 #include "pm.h"
 #include "acpuclock.h"
+#include <mach/msm_serial_hs.h>
 #include "gpio_chip.h"
 #ifdef CONFIG_MSM_SSBI
 #include <mach/msm_ssbi.h>
@@ -1791,9 +1789,9 @@ static struct platform_device glacier_flashlight_device = {
 	},
 };
 
-#if defined(CONFIG_SERIAL_MSM_HS) && defined(CONFIG_SERIAL_MSM_HS_PURE_ANDROID)
+#ifdef CONFIG_SERIAL_MSM_HS
 static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
-        .rx_wakeup_irq = -1,
+        .wakeup_irq = -1,
         .inject_rx_on_wakeup = 0,
         .exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked,
 };
@@ -1811,19 +1809,6 @@ struct platform_device glacier_bcm_bt_lpm_device = {
         .dev = {
                 .platform_data = &bcm_bt_lpm_pdata,
         },
-};
-
-#elif defined(CONFIG_SERIAL_MSM_HS)
-static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
-	.rx_wakeup_irq = MSM_GPIO_TO_INT(GLACIER_GPIO_BT_HOST_WAKE),
-	.inject_rx_on_wakeup = 0,
-	.cpu_lock_supported = 0,
-
-	/* for bcm */
-	.bt_wakeup_pin_supported = 1,
-	.bt_wakeup_pin = GLACIER_GPIO_BT_CHIP_WAKE,
-	.host_wakeup_pin = GLACIER_GPIO_BT_HOST_WAKE,
-
 };
 #endif
 
@@ -1848,7 +1833,8 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_MSM_PROC_COMM_REGULATOR
 	&msm_proccomm_regulator_dev,
 #endif
-#ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
+#ifdef CONFIG_SERIAL_MSM_HS
+	&msm_device_uart_dm1,
 	&glacier_bcm_bt_lpm_device,
 #endif
 	&msm_device_smd,
@@ -2103,12 +2089,6 @@ static void __init glacier_init(void)
 
 #ifdef CONFIG_SERIAL_MSM_HS
 	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
-	#ifndef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
-	msm_device_uart_dm1.name = "msm_serial_hs_bcm";	/* for bcm */
-	#endif
-	msm_add_serial_devices(3);
-#else
-	msm_add_serial_devices(0);
 #endif
 
 	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));

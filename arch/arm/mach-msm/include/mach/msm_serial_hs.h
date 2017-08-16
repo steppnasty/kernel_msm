@@ -23,14 +23,11 @@
  * received. */
 extern void msm_hs_request_clock_off(struct uart_port *uport);
 extern void msm_hs_request_clock_on(struct uart_port *uport);
-/* uport->lock must be held when calling _locked() */
-extern void msm_hs_request_clock_off_locked(struct uart_port *uport);
-extern void msm_hs_request_clock_on_locked(struct uart_port *uport);
 
 /* Optional platform device data for msm_serial_hs driver.
  * Used to configure low power rx wakeup */
 struct msm_serial_hs_platform_data {
-	int rx_wakeup_irq;  /* wakeup irq */
+	int wakeup_irq;  /* wakeup irq */
 	/* bool: inject char into rx tty on wakeup */
 	unsigned char inject_rx_on_wakeup;
 	char rx_to_inject;
@@ -45,5 +42,11 @@ struct msm_serial_hs_platform_data {
 	unsigned char host_wakeup_pin;	/* Chip to Device */
 
 };
+
+#ifdef CONFIG_SERIAL_BCM_BT_LPM
+/* uport->lock must be held when calling _locked() */
+extern void msm_hs_request_clock_off_locked(struct uart_port *uport);
+extern void msm_hs_request_clock_on_locked(struct uart_port *uport);
+#endif
 
 #endif

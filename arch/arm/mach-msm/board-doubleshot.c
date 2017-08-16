@@ -45,6 +45,7 @@
 #include <linux/proc_fs.h>
 
 #include <mach/msm_serial_hs.h>
+#include <mach/bcm_bt_lpm.h>
 #ifdef CONFIG_BT
 #include <mach/htc_bdaddress.h>
 #include <mach/htc_sleep_clk.h>
@@ -1247,15 +1248,52 @@ static void __init msm8x60_allocate_memory_regions(void)
 }
 
 #ifdef CONFIG_SERIAL_MSM_HS
-static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
-	.rx_wakeup_irq = MSM_GPIO_TO_INT(DOUBLESHOT_GPIO_BT_HOST_WAKE),
-	.inject_rx_on_wakeup = 0,
-	.cpu_lock_supported = 1,
+static int configure_uart_gpios(int on)
+{
+	int ret = 0, i;
+	int uart_gpios[] = {
+		DOUBLESHOT_GPIO_BT_UART1_TX,
+		DOUBLESHOT_GPIO_BT_UART1_RX,
+		DOUBLESHOT_GPIO_BT_UART1_CTS,
+		DOUBLESHOT_GPIO_BT_UART1_RTS,
+	};
+	for (i = 0; i < ARRAY_SIZE(uart_gpios); i++) {
+		if (on) {
+			ret = msm_gpiomux_get(uart_gpios[i]);
+			if (unlikely(ret))
+				break;
+		} else {
+			ret = msm_gpiomux_put(uart_gpios[i]);
+			if (unlikely(ret))
+				return ret;
+		}
+	}
+	if (ret)
+		for (; i >= 0; i--)
+			msm_gpiomux_put(uart_gpios[i]);
+	return ret;
+}
 
-	/* for bcm */
-	.bt_wakeup_pin_supported = 1,
-	.bt_wakeup_pin = DOUBLESHOT_GPIO_BT_CHIP_WAKE,
-	.host_wakeup_pin = DOUBLESHOT_GPIO_BT_HOST_WAKE,
+static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
+	.wakeup_irq = -1,
+	.inject_rx_on_wakeup = 0,
+	.gpio_config = configure_uart_gpios,
+	.exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked,
+};
+
+static struct bcm_bt_lpm_platform_data bcm_bt_lpm_pdata = {
+	.gpio_wake = DOUBLESHOT_GPIO_BT_CHIP_WAKE,
+	.gpio_host_wake = DOUBLESHOT_GPIO_BT_HOST_WAKE,
+	.request_clock_off_locked = msm_hs_request_clock_off_locked,
+	.request_clock_on_locked = msm_hs_request_clock_on_locked,
+};
+
+struct platform_device doubleshot_bcm_bt_lpm_device = {
+	.name = "bcm_bt_lpm",
+	.id = 0,
+	.dev = {
+		.platform_data = &bcm_bt_lpm_pdata,
+	},
 };
 #endif
 
@@ -2059,6 +2097,7 @@ static struct platform_device *surf_devices[] __initdata = {
 #endif
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm1,
+	&doubleshot_bcm_bt_lpm_device,
 #endif
 #ifdef CONFIG_MSM8X60_SSBI
 	&msm_device_ssbi1,
@@ -3723,8 +3762,6 @@ static void __init msm8x60_init_buses(void)
 #endif
 
 #ifdef CONFIG_SERIAL_MSM_HS
-	msm_uart_dm1_pdata.rx_wakeup_irq = gpio_to_irq(DOUBLESHOT_GPIO_BT_HOST_WAKE);
-	msm_device_uart_dm1.name = "msm_serial_hs_brcm"; /* for brcm */
 	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
 #endif
 #ifdef CONFIG_MSM_BUS_SCALING
