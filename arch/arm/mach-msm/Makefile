@@ -1,11 +1,10 @@
 CFLAGS_scm.o := $(call as-instr, .arch_extension sec, -DREQUIRES_SEC=1)
 
-obj-y += io.o dma.o memory.o
+obj-y += io.o dma.o memory.o timer.o
 
 ifdef CONFIG_ARCH_MSM8X60
-obj-y += timer-8x60.o clock-core.o clock-voter.o
+obj-y += clock-core.o clock-voter.o
 else
-obj-y += timer.o
 obj-y += clock.o clock-voter.o clock-dummy.o
 endif
 obj-y += modem_notifier.o subsystem_map.o
