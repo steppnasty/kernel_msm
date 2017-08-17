@@ -116,7 +116,6 @@
 #include "devices-msm8x60.h"
 #include "cpuidle.h"
 #include "pm.h"
-#include "rpm.h"
 #include "spm.h"
 #include "rpm_log.h"
 #include "timer.h"

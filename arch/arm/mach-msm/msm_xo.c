@@ -26,8 +26,8 @@
 #include <linux/seq_file.h>
 
 #include <mach/msm_xo.h>
+#include <mach/rpm.h>
 
-#include "rpm.h"
 #include "rpm_resources.h"
 
 static DEFINE_SPINLOCK(msm_xo_lock);

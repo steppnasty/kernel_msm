@@ -30,11 +30,11 @@
 #include <linux/mutex.h>
 #include <linux/semaphore.h>
 #include <linux/spinlock.h>
+#include <linux/slab.h>
 #include <asm/hardware/gic.h>
 #include <mach/msm_iomap.h>
-#include <linux/slab.h>
+#include <mach/rpm.h>
 
-#include "rpm.h"
 
 /******************************************************************************
  * Data type and structure definitions

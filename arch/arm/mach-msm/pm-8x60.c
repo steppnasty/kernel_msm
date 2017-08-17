@@ -43,6 +43,7 @@
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
 #include <mach/board_htc.h>
+#include <mach/rpm.h>
 #ifdef CONFIG_VFP
 #include <asm/vfp.h>
 #endif
@@ -53,7 +54,6 @@
 #include "cpuidle.h"
 #include "idle.h"
 #include "pm.h"
-#include "rpm.h"
 #include "rpm_resources.h"
 #include "scm-boot.h"
 #include "spm.h"
