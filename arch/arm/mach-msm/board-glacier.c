@@ -1886,7 +1886,7 @@ static struct platform_device *devices[] __initdata = {
 	&msm_device_ssbi6,
 	&msm_device_ssbi7,
 #endif
-	&qsdnew_device_spi,
+	&qsd_device_spi,
 	&msm_device_i2c,
 	&msm_device_i2c_2,
 	&qup_device_i2c,
