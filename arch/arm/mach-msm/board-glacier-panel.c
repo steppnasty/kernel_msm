@@ -174,19 +174,10 @@ static struct mddi_platform_data mddi_pdata = {
 	.mddi_sel_clk = msm_fb_mddi_sel_clk,
 };
 
-int mdp_core_clk_rate_table[] = {
-	122880000,
-	122880000,
-	192000000,
-	192000000,
-};
-
 static struct msm_panel_common_pdata mdp_pdata = {
 	.hw_revision_addr = 0xac001270,
 	.gpio = 30,
 	.mdp_max_clk = 192000000,
-	.mdp_core_clk_table = mdp_core_clk_rate_table,
-	.num_mdp_clk = ARRAY_SIZE(mdp_core_clk_rate_table),
 	.mdp_rev = MDP_REV_40,
 	.mem_hid = MEMTYPE_EBI0,
 	.ov0_wb_size = 0,
