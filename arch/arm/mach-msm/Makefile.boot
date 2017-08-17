@@ -54,7 +54,13 @@ initrd_phys-y           := 0x05A00000
 endif
 
 ifeq ($(CONFIG_ARCH_MSM8X60),y)
+ifeq ($(CONFIG_MACH_DOUBLESHOT),y)
+zreladdr-y             := 0x48008000
+params_phys-y            := 0x48000100
+initrd_phys-y            := 0x49000000
+else
 zreladdr-y             := 0x40408000
 params_phys-y            := 0x40400100
 initrd_phys-y            := 0x41400000
+endif
 endif
