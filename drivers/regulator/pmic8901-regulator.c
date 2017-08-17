@@ -492,7 +492,7 @@ static int pm8901_nldo_set_voltage(struct pm8901_chip *chip,
 }
 
 static int pm8901_ldo_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV)
+		int min_uV, int max_uV, unsigned *selector)
 {
 	struct pm8901_vreg *vreg = rdev_get_drvdata(dev);
 	struct pm8901_chip *chip = dev_get_drvdata(dev->dev.parent);
@@ -683,7 +683,7 @@ unsigned int pm8901_vreg_get_optimum_mode(struct regulator_dev *dev,
 }
 
 static int pm8901_smps_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV)
+		int min_uV, int max_uV, unsigned *selector)
 {
 	struct pm8901_vreg *vreg = rdev_get_drvdata(dev);
 	struct pm8901_chip *chip = dev_get_drvdata(dev->dev.parent);
@@ -978,7 +978,7 @@ static int pm8901_init_vs(struct pm8901_chip *chip, struct pm8901_vreg *vreg)
 static int pm8901_init_regulator(struct pm8901_chip *chip,
 		struct pm8901_vreg *vreg)
 {
-	int rc;
+	int rc = 0;
 
 	/* Store current regulator register values. */
 	if (vreg->type != REGULATOR_TYPE_MPP) {

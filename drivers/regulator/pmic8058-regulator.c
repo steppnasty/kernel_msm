@@ -891,7 +891,7 @@ bail:
 }
 
 static int pm8058_ldo_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV)
+		int min_uV, int max_uV, unsigned *selector)
 {
 	struct pm8058_vreg *vreg = rdev_get_drvdata(dev);
 	struct pm8058_chip *chip = dev_get_drvdata(dev->dev.parent);
@@ -1109,7 +1109,7 @@ bail:
 }
 
 static int pm8058_smps_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV)
+		int min_uV, int max_uV, unsigned *selector)
 {
 	struct pm8058_vreg *vreg = rdev_get_drvdata(dev);
 	struct pm8058_chip *chip = dev_get_drvdata(dev->dev.parent);
@@ -1130,7 +1130,7 @@ static int pm8058_smps_set_voltage(struct regulator_dev *dev,
 }
 
 static int pm8058_ncp_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV)
+		int min_uV, int max_uV, unsigned *selector)
 {
 	struct pm8058_vreg *vreg = rdev_get_drvdata(dev);
 	struct pm8058_chip *chip = dev_get_drvdata(dev->dev.parent);
