@@ -91,11 +91,12 @@
 #endif
 #include "proc_comm.h"
 #include "smd_private.h"
-#include "spm.h"
 #include "pm.h"
+#include "spm.h"
 #include "acpuclock.h"
 #include <mach/msm_serial_hs.h>
 #include "gpio_chip.h"
+
 #include "board-glacier-regulator.h"
 
 #ifdef CONFIG_MICROP_COMMON
@@ -293,28 +294,135 @@ int glacier_pm8058_gpios_init(struct pm8058_chip *pm_chip)
 {
 	int ret;
 
-	pm8058_gpio_cfg(GLACIER_OJ_ACTION, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_HOME_KEY, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_MENU_KEY, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_BACK_KEY, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_SEND_KEY, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_TP_RSTz, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 1, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_L5, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_SDMC_CD_N, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_L5, 0, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_VOL_UP, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_VOL_DN, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_CAM_STEP2, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_CAM_STEP1, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
-	pm8058_gpio_cfg(GLACIER_AUD_HP_DETz, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
+	struct pm8058_gpio glacier_oj_action = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
 
-#if 1
-	ret = pm8058_gpio_cfg(GLACIER_AUD_SPK_ENO, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 1, PM_GPIO_PULL_NO, PM_GPIO_VIN_S3, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_NORMAL, 0);
+	struct pm8058_gpio glacier_home_key = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm8058_gpio glacier_menu_key = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+
+	struct pm8058_gpio glacier_back_key = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+
+	struct pm8058_gpio glacier_send_key = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm8058_gpio glacier_tp_rstz = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 1,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_L5,
+		.out_strength   = PM_GPIO_STRENGTH_HIGH,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm8058_gpio glacier_sdmc_cd_n = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_L5,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm8058_gpio glacier_vol_up = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm8058_gpio glacier_vol_down = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm8058_gpio glacier_cam_step2 = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm8058_gpio glacier_cam_step1 = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm8058_gpio glacier_aud_hp_detz = {
+		.direction      = PM_GPIO_DIR_IN,
+		.pull           = PM_GPIO_PULL_UP_31P5,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm8058_gpio glacier_aud_spk_eno = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 1,
+		.pull           = PM_GPIO_PULL_NO,
+		.vin_sel        = PM_GPIO_VIN_S3,
+		.out_strength   = PM_GPIO_STRENGTH_HIGH,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm8058_gpio glacier_ps_shdn = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 0,
+		.pull           = PM_GPIO_PULL_NO,
+		.vin_sel        = PM_GPIO_VIN_L5,
+		.out_strength   = PM_GPIO_STRENGTH_HIGH,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	pm8058_gpio_config(GLACIER_OJ_ACTION, &glacier_oj_action);
+	pm8058_gpio_config(GLACIER_HOME_KEY, &glacier_home_key);
+	pm8058_gpio_config(GLACIER_MENU_KEY, &glacier_menu_key);
+	pm8058_gpio_config(GLACIER_BACK_KEY, &glacier_back_key);
+	pm8058_gpio_config(GLACIER_SEND_KEY, &glacier_send_key);
+	pm8058_gpio_config(GLACIER_TP_RSTz, &glacier_tp_rstz);
+	pm8058_gpio_config(GLACIER_SDMC_CD_N, &glacier_sdmc_cd_n);
+	pm8058_gpio_config(GLACIER_VOL_UP, &glacier_vol_up);
+	pm8058_gpio_config(GLACIER_VOL_DN, &glacier_vol_down);
+	pm8058_gpio_config(GLACIER_CAM_STEP2, &glacier_cam_step2);
+	pm8058_gpio_config(GLACIER_CAM_STEP1, &glacier_cam_step1);
+	pm8058_gpio_config(GLACIER_AUD_HP_DETz, &glacier_aud_hp_detz);
+
+	ret = pm8058_gpio_config(GLACIER_AUD_SPK_ENO, &glacier_aud_spk_eno);
 	if (ret) {
 		pr_err("%s PMIC GPIO 18 write failed\n", __func__);
 		return ret;
 	}
-#endif
-
-	ret = pm8058_gpio_cfg(GLACIER_PS_SHDN, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 0, PM_GPIO_PULL_NO, PM_GPIO_VIN_L5, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_NORMAL, 0);
+	
+	ret = pm8058_gpio_config(GLACIER_PS_SHDN, &glacier_ps_shdn);
 	if (ret) {
 		pr_err("%s PMIC GPIO 20 write failed\n", __func__);
 		return ret;
@@ -1419,6 +1527,49 @@ static struct i2c_board_info msm_marimba_board_info[] = {
 	}
 };
 
+static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
+	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.suspend_enabled = 1,
+		.idle_enabled = 1,
+		.latency = 8594,
+		.residency = 23740,
+	},
+	[MSM_PM_SLEEP_MODE_APPS_SLEEP] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.suspend_enabled = 1,
+		.idle_enabled = 1,
+		.latency = 8594,
+		.residency = 23740,
+	},
+	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.suspend_enabled = 0,
+		.idle_enabled = 0,
+		.latency = 500,
+		.residency = 6000,
+	},
+	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.suspend_enabled = 1,
+		.idle_enabled = 0,
+		.latency = 443,
+		.residency = 1098,
+	},
+	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.suspend_enabled = 1,
+		.idle_enabled = 1,
+		.latency = 2,
+		.residency = 0,
+	},
+};
+
 static struct resource qsd_spi_resources[] = {
 	{
 		.name   = "spi_irq_in",
@@ -1565,6 +1716,7 @@ static void __init msm_qsd_spi_init(void)
 {
 	qsd_device_spi.dev.platform_data = &qsd_spi_pdata;
 }
+
 #ifndef CONFIG_MSM_SSBI
 static struct pm8058_platform_data pm8058_glacier_data = {
 	.init = &glacier_pm8058_gpios_init,
@@ -2110,49 +2262,6 @@ static int __init glacier_ssbi_pmic_init(void)
 }
 #endif
 
-static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
-	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE] = {
-		.idle_supported = 1,
-		.suspend_supported = 1,
-		.suspend_enabled = 1,
-		.idle_enabled = 1,
-		.latency = 8594,
-		.residency = 23740,
-	},
-	[MSM_PM_SLEEP_MODE_APPS_SLEEP] = {
-		.idle_supported = 1,
-		.suspend_supported = 1,
-		.suspend_enabled = 1,
-		.idle_enabled = 1,
-		.latency = 8594,
-		.residency = 23740,
-	},
-	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE] = {
-		.idle_supported = 1,
-		.suspend_supported = 1,
-		.suspend_enabled = 0,
-		.idle_enabled = 0,
-		.latency = 500,
-		.residency = 6000,
-	},
-	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT] = {
-		.idle_supported = 1,
-		.suspend_supported = 1,
-		.suspend_enabled = 1,
-		.idle_enabled = 0,
-		.latency = 443,
-		.residency = 1098,
-	},
-	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT] = {
-		.idle_supported = 1,
-		.suspend_supported = 1,
-		.suspend_enabled = 1,
-		.idle_enabled = 1,
-		.latency = 2,
-		.residency = 0,
-	},
-};
-
 static struct msm_spm_platform_data msm_spm_data __initdata = {
 	.reg_base_addr = MSM_SAW_BASE,
 
@@ -2203,8 +2312,6 @@ static void __init glacier_init(void)
 #ifdef CONFIG_SERIAL_MSM_HS
 	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
 #endif
-
-	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
 #ifdef CONFIG_USB_MSM_OTG_72K
 	if (SOCINFO_VERSION_MAJOR(soc_version) >= 2 &&
 			SOCINFO_VERSION_MINOR(soc_version) >= 1) {
@@ -2217,6 +2324,7 @@ static void __init glacier_init(void)
 	msm_device_gadget_peripheral.dev.platform_data = &msm_gadget_pdata;
 #endif
 #endif
+	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
 	msm_device_i2c_init();
 	msm_device_i2c_2_init();
 	qup_device_i2c_init();
