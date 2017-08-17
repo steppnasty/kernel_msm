@@ -2,8 +2,8 @@
  *
  * Copyright (C) 2009 Google, Inc.
  * Copyright (C) 2010 HTC Corporation.
+ * Copyright (c) 2014-2017, Brian Stepp <steppnasty@gmail.com>
  * Author: Tony Liu <tony_liu@htc.com>
- * Modified 2014-2017, Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -24,6 +24,9 @@
 #include <linux/platform_device.h>
 #include <linux/input.h>
 #include <linux/android_pmem.h>
+#ifdef CONFIG_MSM_SSBI
+#include <mach/msm_ssbi.h>
+#endif
 #include <linux/mfd/pmic8058.h>
 #include <linux/mfd/marimba.h>
 #include <linux/i2c.h>
@@ -93,10 +96,6 @@
 #include "acpuclock.h"
 #include <mach/msm_serial_hs.h>
 #include "gpio_chip.h"
-#ifdef CONFIG_MSM_SSBI
-#include <mach/msm_ssbi.h>
-#endif
-
 #include "board-glacier-regulator.h"
 
 #ifdef CONFIG_MICROP_COMMON
@@ -701,26 +700,35 @@ static struct i2c_board_info i2c_a1026_devices[] = {
 	},
 };
 
-static struct tps65200_platform_data tps65200_data = {
-	.gpio_chg_int = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(GLACIER_GPIO_CHG_INT)),
-};
-
-static struct i2c_board_info i2c_devices[] = {
+static struct i2c_board_info msm_i2c_gsbi5_info[] = {
 	{
 		I2C_BOARD_INFO(ATMEL_QT602240_NAME, 0x94 >> 1),
 		.platform_data = &glacier_ts_atmel_data,
 		.irq = MSM_GPIO_TO_INT(GLACIER_GPIO_TP_ATT_N)
-	},
+	},	
+};
+
+static struct i2c_board_info i2c_microp_devices[] = {
 	{
 		I2C_BOARD_INFO(MICROP_I2C_NAME, 0xCC >> 1),
 		.platform_data = &microp_data,
 		.irq = MSM_GPIO_TO_INT(GLACIER_GPIO_UP_INT_N)
 	},
+};
+
+static struct i2c_board_info i2c_akm8975_devices[] = {
 	{
 		I2C_BOARD_INFO(AKM8975_I2C_NAME, 0x1A >> 1),
 		.platform_data = &compass_platform_data,
 		.irq = MSM_GPIO_TO_INT(GLACIER_GPIO_COMPASS_INT),
 	},
+};
+
+static struct tps65200_platform_data tps65200_data = {
+	.gpio_chg_int = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(GLACIER_GPIO_CHG_INT)),
+};
+
+static struct i2c_board_info msm_tps_65200_boardinfo[] __initdata = {
 	{
 		I2C_BOARD_INFO("tps65200", 0xD4 >> 1),
 		.platform_data = &tps65200_data,
@@ -733,17 +741,51 @@ struct i2c_registry {
 	int                   len;
 };
 
+static struct i2c_registry glacier_i2c_devices[] __initdata = {
+	{
+		0,
+		msm_i2c_gsbi5_info,
+		ARRAY_SIZE(msm_i2c_gsbi5_info),
+	},
+	{
+		0,
+		i2c_microp_devices,
+		ARRAY_SIZE(i2c_microp_devices),
+	},
+	{
+		0,
+		i2c_akm8975_devices,
+		ARRAY_SIZE(i2c_akm8975_devices),
+	},
+	{
+		0,
+		msm_tps_65200_boardinfo,
+		ARRAY_SIZE(msm_tps_65200_boardinfo),
+	},
+};
+
 static void register_i2c_devices(void)
 {
+#ifdef CONFIG_I2C
+	int i;
+#ifdef CONFIG_MSMB_CAMERA
 	struct i2c_registry glacier_camera_i2c_devices = {
 		4, /* QUP ID */
 		glacier_camera_board_info.board_info,
 		glacier_camera_board_info.num_i2c_board_info,
 	};
+#endif
+	for (i = 0; i < ARRAY_SIZE(glacier_i2c_devices); ++i)
+		i2c_register_board_info(glacier_i2c_devices[i].bus,
+					glacier_i2c_devices[i].info,
+					glacier_i2c_devices[i].len);
 
+#ifdef CONFIG_MSMB_CAMERA
 	i2c_register_board_info(glacier_camera_i2c_devices.bus,
 		glacier_camera_i2c_devices.info,
 		glacier_camera_i2c_devices.len);
+#endif
+#endif
 }
 
 static struct vreg *vreg_marimba_1;
@@ -823,7 +865,7 @@ static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
 	}
 	irqcfg = GPIO_CFG(147, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
 					GPIO_CFG_2MA);
-	rc = gpio_tlmm_config(irqcfg, GPIO_ENABLE);
+	rc = gpio_tlmm_config(irqcfg, GPIO_CFG_ENABLE);
 	if (rc) {
 		printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",
 				__func__, irqcfg, rc);
@@ -847,7 +889,7 @@ static void fm_radio_shutdown(struct marimba_fm_platform_data *pdata)
 	const char *id = "FMPW";
 	uint32_t irqcfg = GPIO_CFG(147, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
 					GPIO_CFG_2MA);
-	rc = gpio_tlmm_config(irqcfg, GPIO_ENABLE);
+	rc = gpio_tlmm_config(irqcfg, GPIO_CFG_ENABLE);
 	if (rc) {
 		printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",
 				__func__, irqcfg, rc);
@@ -1548,16 +1590,6 @@ static struct i2c_board_info pm8058_boardinfo[] __initdata = {
 };
 #endif
 
-#ifdef CONFIG_I2C_SSBI
-
-static struct msm_i2c_platform_data msm_i2c_ssbi6_pdata = {
-	.rsl_id = "D:PMIC_SSBI"
-};
-
-static struct msm_i2c_platform_data msm_i2c_ssbi7_pdata = {
-	.rsl_id = "D:CODEC_SSBI"
-};
-#endif
 #define OJ_SHUTDOWN            (35)
 static void curcial_oj_shutdown(int enable)
 {
@@ -1889,50 +1921,131 @@ static struct platform_device *devices[] __initdata = {
 #endif
 };
 
-static struct msm_i2c_device_platform_data msm_i2c_pdata = {
-	.i2c_clock = 100000,
-	.clock_strength = GPIO_CFG_8MA,
-	.data_strength = GPIO_CFG_8MA,
+static struct msm_gpio msm_i2c_gpios_hw[] = {
+	{ GPIO_CFG(70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA), "i2c_scl" },
+	{ GPIO_CFG(71, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA), "i2c_sda" },
+};
+
+static struct msm_gpio msm_i2c_gpios_io[] = {
+	{ GPIO_CFG(70, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "i2c_scl" },
+	{ GPIO_CFG(71, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "i2c_sda" },
+};
+
+static struct msm_gpio qup_i2c_gpios_io[] = {
+	{ GPIO_CFG(16, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_scl" },
+	{ GPIO_CFG(17, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_sda" },
+};
+static struct msm_gpio qup_i2c_gpios_hw[] = {
+	{ GPIO_CFG(16, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_scl" },
+	{ GPIO_CFG(17, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_sda" },
+};
+
+static void
+msm_i2c_gpio_config(int adap_id, int config_type)
+{
+	struct msm_gpio *msm_i2c_table;
+
+	/* Each adapter gets 2 lines from the table */
+	if (adap_id > 0)
+		return;
+	if (config_type)
+		msm_i2c_table = &msm_i2c_gpios_hw[adap_id*2];
+	else
+		msm_i2c_table = &msm_i2c_gpios_io[adap_id*2];
+	msm_gpios_enable(msm_i2c_table, 2);
+}
+/*This needs to be enabled only for OEMS*/
+#ifndef CONFIG_QUP_EXCLUSIVE_TO_CAMERA
+static struct vreg *qup_vreg;
+#endif
+static void
+qup_i2c_gpio_config(int adap_id, int config_type)
+{
+	int rc = 0;
+	struct msm_gpio *qup_i2c_table;
+	/* Each adapter gets 2 lines from the table */
+	if (adap_id != 4)
+		return;
+	if (config_type)
+		qup_i2c_table = qup_i2c_gpios_hw;
+	else
+		qup_i2c_table = qup_i2c_gpios_io;
+	rc = msm_gpios_enable(qup_i2c_table, 2);
+	if (rc < 0)
+		printk(KERN_ERR "QUP GPIO enable failed: %d\n", rc);
+	/*This needs to be enabled only for OEMS*/
+#ifndef CONFIG_QUP_EXCLUSIVE_TO_CAMERA
+	if (qup_vreg) {
+		int rc = vreg_set_level(qup_vreg, 1800);
+		if (rc) {
+			pr_err("%s: vreg LVS1 set level failed (%d)\n",
+			__func__, rc);
+		}
+		rc = vreg_enable(qup_vreg);
+		if (rc) {
+			pr_err("%s: vreg_enable() = %d \n",
+			__func__, rc);
+		}
+	}
+#endif
+}
+
+static struct msm_i2c_platform_data msm_i2c_pdata = {
+	.clk_freq = 100000,
+	.pri_clk = 70,
+	.pri_dat = 71,
+	.rmutex  = 1,
+	.rsl_id = "D:I2C02000021",
+	.msm_i2c_config_gpio = msm_i2c_gpio_config,
 };
 
 static void __init msm_device_i2c_init(void)
 {
-	msm_i2c_gpio_init();
+	if (msm_gpios_request(msm_i2c_gpios_hw, ARRAY_SIZE(msm_i2c_gpios_hw)))
+		pr_err("failed to request I2C gpios\n");
+
 	msm_device_i2c.dev.platform_data = &msm_i2c_pdata;
 }
 
-static void qup_i2c_gpio_config(int adap_id, int config_type)
+static struct msm_i2c_platform_data msm_i2c_2_pdata = {
+	.clk_freq = 100000,
+	.rmutex   = 1,
+	.rsl_id = "D:I2C02000022",
+	.msm_i2c_config_gpio = msm_i2c_gpio_config,
+};
+
+static void __init msm_device_i2c_2_init(void)
 {
-	unsigned id;
-	/* Each adapter gets 2 lines from the table */
-	if (adap_id != 4)
-		return;
-	if (config_type) {
-		id = GPIO_CFG(16, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA);
-		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
-		id = GPIO_CFG(17, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA);
-		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
-	} else {
-		id = GPIO_CFG(16, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA);
-		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
-		id = GPIO_CFG(17, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA);
-		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
-	}
+	msm_device_i2c_2.dev.platform_data = &msm_i2c_2_pdata;
 }
 
 static struct msm_i2c_platform_data qup_i2c_pdata = {
-	.clk_freq = 100000,
+	.clk_freq = 384000,
 	.msm_i2c_config_gpio = qup_i2c_gpio_config,
 };
 
 static void __init qup_device_i2c_init(void)
 {
-//	if (msm_gpios_request(qup_i2c_gpios_hw, ARRAY_SIZE(qup_i2c_gpios_hw)))
-//		pr_err("failed to request I2C gpios\n");
-
 	qup_device_i2c.dev.platform_data = &qup_i2c_pdata;
-
+	/*This needs to be enabled only for OEMS*/
+#ifndef CONFIG_QUP_EXCLUSIVE_TO_CAMERA
+	qup_vreg = vreg_get(NULL, "lvsw1");
+	if (IS_ERR(qup_vreg)) {
+		printk(KERN_ERR "%s: vreg get failed (%ld)\n",
+			__func__, PTR_ERR(qup_vreg));
+	}
+#endif
 }
+
+#ifdef CONFIG_I2C_SSBI
+static struct msm_i2c_platform_data msm_i2c_ssbi6_pdata = {
+	.rsl_id = "D:PMIC_SSBI"
+};
+
+static struct msm_i2c_platform_data msm_i2c_ssbi7_pdata = {
+	.rsl_id = "D:CODEC_SSBI"
+};
+#endif
 
 static unsigned glacier_perf_acpu_table[] = {
 	245000000,
@@ -2105,6 +2218,7 @@ static void __init glacier_init(void)
 #endif
 #endif
 	msm_device_i2c_init();
+	msm_device_i2c_2_init();
 	qup_device_i2c_init();
 	msm7x30_init_marimba();
 #ifdef CONFIG_MSM7KV2_1X_AUDIO
@@ -2121,8 +2235,6 @@ static void __init glacier_init(void)
 #ifdef CONFIG_MICROP_COMMON
 	glacier_microp_init();
 #endif
-	qup_device_i2c_init();
-
 	platform_add_devices(msm_footswitch_devices,
 			     msm_num_footswitch_devices);
 	platform_add_devices(devices, ARRAY_SIZE(devices));
@@ -2162,7 +2274,6 @@ static void __init glacier_init(void)
 		glacier_ts_atmel_data[0].config_T9[9] = 5;
 		glacier_ts_atmel_data[0].abs_y_max = 954;
 	}
-	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 	register_i2c_devices();
 #ifdef CONFIG_I2C_SSBI
 	msm_device_ssbi6.dev.platform_data = &msm_i2c_ssbi6_pdata;
