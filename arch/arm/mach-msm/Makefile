@@ -65,7 +65,7 @@ obj-$(CONFIG_MACH_TROUT) += board-trout-rfkill.o
 
 obj-$(CONFIG_ARCH_MSM7X30) += rpc_pmapp.o
 obj-$(CONFIG_MSM_SMD) += htc_port_list.o
-obj-$(CONFIG_MSM_SMD) += smem_log.o
+obj-$(CONFIG_MSM_SMD_LOGGING) += smem_log.o
 obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o remote_spinlock.o
         obj-y += socinfo.o
 ifndef CONFIG_ARCH_MSM9615
