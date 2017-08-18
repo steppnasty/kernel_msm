@@ -125,6 +125,10 @@ extern unsigned msm_num_clocks_8x50;
 extern struct clk_lookup msm_clocks_8x60[];
 extern unsigned msm_num_clocks_8x60;
 
+extern struct platform_device msm_kgsl_3d0;
+extern struct platform_device msm_kgsl_2d0;
+extern struct platform_device msm_kgsl_2d1;
+
 extern struct platform_device msm_footswitch;
 
 void __init msm_fb_register_device(char *name, void *data);
@@ -136,8 +140,6 @@ extern int ps_type;
 #ifdef CONFIG_MSM_SSBI
 extern struct platform_device msm_device_ssbi_pmic;
 #endif
-extern struct platform_device msm_kgsl_3d0;
-extern struct platform_device msm_kgsl_2d0;
 extern struct platform_device msm_device_vpe;
 extern struct platform_device msm_device_csic0;
 
