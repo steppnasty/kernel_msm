@@ -25,6 +25,13 @@
 #define SCM_SVC_DCVS			0xD
 #define SCM_SVC_ES			0x10
 #define SCM_SVC_TZSCHEDULER		0xFC
+#define SCM_SVC_OEM			0XFE
+
+#define TZ_HTC_SVC_READ_SIMLOCK_MASK	0x0D
+#define TZ_HTC_SVC_SIMLOCK_UNLOCK	0x0E
+#define TZ_HTC_SVC_GET_SECURITY_LEVEL	0x10
+#define TZ_HTC_SVC_MEMPROT		0x15
+#define TZ_HTC_SVC_LOG_OPERATOR		0x16
 
 #define DEFINE_SCM_BUFFER(__n) \
 static char __n[PAGE_SIZE] __aligned(PAGE_SIZE);
@@ -53,6 +60,13 @@ extern s32 scm_call_atomic4_3(u32 svc, u32 cmd, u32 arg1, u32 arg2, u32 arg3,
 extern u32 scm_get_version(void);
 extern int scm_is_call_available(u32 svc_id, u32 cmd_id);
 extern int scm_get_feat_version(u32 feat);
+
+extern int secure_read_simlock_mask(void);
+extern int secure_simlock_unlock(unsigned int unlock, unsigned char *code);
+extern int secure_get_security_level(void);
+extern int secure_memprot(void);
+extern int secure_log_operation(unsigned int address, unsigned int size,
+		unsigned int buf_addr, unsigned int buf_len, int revert);
 
 #else
 
