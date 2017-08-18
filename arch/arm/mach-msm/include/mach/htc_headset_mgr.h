@@ -51,6 +51,10 @@
 	struct device_attribute dev_attr_##_name = \
 	__ATTR(flag, _mode, _show, _store)
 
+#define DEVICE_HEADSET_ATTR(_name, _mode, _show, _store) \
+	struct device_attribute dev_attr_headset_##_name = \
+	__ATTR(_name, _mode, _show, _store)
+
 #define DRIVER_HS_MGR_RPC_SERVER	(1 << 0)
 
 #define DEBUG_FLAG_LOG		(1 << 0)
@@ -63,7 +67,7 @@
 #define BIT_FM_SPEAKER		(1 << 4)
 #define BIT_TTY_VCO		(1 << 5)
 #define BIT_TTY_HCO		(1 << 6)
-#define BIT_35MM_HEADSET	0
+#define BIT_35MM_HEADSET	(1 << 7)
 #define BIT_TV_OUT		(1 << 8)
 #define BIT_USB_CRADLE		(1 << 9)
 #define BIT_TV_OUT_AUDIO	(1 << 10)
@@ -130,17 +134,16 @@
 #define HS_MGR_KEYCODE_MEDIA	KEY_MEDIA		/* 226 */
 #define HS_MGR_KEYCODE_SEND	KEY_SEND		/* 231 */
 
-#define HEADSET_NO_MIC		0
-#define HEADSET_MIC		1
-#define HEADSET_METRICO		2
-#define HEADSET_UNKNOWN_MIC	3
-#define HEADSET_TV_OUT		4
-
-#define HTC_35MM_UNPLUG		0
-#define HTC_35MM_NO_MIC		1
-#define HTC_35MM_MIC		2
-#define HTC_35MM_UNKNOWN_MIC	3
-#define HTC_35MM_TV_OUT		4
+enum {
+	HEADSET_UNPLUG		= 0,
+	HEADSET_NO_MIC		= 1,
+	HEADSET_MIC		= 2,
+	HEADSET_METRICO		= 3,
+	HEADSET_UNKNOWN_MIC	= 4,
+	HEADSET_TV_OUT		= 5,
+	HEADSET_BEATS		= 6,
+	HEADSET_INDICATOR	= 7,
+};
 
 enum {
 	HEADSET_REG_HPIN_GPIO,
@@ -198,6 +201,12 @@ struct external_headset {
 	int status;
 };
 
+struct headset_adc_config {
+	int type;
+	uint32_t adc_max;
+	uint32_t adc_min;
+};
+
 struct headset_notifier {
 	int id;
 	void *func;
@@ -219,6 +228,8 @@ struct htc_headset_mgr_platform_data {
 	unsigned int driver_flag;
 	int headset_devices_num;
 	struct platform_device **headset_devices;
+	int headset_config_num;
+	struct headset_adc_config *headset_config;
 
 	unsigned int hptv_det_hp_gpio;
 	unsigned int hptv_det_tv_gpio;
@@ -235,6 +246,7 @@ struct htc_headset_mgr_info {
 	struct external_headset usb_headset;
 
 	struct class *htc_accessory_class;
+	struct device *headset_dev;
 	struct device *tty_dev;
 	struct device *fm_dev;
 	struct device *debug_dev;
@@ -254,8 +266,8 @@ struct htc_headset_mgr_info {
 
 	/* The variables were used by 35mm headset*/
 	int key_level_flag;
-	int ext_35mm_status;
-	int h2w_35mm_status;
+	int hs_35mm_type;
+	int h2w_35mm_type;
 	int is_ext_insert;
 	int mic_bias_state;
 	int mic_detect_counter;
@@ -277,6 +289,9 @@ int hs_debug_log_state(void);
 
 void hs_set_mic_select(int state);
 struct class *hs_get_attribute_class(void);
+
+int headset_get_type(void);
+int headset_get_type_sync(int count, unsigned int interval);
 
 extern int switch_send_event(unsigned int bit, int on);
 
