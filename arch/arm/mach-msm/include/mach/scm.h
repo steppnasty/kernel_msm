@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,16 +21,30 @@
 #define SCM_SVC_SSD			0x7
 #define SCM_SVC_FUSE			0x8
 #define SCM_SVC_PWR			0x9
-#define SCM_SVC_CP			0xC
+#define SCM_SVC_MP			0xC
 #define SCM_SVC_DCVS			0xD
+#define SCM_SVC_ES			0x10
 #define SCM_SVC_TZSCHEDULER		0xFC
+
+#define DEFINE_SCM_BUFFER(__n) \
+static char __n[PAGE_SIZE] __aligned(PAGE_SIZE);
+
+#define SCM_BUFFER_SIZE(__buf)	sizeof(__buf)
+
+#define SCM_BUFFER_PHYS(__buf)	virt_to_phys(__buf)
 
 #ifdef CONFIG_MSM_SCM
 extern int scm_call(u32 svc_id, u32 cmd_id, const void *cmd_buf, size_t cmd_len,
 		void *resp_buf, size_t resp_len);
 
+extern int scm_call_noalloc(u32 svc_id, u32 cmd_id, const void *cmd_buf,
+		size_t cmd_len, void *resp_buf, size_t resp_len,
+		void *scm_buf, size_t scm_buf_size);
+
+
 extern s32 scm_call_atomic1(u32 svc, u32 cmd, u32 arg1);
 extern s32 scm_call_atomic2(u32 svc, u32 cmd, u32 arg1, u32 arg2);
+extern s32 scm_call_atomic3(u32 svc, u32 cmd, u32 arg1, u32 arg2, u32 arg3);
 extern s32 scm_call_atomic4_3(u32 svc, u32 cmd, u32 arg1, u32 arg2, u32 arg3,
 		u32 arg4, u32 *ret1, u32 *ret2);
 
@@ -38,11 +52,19 @@ extern s32 scm_call_atomic4_3(u32 svc, u32 cmd, u32 arg1, u32 arg2, u32 arg3,
 
 extern u32 scm_get_version(void);
 extern int scm_is_call_available(u32 svc_id, u32 cmd_id);
+extern int scm_get_feat_version(u32 feat);
 
 #else
 
 static inline int scm_call(u32 svc_id, u32 cmd_id, const void *cmd_buf,
 		size_t cmd_len, void *resp_buf, size_t resp_len)
+{
+	return 0;
+}
+
+static inline int scm_call_noalloc(u32 svc_id, u32 cmd_id,
+		const void *cmd_buf, size_t cmd_len, void *resp_buf,
+		size_t resp_len, void *scm_buf, size_t scm_buf_size)
 {
 	return 0;
 }
@@ -53,6 +75,12 @@ static inline s32 scm_call_atomic1(u32 svc, u32 cmd, u32 arg1)
 }
 
 static inline s32 scm_call_atomic2(u32 svc, u32 cmd, u32 arg1, u32 arg2)
+{
+	return 0;
+}
+
+static inline s32 scm_call_atomic3(u32 svc, u32 cmd, u32 arg1, u32 arg2,
+		u32 arg3)
 {
 	return 0;
 }
@@ -69,6 +97,11 @@ static inline u32 scm_get_version(void)
 }
 
 static inline int scm_is_call_available(u32 svc_id, u32 cmd_id)
+{
+	return 0;
+}
+
+static inline int scm_get_feat_version(u32 feat)
 {
 	return 0;
 }
