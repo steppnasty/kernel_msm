@@ -120,7 +120,6 @@
 #include "rpm_log.h"
 #include "timer.h"
 #include "saw-regulator.h"
-#include "rpm-regulator.h"
 #include "sysinfo-8x60.h"
 #include "mpm.h"
 #include "clock-8x60.h"
