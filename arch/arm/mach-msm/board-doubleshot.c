@@ -931,7 +931,7 @@ static struct msm_i2c_platform_data msm_gsbi5_qup_i2c_pdata = {
 static struct msm_i2c_platform_data msm_gsbi7_qup_i2c_pdata = {
 	.clk_freq = 384000,
 	.src_clk_rate = 24000000,
-	.clk = "core__clk",
+	.clk = "core_clk",
 	.pclk = "iface_clk",
 	.msm_i2c_config_gpio = gsbi_qup_i2c_gpio_config,
 };
