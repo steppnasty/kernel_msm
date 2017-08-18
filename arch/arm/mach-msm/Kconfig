@@ -53,6 +53,7 @@ config ARCH_MSM8X60
 	select ARCH_REQUIRE_GPIOLIB
 	select MSM_ADM3
 	select REGULATOR
+	select MSM_RPM_REGULATOR
 	select MSM_V2_TLMM
 	select MSM_PIL
 	select MSM_SCM
@@ -1435,6 +1436,14 @@ config MSM_IDLE_WAIT_ON_MODEM
 	  If Modem is not ready to handle Application Processor's request
 	  for idle power collapse, wait the number of microseconds in case
 	  Modem becomes ready soon.
+
+config MSM_RPM_REGULATOR
+	bool "RPM regulator driver"
+	depends on MSM_RPM && REGULATOR
+	help
+	  Compile in support for the RPM regulator driver, used for setting
+	  voltages and other parameters of the various power rails supplied
+	  by some Qualcomm PMICs.
 
 config MSM_PIL
 	bool "Peripheral image loading"
