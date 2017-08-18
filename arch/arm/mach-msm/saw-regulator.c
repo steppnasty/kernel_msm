@@ -72,7 +72,8 @@
 
 static int pmic8901_rev;
 
-static int saw_set_voltage(struct regulator_dev *dev, int min_uV, int max_uV)
+static int saw_set_voltage(struct regulator_dev *dev, int min_uV, int max_uV,
+			  unsigned *selector)
 {
 	/* Initialize min_uV to minimum possible set point value */
 	static int prev_min_uV[NR_CPUS] = {
