@@ -107,24 +107,6 @@ extern unsigned msm_num_footswitch_devices;
 extern struct platform_device *msm8660_footswitch[];
 extern unsigned msm8660_num_footswitch;
 
-extern struct clk_lookup msm_clocks_7x01a[];
-extern unsigned msm_num_clocks_7x01a;
-
-extern struct clk_lookup msm_clocks_7x25[];
-extern unsigned msm_num_clocks_7x25;
-
-extern struct clk_lookup msm_clocks_7x27[];
-extern unsigned msm_num_clocks_7x27;
-
-extern struct clk_lookup msm_clocks_7x30[];
-extern unsigned msm_num_clocks_7x30;
-
-extern struct clk_lookup msm_clocks_8x50[];
-extern unsigned msm_num_clocks_8x50;
-
-extern struct clk_lookup msm_clocks_8x60[];
-extern unsigned msm_num_clocks_8x60;
-
 extern struct platform_device msm_kgsl_3d0;
 extern struct platform_device msm_kgsl_2d0;
 extern struct platform_device msm_kgsl_2d1;

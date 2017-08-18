@@ -122,13 +122,13 @@
 #include "saw-regulator.h"
 #include "sysinfo-8x60.h"
 #include "mpm.h"
-#include "clock-8x60.h"
 
 #include <mach/cable_detect.h>
 #include "rpm_stats.h"
 
 #include <linux/msm_ion.h>
 #include <mach/ion.h>
+#include "acpuclock.h"
 
 #define MSM_SHARED_RAM_PHYS 0x40000000
 
@@ -287,9 +287,6 @@ static struct msm_spm_platform_data msm_spm_data[] __initdata = {
 
 		.vctl_timeout_us = 50,
 	},
-};
-
-static struct msm_acpu_clock_platform_data msm8x60_acpu_clock_data = {
 };
 
 #ifdef CONFIG_PERFLOCK
@@ -918,32 +915,32 @@ static void gsbi_qup_i2c_gpio_config(int adap_id, int config_type)
 static struct msm_i2c_platform_data msm_gsbi4_qup_i2c_pdata = {
 	.clk_freq = 100000,
 	.src_clk_rate = 24000000,
-	.clk = "gsbi_qup_clk",
-	.pclk = "gsbi_pclk",
+	.clk = "core_clk",
+	.pclk = "iface_clk",
 	.msm_i2c_config_gpio = gsbi_qup_i2c_gpio_config,
 };
 
 static struct msm_i2c_platform_data msm_gsbi5_qup_i2c_pdata = {
 	.clk_freq = 384000,
 	.src_clk_rate = 24000000,
-	.clk = "gsbi_qup_clk",
-	.pclk = "gsbi_pclk",
+	.clk = "core_clk",
+	.pclk = "iface_clk",
 	.msm_i2c_config_gpio = gsbi_qup_i2c_gpio_config,
 };
 
 static struct msm_i2c_platform_data msm_gsbi7_qup_i2c_pdata = {
 	.clk_freq = 384000,
 	.src_clk_rate = 24000000,
-	.clk = "gsbi_qup_clk",
-	.pclk = "gsbi_pclk",
+	.clk = "core__clk",
+	.pclk = "iface_clk",
 	.msm_i2c_config_gpio = gsbi_qup_i2c_gpio_config,
 };
 
 static struct msm_i2c_platform_data msm_gsbi10_qup_i2c_pdata = {
 	.clk_freq = 384000,
 	.src_clk_rate = 24000000,
-	.clk = "gsbi_qup_clk",
-	.pclk = "gsbi_pclk",
+	.clk = "core_clk",
+	.pclk = "iface_clk",
 	.msm_i2c_config_gpio = gsbi_qup_i2c_gpio_config,
 };
 
@@ -952,8 +949,8 @@ static struct msm_i2c_platform_data msm_gsbi10_qup_i2c_pdata = {
 #if defined(CONFIG_SPI_QUP) || defined(CONFIG_SPI_QUP_MODULE)
 static struct msm_spi_platform_data msm_gsbi1_qup_spi_pdata = {
 	.max_clock_speed = 10800000,
-	.clk_name = "gsbi_qup_clk",
-	.pclk_name = "gsbi_pclk",
+	.clk_name = "core_clk",
+	.pclk_name = "iface_clk",
 };
 #endif
 
@@ -4651,14 +4648,6 @@ int __initdata irq_ignore_tbl[] =
 };
 unsigned __initdata irq_num_ignore_tbl = ARRAY_SIZE(irq_ignore_tbl);
 
-int __initdata clk_ignore_tbl[] =
-{
-	L_GSBI12_UART_CLK,
-	L_SDC4_CLK,
-	L_SDC4_P_CLK,
-};
-unsigned __initdata clk_num_ignore_tbl = ARRAY_SIZE(clk_ignore_tbl);
-
 #define PM8058_LPM_SET(id)	(1 << RPM_VREG_ID_##id)
 #define PM8901_LPM_SET(id)	(1 << (RPM_VREG_ID_##id - RPM_VREG_ID_PM8901_L0))
 
@@ -4719,7 +4708,7 @@ static void __init doubleshot_init(void)
 	/* Initialize regulators needed for clock_init. */
 	platform_add_devices(early_regulators, ARRAY_SIZE(early_regulators));
 
-	msm_clock_init(msm_clocks_8x60, msm_num_clocks_8x60);
+	msm_clock_init(msm8x60_clock_init_data);
 
 	/* Buses need to be initialized before early-device registration
 	 * to get the platform data for fabrics.
@@ -4732,7 +4721,7 @@ static void __init doubleshot_init(void)
 
 	platform_add_devices(early_devices, ARRAY_SIZE(early_devices));
 	/* CPU frequency control is not supported on simulated targets. */
-	msm_acpu_clock_init(&msm8x60_acpu_clock_data);
+	acpuclk_init(&acpuclk_8x60_soc_data);
 
 #ifdef CONFIG_PERFLOCK
 	perflock_init(&doubleshot_perflock_data);
@@ -4804,7 +4793,6 @@ static void __init doubleshot_init(void)
 	sysinfo_proc_init();
 
 	msm_mpm_set_irq_ignore_list(irq_ignore_tbl, irq_num_ignore_tbl);
-	msm_clk_soc_set_ignore_list(clk_ignore_tbl, clk_num_ignore_tbl);
 }
 
 #define PHY_BASE_ADDR1  0x48000000

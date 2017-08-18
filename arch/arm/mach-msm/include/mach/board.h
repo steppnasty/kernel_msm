@@ -23,10 +23,9 @@
 #include <linux/input.h>
 #include <linux/usb.h>
 #include <linux/leds-pmic8058.h>
+#include <linux/clkdev.h>
 #include <mach/msm_bus.h>
 #include "msm_ssbi.h"
-
-#include <linux/clkdev.h>
 
 #define BIT0                    0x00000001
 #define BIT1                    0x00000002
@@ -605,13 +604,10 @@ void __init msm_map_comet_io(void);
 void __init msm_init_irq(void);
 
 #ifdef CONFIG_ARCH_MSM8X60
-void __init msm_clock_init(struct clk_lookup *clock_tbl, unsigned num_clocks);
 struct mmc_platform_data;
 int __init msm_add_sdcc(unsigned int controller,
 		struct mmc_platform_data *plat);
 #endif
-
-void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *);
 
 /* Dump debug info (states, rate, etc) of clocks */
 #if defined(CONFIG_ARCH_MSM7X27)

@@ -44,8 +44,6 @@
 
 extern int panel_type;
 
-static struct clk *axi_clk;
-
 struct vreg {
         const char *name;
         unsigned id;
@@ -68,9 +66,6 @@ static int mddi_novatec_power(int on)
 
 	if (panel_type == 0) {
 		if (on) {
-			if(axi_clk)
-				clk_set_rate(axi_clk, 192000000);
-
 			vreg_enable(vreg_ldo20);
 			hr_msleep(5);
 			vreg_disable(vreg_ldo20);
@@ -105,9 +100,6 @@ static int mddi_novatec_power(int on)
 		}
 	} else {
 		if (on) {
-			if(axi_clk)
-				clk_set_rate(axi_clk, 192000000);
-
 			vreg_enable(vreg_ldo20);
 			hr_msleep(5);
 			vreg_disable(vreg_ldo20);
@@ -239,12 +231,6 @@ int __init glacier_init_panel(void)
 		return rc;
 
 	msm_fb_add_devices();
-
-	axi_clk = clk_get(NULL, "ebi1_clk");
-	if (IS_ERR(axi_clk)) {
-		pr_err("%s: failed to get axi clock\n", __func__);
-		return PTR_ERR(axi_clk);
-	}
 
 	return 0;
 }

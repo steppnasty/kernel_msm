@@ -1457,7 +1457,7 @@ static struct resource resources_msm_rotator[] = {
 
 static struct msm_rot_clocks rotator_clocks[] = {
 	{
-		.clk_name = "rot_clk",
+		.clk_name = "core_clk",
 		.clk_type = ROTATOR_CORE_CLK,
 		.clk_rate = 160 * 1000 * 1000,
 	},
@@ -1502,7 +1502,7 @@ static struct dsps_clk_info dsps_clks[] = {
 		.rate =	0, /* no rate just on/off */
 	},
 	{
-		.name = "pmem_clk",
+		.name = "mem_clk",
 		.rate =	0, /* no rate just on/off */
 	},
 	{
