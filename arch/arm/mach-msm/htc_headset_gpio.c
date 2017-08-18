@@ -126,6 +126,49 @@ static irqreturn_t button_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static int hs_gpio_request_irq(unsigned int gpio, unsigned int *irq,
+			       irq_handler_t handler, unsigned long flags,
+			       const char *name, unsigned int wake)
+{
+	int ret = 0;
+
+	HS_DBG();
+
+	ret = gpio_request(gpio, name);
+	if (ret < 0)
+		return ret;
+
+	ret = gpio_direction_input(gpio);
+	if (ret < 0) {
+		gpio_free(gpio);
+		return ret;
+	}
+
+	if (!(*irq)) {
+		ret = gpio_to_irq(gpio);
+		if (ret < 0) {
+			gpio_free(gpio);
+			return ret;
+		}
+		*irq = (unsigned int) ret;
+	}
+
+	ret = request_irq(*irq, handler, flags, name, NULL);
+	if (ret < 0) {
+		gpio_free(gpio);
+		return ret;
+	}
+
+	ret = set_irq_wake(*irq, wake);
+	if (ret < 0) {
+		free_irq(*irq, 0);
+		gpio_free(gpio);
+		return ret;
+	}
+
+	return 1;
+}
+
 static void hs_gpio_register(void)
 {
 	struct headset_notifier notifier;
@@ -162,6 +205,9 @@ static int htc_headset_gpio_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	if (pdata->config_headset_gpio)
+		pdata->config_headset_gpio();
+
 	hi->pdata.hpin_gpio = pdata->hpin_gpio;
 	hi->pdata.key_gpio = pdata->key_gpio;
 	hi->pdata.key_enable_gpio = pdata->key_enable_gpio;
@@ -188,53 +234,23 @@ static int htc_headset_gpio_probe(struct platform_device *pdev)
 	wake_lock_init(&hi->hs_wake_lock, WAKE_LOCK_SUSPEND, DRIVER_NAME);
 
 	if (hi->pdata.hpin_gpio) {
-		ret = gpio_request(hi->pdata.hpin_gpio, "HS_GPIO_DETECT");
-		if (ret < 0)
-			goto err_hpin_gpio_request;
-
-		ret = gpio_direction_input(hi->pdata.hpin_gpio);
-		if (ret < 0)
-			goto err_hpin_gpio_direction_input;
-
-		ret = gpio_to_irq(hi->pdata.hpin_gpio);
-		if (ret < 0)
-			goto err_hpin_gpio_to_irq;
-		else
-			hi->hpin_irq = (unsigned int) ret;
-
-		ret = request_irq(hi->hpin_irq, detect_irq_handler,
-				  IRQF_TRIGGER_LOW, "HS_GPIO_DETECT", NULL);
-		if (ret < 0)
-			goto err_hpin_request_irq;
-
-		ret = set_irq_wake(hi->hpin_irq, 1);
-		if (ret < 0)
-			goto err_hpin_set_irq_wake;
+		ret = hs_gpio_request_irq(hi->pdata.hpin_gpio,
+				&hi->hpin_irq, detect_irq_handler,
+				IRQF_TRIGGER_LOW, "HS_GPIO_DETECT", 1);
+		if (ret < 0) {
+			HS_ERR("Failed to request GPIO HPIN IRQ (0x%X)", ret);
+			goto err_request_detect_irq;
+		}
 	}
 
 	if (hi->pdata.key_gpio) {
-		ret = gpio_request(hi->pdata.key_gpio, "HS_GPIO_BUTTON");
-		if (ret < 0)
-			goto err_key_gpio_request;
-
-		ret = gpio_direction_input(hi->pdata.key_gpio);
-		if (ret < 0)
-			goto err_key_gpio_direction_input;
-
-		ret = gpio_to_irq(hi->pdata.key_gpio);
-		if (ret < 0)
-			goto err_key_gpio_to_irq;
-		else
-			hi->key_irq = (unsigned int) ret;
-
-		ret = request_irq(hi->key_irq, button_irq_handler,
-				  hi->key_irq_type, "HS_GPIO_BUTTON", NULL);
-		if (ret < 0)
-			goto err_key_request_irq;
-
-		ret = set_irq_wake(hi->key_irq, 1);
-		if (ret < 0)
-			goto err_key_set_irq_wake;
+		ret = hs_gpio_request_irq(hi->pdata.key_gpio,
+				&hi->key_irq, button_irq_handler,
+				hi->key_irq_type, "HS_GPIO_BUTTON", 1);
+		if (ret < 0) {
+			HS_ERR("Failed to request GPIO button IRQ (0x%X)", ret);
+			goto err_request_button_irq;
+		}
 	}
 
 	hs_gpio_register();
@@ -244,29 +260,13 @@ static int htc_headset_gpio_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_key_set_irq_wake:
-	if (hi->pdata.key_gpio)
-		free_irq(hi->key_irq, 0);
-
-err_key_request_irq:
-err_key_gpio_to_irq:
-err_key_gpio_direction_input:
-	if (hi->pdata.key_gpio)
-		gpio_free(hi->pdata.key_gpio);
-
-err_key_gpio_request:
-
-err_hpin_set_irq_wake:
-	if (hi->pdata.hpin_gpio)
+err_request_button_irq:
+	if (hi->pdata.hpin_gpio) {
 		free_irq(hi->hpin_irq, 0);
-
-err_hpin_request_irq:
-err_hpin_gpio_to_irq:
-err_hpin_gpio_direction_input:
-	if (hi->pdata.hpin_gpio)
 		gpio_free(hi->pdata.hpin_gpio);
+	}
 
-err_hpin_gpio_request:
+err_request_detect_irq:
 	wake_lock_destroy(&hi->hs_wake_lock);
 	destroy_workqueue(button_wq);
 

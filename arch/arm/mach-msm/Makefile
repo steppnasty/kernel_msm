@@ -246,6 +246,13 @@ obj-$(CONFIG_HTC_BATTCHG) += htc_battery.o
 endif
 obj-$(CONFIG_HTC_BATT_CORE) += htc_battery_core.o
 obj-$(CONFIG_HTC_PWRSINK) += htc_pwrsink.o
+obj-$(CONFIG_HTC_HEADSET_MGR) += htc_headset_mgr.o
+obj-$(CONFIG_HTC_HEADSET_H2W) += htc_headset_h2w.o
+obj-$(CONFIG_HTC_HEADSET_GPIO) += htc_headset_gpio.o
+obj-$(CONFIG_HTC_HEADSET_MICROP) += htc_headset_microp.o
+obj-$(CONFIG_HTC_HEADSET_PMIC) += htc_headset_pmic.o
+obj-$(CONFIG_HTC_HEADSET_MISC) += htc_headset_misc.o
+obj-$(CONFIG_HTC_HEADSET_8X60) += htc_headset_8x60.o
 obj-$(CONFIG_MSM_RMT_STORAGE_SERVER) += rmt_storage_server.o
 obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o
 ifeq ($(CONFIG_MSM_SSBI),y)
@@ -265,15 +272,6 @@ obj-$(CONFIG_PERFLOCK) += perflock.o
 obj-$(CONFIG_PERFLOCK) += htc_set_perflock.o
 obj-$(CONFIG_MICROP_COMMON) += atmega_microp_common.o
 obj-$(CONFIG_TOUCHSCREEN_TSSC_MANAGER) += htc_tp_cal.o
-
-obj-$(CONFIG_HTC_HEADSET_MGR) += htc_headset_mgr.o
-obj-$(CONFIG_HTC_HEADSET_H2W) += htc_headset_h2w.o
-obj-$(CONFIG_HTC_HEADSET_GPIO) += htc_headset_gpio.o
-obj-$(CONFIG_HTC_HEADSET_MICROP) += htc_headset_microp.o
-obj-$(CONFIG_HTC_HEADSET_PMIC) += htc_headset_pmic.o
-obj-$(CONFIG_HTC_HEADSET_PMIC_ADC) += htc_headset_pmic_adc.o
-obj-$(CONFIG_HTC_HEADSET_MISC) += htc_headset_misc.o
-obj-$(CONFIG_HTC_HEADSET_8X60) += htc_headset_8x60.o
 
 obj-$(CONFIG_HTC_EXTDIAG) += htc_extdiag.o
 

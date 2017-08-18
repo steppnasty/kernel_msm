@@ -501,6 +501,8 @@ static struct platform_device *headset_devices[] = {
 static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
 	.headset_devices_num	= ARRAY_SIZE(headset_devices),
 	.headset_devices	= headset_devices,
+	.headset_config_num	= 0,
+	.headset_config		= 0,
 };
 
 static struct htc_battery_platform_data htc_battery_pdev_data = {

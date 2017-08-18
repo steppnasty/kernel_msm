@@ -36,6 +36,10 @@ static struct workqueue_struct *detect_wq;
 static void detect_35mm_do_work(struct work_struct *work);
 static DECLARE_DELAYED_WORK(detect_35mm_work, detect_35mm_do_work);
 
+static struct workqueue_struct *button_wq;
+static void button_pmic_work_func(struct work_struct *work);
+static DECLARE_DELAYED_WORK(button_pmic_work, button_pmic_work_func);
+
 static struct htc_35mm_pmic_info *hi;
 
 static struct msm_rpc_endpoint *endpoint_adc;
@@ -176,7 +180,7 @@ static int hs_pmic_adc_to_keycode(int adc)
 	else if (adc >= hi->pdata.adc_remote[4] &&
 		 adc <= hi->pdata.adc_remote[5])
 		key_code = HS_MGR_KEY_FORWARD;
-	else if (adc >= hi->pdata.adc_mic)
+	else if (adc > hi->pdata.adc_remote[5])
 		key_code = HS_MGR_KEY_NONE;
 
 	if (key_code != HS_MGR_KEY_INVALID)
@@ -215,7 +219,7 @@ static void detect_35mm_do_work(struct work_struct *work)
 	hs_notify_plug_event(insert);
 }
 
-static irqreturn_t htc_35mm_pmic_irq(int irq, void *data)
+static irqreturn_t detect_irq_handler(int irq, void *data)
 {
 	unsigned int irq_mask = IRQF_TRIGGER_HIGH | IRQF_TRIGGER_LOW;
 
@@ -230,6 +234,70 @@ static irqreturn_t htc_35mm_pmic_irq(int irq, void *data)
 	queue_delayed_work(detect_wq, &detect_35mm_work, hi->hpin_debounce);
 
 	return IRQ_HANDLED;
+}
+
+static void button_pmic_work_func(struct work_struct *work)
+{
+	HS_DBG();
+	hs_notify_key_irq();
+}
+
+static irqreturn_t button_irq_handler(int irq, void *dev_id)
+{
+	unsigned int irq_mask = IRQF_TRIGGER_HIGH | IRQF_TRIGGER_LOW;
+
+	HS_DBG();
+
+	hi->key_irq_type ^= irq_mask;
+	set_irq_type(hi->pdata.key_irq, hi->key_irq_type);
+
+	wake_lock_timeout(&hi->hs_wake_lock, HS_WAKE_LOCK_TIMEOUT);
+	queue_delayed_work(button_wq, &button_pmic_work, HS_JIFFIES_ZERO);
+
+	return IRQ_HANDLED;
+}
+
+static int hs_pmic_request_irq(unsigned int gpio, unsigned int *irq,
+			       irq_handler_t handler, unsigned long flags,
+			       const char *name, unsigned int wake)
+{
+	int ret = 0;
+
+	HS_DBG();
+
+	ret = gpio_request(gpio, name);
+	if (ret < 0)
+		return ret;
+
+	ret = gpio_direction_input(gpio);
+	if (ret < 0) {
+		gpio_free(gpio);
+		return ret;
+	}
+
+	if (!(*irq)) {
+		ret = gpio_to_irq(gpio);
+		if (ret < 0) {
+			gpio_free(gpio);
+			return ret;
+		}
+		*irq = (unsigned int) ret;
+	}
+
+	ret = request_any_context_irq(*irq, handler, flags, name, NULL);
+	if (ret < 0) {
+		gpio_free(gpio);
+		return ret;
+	}
+
+	ret = set_irq_wake(*irq, wake);
+	if (ret < 0) {
+		free_irq(*irq, 0);
+		gpio_free(gpio);
+		return ret;
+	}
+
+	return 1;
 }
 
 static void hs_pmic_register(void)
@@ -282,6 +350,8 @@ static int htc_headset_pmic_probe(struct platform_device *pdev)
 	hi->pdata.driver_flag = pdata->driver_flag;
 	hi->pdata.hpin_gpio = pdata->hpin_gpio;
 	hi->pdata.hpin_irq = pdata->hpin_irq;
+	hi->pdata.key_gpio = pdata->key_gpio;
+	hi->pdata.key_irq = pdata->key_irq;
 	hi->pdata.key_enable_gpio = pdata->key_enable_gpio;
 	hi->pdata.hs_controller = pdata->hs_controller;
 	hi->pdata.hs_switch = pdata->hs_switch;
@@ -309,27 +379,42 @@ static int htc_headset_pmic_probe(struct platform_device *pdev)
 
 	hi->hpin_irq_type = IRQF_TRIGGER_LOW;
 	hi->hpin_debounce = HS_JIFFIES_ZERO;
+	hi->key_irq_type = IRQF_TRIGGER_LOW;
 
 	wake_lock_init(&hi->hs_wake_lock, WAKE_LOCK_SUSPEND, DRIVER_NAME);
 
-	detect_wq = create_workqueue("detection");
+	detect_wq = create_workqueue("HS_PMIC_DETECT");
 	if (detect_wq  == NULL) {
 		ret = -ENOMEM;
+		HS_ERR("Failed to create detect workqueue");
 		goto err_create_detect_work_queue;
 	}
 
-	if (hi->pdata.hpin_irq) {
-		ret = request_irq(hi->pdata.hpin_irq, htc_35mm_pmic_irq,
-				  hi->hpin_irq_type, "HS_PMIC_DETECT",
-				  NULL);
+	button_wq = create_workqueue("HS_PMIC_BUTTON");
+	if (button_wq == NULL) {
+		ret = -ENOMEM;
+		HS_ERR("Failed to create button workqueue");
+		goto err_create_button_work_queue;
+	}
+
+	if (hi->pdata.hpin_gpio) {
+		ret = hs_pmic_request_irq(hi->pdata.hpin_gpio,
+				&hi->pdata.hpin_irq, detect_irq_handler,
+				hi->hpin_irq_type, "HS_PMIC_DETECT", 1);
 		if (ret < 0) {
 			HS_ERR("Failed to request PMIC HPIN IRQ (0x%X)", ret);
 			goto err_request_detect_irq;
 		}
+	}
 
-		ret = set_irq_wake(hi->pdata.hpin_irq, 1);
-		if (ret < 0)
-			HS_ERR("Failed to set PMIC HPIN IRQ wake");
+	if (hi->pdata.key_gpio) {
+		ret = hs_pmic_request_irq(hi->pdata.key_gpio,
+				&hi->pdata.key_irq, button_irq_handler,
+				hi->key_irq_type, "HS_PMIC_BUTTON", 1);
+		if (ret < 0) {
+			HS_ERR("Failed to request PMIC button IRQ (0x%X)", ret);
+			goto err_request_button_irq;
+		}
 	}
 
 	if (hi->pdata.driver_flag & DRIVER_HS_PMIC_RPC_KEY) {
@@ -379,7 +464,16 @@ static int htc_headset_pmic_probe(struct platform_device *pdev)
 
 	return 0;
 
+err_request_button_irq:
+	if (hi->pdata.hpin_gpio) {
+		free_irq(hi->pdata.hpin_irq, 0);
+		gpio_free(hi->pdata.hpin_gpio);
+	}
+
 err_request_detect_irq:
+	destroy_workqueue(button_wq);
+
+err_create_button_work_queue:
 	destroy_workqueue(detect_wq);
 
 err_create_detect_work_queue:
@@ -393,9 +487,17 @@ err_create_detect_work_queue:
 
 static int htc_headset_pmic_remove(struct platform_device *pdev)
 {
-	if (hi->pdata.hpin_irq)
-		free_irq(hi->pdata.hpin_irq, 0);
+	if (hi->pdata.key_gpio) {
+		free_irq(hi->pdata.key_irq, 0);
+		gpio_free(hi->pdata.key_gpio);
+	}
 
+	if (hi->pdata.hpin_gpio) {
+		free_irq(hi->pdata.hpin_irq, 0);
+		gpio_free(hi->pdata.hpin_gpio);
+	}
+
+	destroy_workqueue(button_wq);
 	destroy_workqueue(detect_wq);
 	wake_lock_destroy(&hi->hs_wake_lock);
 
