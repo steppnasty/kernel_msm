@@ -184,14 +184,6 @@ static void msm_pm_flush_console(void)
 	release_console_sem();
 }
 
-/* It seems that modem would like to lock kernel before restarting the system. */
-inline void soc_restart(char mode, const char *cmd)
-{
-	lock_kernel();
-	arm_pm_restart(mode, cmd);
-	unlock_kernel();
-}
-
 void arch_reset(char mode, const char *cmd)
 {
 	/* arch_reset should only enter once*/

@@ -33,6 +33,8 @@
 #define MODEM_HWIO_MSS_RESET_ADDR       0x00902C48
 #define SCM_Q6_NMI_CMD			0x1
 
+static void do_soc_restart(char mode, const char *cmd);
+
 static void q6_fatal_fn(struct work_struct *);
 static void modem_fatal_fn(struct work_struct *);
 static void modem_unlock_timeout(struct work_struct *work);
@@ -92,12 +94,8 @@ static void modem_fatal_fn(struct work_struct *work)
 	} else if (modem_state & reset_smsm_states) {
 
 		printk(KERN_CRIT
-			"subsys-restart: User invoked system reset/powerdown. \
-			Modem SMSM state = 0x%x", modem_state);
-		printk(KERN_CRIT "Modem Panic - subsys-restart: Rebooting SoC..\n");
-		printk(KERN_CRIT "subsys-restart: Rebooting SoC..\n");
-
-		soc_restart(RESTART_MODE_MODEM_USER_INVOKED, "modem-user-invoked-reset");
+			"subsys-restart: User invoked system reboot.\n");
+		do_soc_restart(RESTART_MODE_MODEM_USER_INVOKED, "modem-user-invoked-reset");
 
 	} else {
 
@@ -134,6 +132,14 @@ static void q6_fatal_fn(struct work_struct *work)
 
 	printk(KERN_CRIT "Q6 panic - Watchdog bite received from Q6! Rebooting.\n");
 	arm_pm_restart(RESTART_MODE_Q6_WATCHDOG_BITE, "q6-watchdog-bite");
+}
+
+static void do_soc_restart(char mode, const char *cmd)
+{
+	printk(KERN_CRIT "subsys-restart: Rebooting SoC..\n");
+	lock_kernel();
+	arm_pm_restart(mode, cmd);
+	unlock_kernel();
 }
 
 static irqreturn_t subsys_wdog_bite_irq(int irq, void *dev_id)
