@@ -49,6 +49,11 @@
 
 #define PSHOLD_CTL_SU (MSM_TLMM_BASE + 0x820)
 
+#ifdef CONFIG_MSM_WATCHDOG
+extern int msm_watchdog_suspend(void);
+extern int msm_watchdog_resume(void);
+#endif
+
 static int restart_mode;
 
 struct htc_reboot_params {
