@@ -18,6 +18,7 @@
 #include <asm/cacheflush.h>
 #include <asm/mach-types.h>
 
+#include <mach/socinfo.h>
 #include <mach/smp.h>
 #include <mach/hardware.h>
 #include <mach/msm_iomap.h>
@@ -28,15 +29,6 @@
 #define SECONDARY_CPU_WAIT_MS 10
 
 int pen_release = -1;
-
-int get_core_count(void)
-{
-#ifdef CONFIG_NR_CPUS
-	return CONFIG_NR_CPUS;
-#else
-	return 1;
-#endif
-}
 
 /* Initialize the present map (cpu_set(i, cpu_present_map)). */
 void smp_prepare_cpus(unsigned int max_cpus)
