@@ -719,6 +719,7 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
+#ifdef CONFIG_MSM_VPE
 static struct resource msm_vpe_resources[] = {
 	{
 		.start	= 0x05300000,
@@ -738,6 +739,7 @@ static struct platform_device msm_vpe_device = {
 	.num_resources = ARRAY_SIZE(msm_vpe_resources),
 	.resource = msm_vpe_resources,
 };
+#endif
 
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
 static void config_flashlight_gpios(void)
