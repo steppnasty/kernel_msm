@@ -509,6 +509,19 @@ int __init parse_tag_extdiag(const struct tag *tags)
 	return 0;
 }
 
+static unsigned int kernel_flag = 0;
+int __init kernel_flag_init(char *s)
+{
+	kernel_flag = simple_strtoul(s, 0, 16);
+	return 1;
+}
+__setup("kernelflag=", kernel_flag_init);
+
+unsigned int get_kernel_flag(void)
+{
+	return kernel_flag;
+}
+
 BLOCKING_NOTIFIER_HEAD(psensor_notifier_list);
 
 int register_notifier_by_psensor(struct notifier_block *nb)
