@@ -60,6 +60,13 @@ struct subsys_data {
 	struct subsys_data *single_restart_list[1];
 };
 
+static inline void *subsystem_get(const char *name)
+{
+	return NULL;
+}
+
+static inline void subsystem_put(void *subsystem) { }
+
 #if defined(CONFIG_MSM_SUBSYSTEM_RESTART)
 
 int get_restart_level(void);
