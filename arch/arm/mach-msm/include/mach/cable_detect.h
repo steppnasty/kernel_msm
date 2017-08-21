@@ -62,14 +62,12 @@ struct cable_detect_platform_data {
 	struct usb_id_mpp_config_data mpp_data;
 	void (*config_usb_id_gpios)(bool enable);
 	void (*mhl_1v2_power)(bool enable);
-	int (*is_wireless_charger)(void);
 
 	int ac_9v_gpio;
 	void (*configure_ac_9v_gpio) (int);
 	u8 mhl_internal_3v3;
 };
 
-extern int cable_get_connect_type(void);
 extern void set_mfg_usb_carkit_enable(int enable);
 extern int cable_get_accessory_type(void);
 extern int cable_get_usb_id_level(void);

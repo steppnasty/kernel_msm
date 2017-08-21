@@ -79,13 +79,6 @@ void __init msm_add_usb_id_pin_gpio(int usb_id_pin_io);
 void __init msm_enable_car_kit_detect(bool enable);
 void __init msm_change_usb_id(__u16 vendor_id, __u16 product_id);
 void __init msm_init_pmic_vibrator(int);
-#ifdef CONFIG_USB_FUNCTION
-void __init msm_register_uart_usb_switch(void (*usb_uart_switch) (int));
-void __init msm_register_usb_phy_init_seq(int *int_seq);
-void __init msm_init_ums_lun(int lun_num);
-void __init msm_set_ums_device_id(int id);
-void __init msm_hsusb_set_product(struct msm_hsusb_product *product, int num_products);
-#endif
 
 struct mmc_platform_data;
 int __init msm_add_sdcc_devices(unsigned int controller, struct mmc_platform_data *plat);
@@ -102,8 +95,6 @@ void board_get_cid_tag(char **);
 void board_get_carrier_tag(char **);
 void board_get_mid_tag(char **);
 int board_emmc_boot(void);
-
-void notify_usb_connected(int online);
 
 char *board_serialno(void);
 

@@ -570,7 +570,7 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.ldo_init		 = msm_hsusb_ldo_init,
 	.ldo_enable		 = msm_hsusb_ldo_enable,
 	.drv_ampl		= HS_DRV_AMPLITUDE_DEFAULT,
-
+	.chg_connected		= htc_usb_chg_connected,
 };
 #endif
  
@@ -628,7 +628,6 @@ static struct cable_detect_platform_data cable_detect_pdata = {
 	.vbus_mpp_irq		= PM8058_CBLPWR_IRQ(PM8058_IRQ_BASE),
 	.detect_type		= CABLE_TYPE_PMIC_ADC,
 	.usb_id_pin_gpio	= DOUBLESHOT_GPIO_USB_ID,
-	.is_wireless_charger    = wireless_charger_detect,
 	.config_usb_id_gpios	= config_doubleshot_usb_id_gpios,
 	.mpp_data = {
 		.usbid_mpp	=  XOADC_MPP_4,
