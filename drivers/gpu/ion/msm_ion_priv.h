@@ -38,6 +38,9 @@ struct mem_map_data {
 	const char *client_name;
 };
 
+struct ion_heap *ion_cp_heap_create(struct ion_platform_heap *);
+void ion_cp_heap_destroy(struct ion_heap *);
+
 #define ION_CP_ALLOCATE_FAIL -1
 #define ION_RESERVED_ALLOCATE_FAIL -1
 

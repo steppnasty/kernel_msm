@@ -523,6 +523,45 @@ static long msm_ion_custom_ioctl(struct ion_client *client,
 	return 0;
 }
 
+static struct ion_heap *msm_ion_heap_create(struct ion_platform_heap *heap_data)
+{
+	struct ion_heap *heap = NULL;
+
+	switch ((int)heap_data->type) {
+	case ION_HEAP_TYPE_CP:
+		heap = ion_cp_heap_create(heap_data);
+		break;
+	default:
+		heap = ion_heap_create(heap_data);
+	}
+
+	if (IS_ERR_OR_NULL(heap)) {
+		pr_err("%s: error creating heap %s type %d base %pa size %u\n",
+		       __func__, heap_data->name, heap_data->type,
+		       &heap_data->base, heap_data->size);
+		return ERR_PTR(-EINVAL);
+	}
+
+	heap->name = heap_data->name;
+	heap->id = heap_data->id;
+	heap->priv = heap_data->priv;
+	return heap;
+}
+
+static void msm_ion_heap_destroy(struct ion_heap *heap)
+{
+	if (!heap)
+		return;
+
+	switch ((int)heap->type) {
+	case ION_HEAP_TYPE_CP:
+		ion_cp_heap_destroy(heap);
+		break;
+	default:
+		ion_heap_destroy(heap);
+	}
+}
+
 static int msm_ion_probe(struct platform_device *pdev)
 {
 	struct ion_platform_data *pdata = pdev->dev.platform_data;
@@ -551,7 +590,7 @@ static int msm_ion_probe(struct platform_device *pdev)
 		struct ion_platform_heap *heap_data = &pdata->heaps[i];
 		msm_ion_allocate(heap_data);
 
-		heaps[i] = ion_heap_create(heap_data);
+		heaps[i] = msm_ion_heap_create(heap_data);
 		if (IS_ERR_OR_NULL(heaps[i])) {
 			heaps[i] = 0;
 			continue;
@@ -583,7 +622,7 @@ static int msm_ion_remove(struct platform_device *pdev)
 	int i;
 
 	for (i = 0; i < num_heaps; i++)
-		ion_heap_destroy(heaps[i]);
+		msm_ion_heap_destroy(heaps[i]);
 
 	ion_device_destroy(idev);
 	kfree(heaps);
