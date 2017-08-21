@@ -23,7 +23,7 @@
 #include <linux/slab.h>
 #include <linux/rtc/rtc-pm8058.h>
 #include <linux/pm_runtime.h>
-#include <mach/msm_rpcrouter-8x60.h>
+#include <mach/msm_rpcrouter.h>
 #include <asm/atomic.h>
 #include <linux/delay.h>
 #include <linux/kthread.h>
