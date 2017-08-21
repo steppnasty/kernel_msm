@@ -54,7 +54,6 @@
 
 #include <linux/atmel_qt602240.h>
 #include <linux/cm3628.h>
-//#include <linux/mpu3050.h>
 #include <linux/akm8975.h>
 #include <linux/bma150.h>
 #include <linux/bma250.h>
@@ -82,9 +81,9 @@
 #include <mach/msm_serial_hs.h>
 #include <mach/msm_iomap.h>
 #include <asm/mach/mmc.h>
-#include <linux/tps65200.h>
 #include <mach/msm_hsusb.h>
 #include <mach/htc_battery.h>
+#include <linux/tps65200.h>
 #ifdef CONFIG_MSM_DSPS
 #include <mach/msm_dsps.h>
 #endif
@@ -2146,8 +2145,6 @@ static struct platform_device *surf_devices[] __initdata = {
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 	&hdmi_msm_device,
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
-	&mipi_dsi_cmd_wvga_panel_device,
-
 #ifdef CONFIG_MSM_GEMINI
 	&msm_gemini_device,
 #endif
