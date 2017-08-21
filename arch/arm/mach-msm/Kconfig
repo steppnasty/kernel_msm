@@ -1708,6 +1708,11 @@ config MSM7X30_DDR2
 	depends on ARCH_MSM7X30
 	default n
 
+config RADIO_FEEDBACK8660
+	bool
+	depends on ARCH_MSM8X60
+	default y
+
 config MSM_SCHED_FAST_CPU_ONLINE
 	bool "Fast scheduler update for CPU online"
 	depends on ARCH_MSM8X60
