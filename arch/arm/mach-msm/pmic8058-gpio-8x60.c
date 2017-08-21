@@ -750,7 +750,8 @@ static ssize_t debug_write(struct file *file, const char __user *buf,
 	}
 	debug_write_buf[count] = '\0';
 
-	(void) strict_strtoul(debug_write_buf, 10, &val);
+	if (kstrtoul(debug_write_buf, 10, &val))
+		return -EINVAL;
 
 	if (pm8058_gpio_set(&pm8058_gpio_chip, gpio, val)) {
 		pr_err("gpio write failed\n");
