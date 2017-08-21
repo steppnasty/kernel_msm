@@ -3,16 +3,11 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
  * only version 2 as published by the Free Software Foundation.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA.
  *
  */
 
@@ -25,7 +20,7 @@
 #include <linux/io.h>
 #include <linux/ktime.h>
 #include <linux/pm.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #include <linux/proc_fs.h>
 #include <linux/smp.h>
 #include <linux/suspend.h>
@@ -59,11 +54,14 @@
 #include "spm.h"
 #include "timer.h"
 #include "clock.h"
-#include "clock-8x60.h"
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
 #endif
 
+#ifdef CONFIG_MSM_WATCHDOG
+extern int msm_watchdog_suspend(void);
+extern int msm_watchdog_resume(void);
+#endif
 
 /******************************************************************************
  * Debug Definitions
@@ -91,7 +89,6 @@ module_param_named(
 
 extern int board_mfg_mode(void);
 extern char *board_get_mfg_sleep_gpio_table(void);
-extern void gpio_set_diag_gpio_table(unsigned long *dwMFG_gpio_table);
 /******************************************************************************
  * Sleep Modes and Parameters
  *****************************************************************************/
@@ -750,43 +747,6 @@ static void msm_pm_power_collapse_standalone(bool from_idle)
 	avs_reset_delays(avsdscr_setting);
 }
 
-static DECLARE_BITMAP(msm_pm_clocks_no_tcxo_shutdown, MAX_NR_CLKS);
-
-u32 count_xo_block_CLK_array[MAX_NR_CLKS]={0};
-void htc_xo_block_CLKs_count_clear(void)
-{
-	memset(count_xo_block_CLK_array, 0, sizeof(count_xo_block_CLK_array));
-}
-void htc_xo_block_CLKs_count(void)
-{
-	int ret, i;
-	ret = msm_clock_require_tcxo(msm_pm_clocks_no_tcxo_shutdown, MAX_NR_CLKS);
-	if (ret) {
-		int blk_xo = 0;
-		for_each_set_bit(i, msm_pm_clocks_no_tcxo_shutdown, MAX_NR_CLKS) {
-			blk_xo = local_clk_src_xo(i);
-			if (blk_xo)
-				count_xo_block_CLK_array[i]++;
-		}
-	}
-}
-
-void htc_xo_block_CLKs_count_show(void)
-{
-	int ret, i;
-	ret = msm_clock_require_tcxo(msm_pm_clocks_no_tcxo_shutdown, MAX_NR_CLKS);
-	if (ret) {
-		char clk_name[20] = "\0";
-		for_each_set_bit(i, msm_pm_clocks_no_tcxo_shutdown, MAX_NR_CLKS) {
-			if(count_xo_block_CLK_array[i]>0){
-				clk_name[0] = '\0';
-				ret = msm_clock_get_name_noirq(i, clk_name, sizeof(clk_name));
-				pr_info("%s (id=%d): %d\n", clk_name, ret,count_xo_block_CLK_array[i]);
-			}
-		}
-	}
-}
-
 static void msm_pm_power_collapse(bool from_idle)
 {
 	struct msm_pm_device *dev = &__get_cpu_var(msm_pm_devices);
@@ -796,39 +756,6 @@ static void msm_pm_power_collapse(bool from_idle)
 	if (MSM_PM_DEBUG_POWER_COLLAPSE & msm_pm_debug_mask)
 		pr_info("CPU%u: %s: idle %d\n",
 			dev->cpu, __func__, (int)from_idle);
-
-	if (smp_processor_id() == 0) {
-		if (((!from_idle) && (MSM_PM_DEBUG_CLOCK & msm_pm_debug_mask)) ||
-			((from_idle) && (MSM_PM_DEBUG_IDLE_CLOCK & msm_pm_debug_mask))) {
-			int ret, i;
-			ret = msm_clock_require_tcxo(msm_pm_clocks_no_tcxo_shutdown, MAX_NR_CLKS);
-			if (ret) {
-				int blk_xo_vddmin_count = 0, blk_xo = 0, vdig_level = 0;
-				char clk_name[20] = "\0";
-				for_each_set_bit(i, msm_pm_clocks_no_tcxo_shutdown, MAX_NR_CLKS) {
-					clk_name[0] = '\0';
-					ret = msm_clock_get_name_noirq(i, clk_name, sizeof(clk_name));
-					blk_xo = local_clk_src_xo(i);
-					vdig_level = local_clk_vdig_level(i);
-					if (blk_xo || vdig_level) {
-						blk_xo_vddmin_count++;
-						pr_info("%s (id=%d) not off block xo %d vdig level %d\n",
-							clk_name, ret, blk_xo, vdig_level);
-					}
-				}
-				if (blk_xo_vddmin_count)
-					pr_info("%d clks are on that block xo or vddmin\n", blk_xo_vddmin_count);
-			}
-		}else if (get_kernel_flag() & BIT25) {
-			htc_xo_block_CLKs_count();
-		}
-
-		if (((!from_idle) && (MSM_PM_DEBUG_CLOCK & msm_pm_debug_mask)) ||
-			((from_idle) && (MSM_PM_DEBUG_IDLE_CLOCK & msm_pm_debug_mask)))
-			soc_clk_src_votes_show();
-		if ((!from_idle) && (MSM_PM_DEBUG_RPM_STAT & msm_pm_debug_mask))
-			msm_rpm_dump_stat();
-	}
 
 	msm_pm_config_hw_before_power_down();
 	if (MSM_PM_DEBUG_POWER_COLLAPSE & msm_pm_debug_mask)
@@ -1100,70 +1027,18 @@ cpuidle_enter_bail:
 	return 0;
 }
 
-static char *gpio_sleep_status_info;
-
-int print_gpio_buffer(struct seq_file *m)
-{
-	if (gpio_sleep_status_info)
-		seq_printf(m, gpio_sleep_status_info);
-	else
-		seq_printf(m, "Device haven't suspended yet!\n");
-
-	return 0;
-}
-EXPORT_SYMBOL(print_gpio_buffer);
-
-int free_gpio_buffer()
-{
-	kfree(gpio_sleep_status_info);
-	gpio_sleep_status_info = NULL;
-
-	return 0;
-}
-EXPORT_SYMBOL(free_gpio_buffer);
-
 static int msm_pm_enter(suspend_state_t state)
 {
 	bool allow[MSM_PM_SLEEP_MODE_NR];
 	int i;
-	int curr_len = 0;
 
 #ifdef CONFIG_MSM_IDLE_STATS
 	int64_t period = 0;
 	int64_t time = msm_timer_get_sclk_time(&period);
 #endif
 
-	if (board_mfg_mode() == 4) /*power test mode*/
-		gpio_set_diag_gpio_table(
-			(unsigned long *)board_get_mfg_sleep_gpio_table());
-
 	if (MSM_PM_DEBUG_SUSPEND & msm_pm_debug_mask)
 		pr_info("%s\n", __func__);
-
-	if (MSM_PM_DEBUG_GPIO & msm_pm_debug_mask) {
-		if (gpio_sleep_status_info) {
-			memset(gpio_sleep_status_info, 0,
-				sizeof(gpio_sleep_status_info));
-		} else {
-			gpio_sleep_status_info = kmalloc(25000, GFP_ATOMIC);
-			if (!gpio_sleep_status_info) {
-				pr_err("[PM] kmalloc memory failed in %s\n",
-					__func__);
-				goto skip_dump;
-			}
-		}
-
-		curr_len = msm_dump_gpios(NULL, curr_len,
-						gpio_sleep_status_info);
-		curr_len = pmic8058_dump_gpios(NULL, curr_len,
-						gpio_sleep_status_info);
-		curr_len = pm8058_dump_mpp(NULL, curr_len,
-						gpio_sleep_status_info);
-		curr_len = pm8901_dump_mpp(NULL, curr_len,
-						gpio_sleep_status_info);
-	}
-
-skip_dump:
 
 	if (smp_processor_id()) {
 		__WARN();
@@ -1452,7 +1327,7 @@ static int __init msm_pm_init(void)
 		init_completion(&dev->cpu_killed);
 #endif
 	}
-
+#ifdef CONFIG_MSM_SCM
 	ret = scm_set_boot_addr((void *)virt_to_phys(msm_pm_boot_entry),
 			SCM_FLAG_WARMBOOT_CPU0 | SCM_FLAG_WARMBOOT_CPU1);
 	if (ret) {
@@ -1460,6 +1335,7 @@ static int __init msm_pm_init(void)
 			__func__, ret);
 		return ret;
 	}
+#endif
 
 #ifdef CONFIG_MSM_IDLE_STATS
 	for_each_possible_cpu(cpu) {
