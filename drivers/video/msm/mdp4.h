@@ -483,6 +483,7 @@ void mdp4_dtv_wait4vsync(int cndx, long long *vtime);
 void mdp4_dtv_vsync_ctrl(struct fb_info *info, int enable);
 void mdp4_dtv_base_swap(int cndx, struct mdp4_overlay_pipe *pipe);
 void mdp4_dtv_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe);
+void mdp4_dtv_set_avparams(struct mdp4_overlay_pipe *pipe, int id);
 int mdp4_dtv_pipe_commit(int cndx, int wait);
 #else
 static inline void mdp4_overlay_dtv_start(void)
@@ -536,7 +537,11 @@ static inline void mdp4_dtv_base_swap(int cndx, struct mdp4_overlay_pipe *pipe)
 }
 static inline void mdp4_dtv_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe)
 {
-	/* emtpy */
+	/* empty */
+}
+static inline void mdp4_dtv_set_avparams(struct mdp4_overlay_pipe *pipe, int id)
+{
+	/* empty */
 }
 static inline int mdp4_dtv_pipe_commit(int cndx, int wait)
 {
@@ -631,7 +636,6 @@ void mdp4_lcdc_wait4vsync(int cndx, long long *vtime);
 void mdp4_overlay_lcdc_vsync_push(struct msm_fb_data_type *mfd,
 				struct mdp4_overlay_pipe *pipe);
 void mdp4_mddi_overlay_dmas_restore(void);
-void mdp4_dtv_set_avparams(struct mdp4_overlay_pipe *pipe, int id);
 
 #ifndef CONFIG_FB_MSM_MIPI_DSI
 void mdp4_mddi_dma_busy_wait(struct msm_fb_data_type *mfd);
@@ -701,10 +705,9 @@ static inline void mdp4_mddi_blt_start(struct msm_fb_data_type *mfd)
 static inline void mdp4_mddi_blt_stop(struct msm_fb_data_type *mfd)
 {
 }
-static inline void mdp4_dtv_base_swap(int cndx, struct mdp4_overlay_pipe *pipe)
+static inline void mdp4_mddi_base_swap(int cndx, struct mdp4_overlay_pipe *pipe)
 {
 }
-
 #ifdef CONFIG_FB_MSM_MDP40
 static inline void mdp3_dsi_cmd_dma_busy_wait(struct msm_fb_data_type *mfd)
 {
