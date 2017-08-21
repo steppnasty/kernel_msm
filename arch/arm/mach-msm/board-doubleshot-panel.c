@@ -35,7 +35,6 @@
 #include "../devices.h"
 #include "../board-doubleshot.h"
 #include "../devices-msm8x60.h"
-#include "../../../../drivers/video/msm_8x60/mdp_hw.h"
 
 extern int panel_type;
 
@@ -343,6 +342,12 @@ static struct msm_bus_paths rotator_bus_scale_usecases[] = {
 		ARRAY_SIZE(rotator_1080p_vectors),
 		rotator_1080p_vectors,
 	},
+};
+
+struct msm_bus_scale_pdata rotator_bus_scale_pdata = {
+	rotator_bus_scale_usecases,
+	ARRAY_SIZE(rotator_bus_scale_usecases),
+	.name = "rotator",
 };
 
 static struct msm_bus_vectors mdp_init_vectors[] = {
