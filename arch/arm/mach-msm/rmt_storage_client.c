@@ -29,7 +29,7 @@
 #include <linux/err.h>
 #include <linux/sched.h>
 #include <linux/wakelock.h>
-#include <linux/rmt_storage_client-8x60.h>
+#include <linux/rmt_storage_client.h>
 #include <linux/debugfs.h>
 #include <linux/slab.h>
 #include <asm/uaccess.h>
