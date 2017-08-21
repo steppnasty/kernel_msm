@@ -739,17 +739,7 @@ static struct platform_device msm_vpe_device = {
 	.resource = msm_vpe_resources,
 };
 
-#if 1
-static int flashlight_control(int mode)
-{
-#if CONFIG_ARCH_MSM_FLASHLIGHT
-	return aat1271_flashlight_control(mode);
-#else
-	return 0;
-#endif
-}
-#endif
-#if CONFIG_ARCH_MSM_FLASHLIGHT
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
 static void config_flashlight_gpios(void)
 {
 	static uint32_t flashlight_gpio_table[] = {
@@ -775,7 +765,7 @@ static struct flashlight_platform_data flashlight_data = {
 static struct platform_device flashlight_device = {
 	.name = FLASHLIGHT_NAME,
 	.dev = {
-		.platform_data	= &flashlight_data,
+		.platform_data = &flashlight_data,
 	},
 };
 #endif
