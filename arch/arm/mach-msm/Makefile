@@ -1,23 +1,29 @@
-CFLAGS_scm.o := $(call as-instr, .arch_extension sec, -DREQUIRES_SEC=1)
+CFLAGS_scm.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
 
 obj-y += io.o dma.o memory.o timer.o
 obj-y += clock.o clock-voter.o clock-dummy.o
 obj-y += modem_notifier.o subsystem_map.o
+obj-$(CONFIG_CPU_FREQ) += cpufreq.o
 obj-$(CONFIG_DEBUG_FS) += clock-debug.o
 
 obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o
 ifndef CONFIG_ARCH_MSM8X60
 	obj-$(CONFIG_MSM_PROC_COMM) += clock-pcom.o
 	obj-$(CONFIG_MSM_PROC_COMM) += vreg.o
-	ifdef CONFIG_MSM_PROC_COMM
-		obj-$(CONFIG_REGULATOR) += footswitch-pcom.o
-	endif
+	obj-y += pmic.o
+ifdef CONFIG_MSM_PROC_COMM
+		obj-$(CONFIG_MSM_PROC_COMM) += footswitch-pcom.o
+endif
 endif
 
 obj-y += acpuclock.o
+
+obj-$(CONFIG_ARCH_MSM_SCORPION) += msm_fault_handlers.o
+
 obj-$(CONFIG_MSM_VIC) += irq-vic.o
 
 obj-$(CONFIG_MSM_CPU_AVS) += avs.o avs_hw.o
+obj-$(CONFIG_CPU_V7) += idle-v7.o
 obj-$(CONFIG_MSM_JTAG_V7) += jtag-v7.o
 
 quiet_cmd_mkrpcsym = MKCAP   $@
@@ -27,25 +33,29 @@ target += smd_rpc_sym.c
 $(obj)/smd_rpc_sym.c: $(src)/smd_rpc_sym $(src)/mkrpcsym.pl
 	$(call if_changed,mkrpcsym)
 
+obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o htc_simlock-8x60.o scm-log.o
+obj-$(CONFIG_MSM_SECURE_IO) += scm-io.o
+obj-$(CONFIG_MSM_PIL) += peripheral-loader.o
+obj-$(CONFIG_MSM_PIL) += peripheral-reset.o
 obj-$(CONFIG_ARCH_QSD8X50) += sirc.o
+obj-$(CONFIG_MSM_FIQ_SUPPORT) += fiq_glue.o
+obj-$(CONFIG_MACH_TROUT) += board-trout-rfkill.o
 obj-$(CONFIG_ARCH_MSM_ARM11) += acpuclock-arm11.o idle.o
 obj-$(CONFIG_ARCH_QSD8X50) += arch-init-scorpion.o acpuclock-scorpion.o
 obj-$(CONFIG_ACPUCLOCK_DEBUG) += acpuclock_debug.o
 obj-$(CONFIG_ARCH_MSM7X30) += clock-local.o clock-7x30.o acpuclock-7x30.o arch-init-7x30.o
 obj-$(CONFIG_ARCH_MSM7X30) += spm.o
 
-obj-$(CONFIG_CPU_V7) += idle-v7.o msm_fault_handlers.o
-
 obj-y += nand_partitions.o
 obj-y += drv_callback.o
 obj-y += radio_feedback.o
-obj-$(CONFIG_ARCH_QSD8X50) += htc_wifi_nvs.o htc_bluetooth.o
+obj-$(CONFIG_ARCH_QSD8X50) += pmic.o htc_wifi_nvs.o htc_bluetooth.o
 
 obj-$(CONFIG_SMP) += headsmp.o platsmp.o
-obj-$(CONFIG_ARCH_MSM8X60) += devices-msm8x60.o clock-local.o clock-8x60.o acpuclock-8x60.o clock-debug.o
+obj-$(CONFIG_ARCH_MSM8X60) += devices-msm8x60.o clock-local.o clock-8x60.o acpuclock-8x60.o
 obj-$(CONFIG_ARCH_MSM8X60) += spm.o restart.o mpm.o mpp.o
-obj-$(CONFIG_ARCH_MSM8X60) += clock-rpm.o
 obj-$(CONFIG_ARCH_MSM8X60) += subsystem-fatal-8x60.o
+obj-$(CONFIG_ARCH_MSM8X60) += clock-rpm.o
 obj-$(CONFIG_ARCH_MSM8X60) += saw-regulator.o
 obj-$(CONFIG_ARCH_MSM8X60) += rpm-regulator.o rpm-regulator-8660.o
 obj-$(CONFIG_ARCH_MSM8X60) += footswitch-8x60.o
@@ -53,14 +63,6 @@ obj-$(CONFIG_ARCH_MSM8X60) += sysinfo-8x60.o
 obj-$(CONFIG_MSM_SUBSYSTEM_RESTART) += subsystem_notif.o
 obj-$(CONFIG_MSM_SUBSYSTEM_RESTART) += subsystem_restart.o
 
-obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o htc_simlock-8x60.o
-obj-$(CONFIG_MSM_SECURE_IO) += scm-io.o
-obj-$(CONFIG_MSM_PIL) += peripheral-loader.o
-obj-$(CONFIG_MSM_PIL) += peripheral-reset.o
-obj-$(CONFIG_MSM_FIQ_SUPPORT) += fiq_glue.o
-obj-$(CONFIG_MACH_TROUT) += board-trout-rfkill.o
-
-obj-$(CONFIG_ARCH_MSM7X30) += rpc_pmapp.o
 obj-$(CONFIG_MSM_SMD) += htc_port_list.o
 obj-$(CONFIG_MSM_SMD_LOGGING) += smem_log.o
 obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o remote_spinlock.o
@@ -68,11 +70,12 @@ obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o remote_spinlock.o
 ifndef CONFIG_ARCH_MSM9615
 ifndef CONFIG_ARCH_MSM8960
 ifndef CONFIG_ARCH_MSM8X60
-	obj-$(CONFIG_MSM_SMD) += pmic.o
-	obj-$(CONFIG_MSM_ONCRPCROUTER) += rpc_hsusb.o rpc_fsusb.o
+	obj-$(CONFIG_MSM_ONCRPCROUTER) += rpc_hsusb.o rpc_pmapp.o rpc_fsusb.o
 endif
 endif
 endif
+obj-$(CONFIG_MSM_SMD_TTY) += smd_tty.o
+obj-$(CONFIG_MSM_SMD_QMI) += smd_qmi.o
 obj-$(CONFIG_MSM_SMD_PKT) += smd_pkt.o
 obj-$(CONFIG_MSM_DSPS) += msm_dsps.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter.o
@@ -83,10 +86,10 @@ obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_clients.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_xdr.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += rpcrouter_smd_xprt.o
 obj-$(CONFIG_MSM_RPC_SDIO_XPRT) += rpcrouter_sdio_xprt.o
-obj-$(CONFIG_MSM_RPCSERVERS) += rpc_server_dog_keepalive.o
-obj-$(CONFIG_MSM_RPCSERVERS) += rpc_server_time_remote.o
-obj-$(CONFIG_MSM_SMD) += smd_tty.o smd_qmi.o
+obj-$(CONFIG_MSM_RPC_PING) += ping_mdm_rpc_client.o ping_apps_server.o
 obj-$(CONFIG_MSM_RPC_OEM_RAPI) += oem_rapi_client.o
+obj-$(CONFIG_MSM_RPCSERVER_WATCHDOG) += rpc_server_dog_keepalive.o
+obj-$(CONFIG_MSM_RPCSERVER_TIME_REMOTE) += rpc_server_time_remote.o
 obj-$(CONFIG_MSM_DALRPC) += dal.o
 obj-$(CONFIG_MSM_DALRPC_TEST) += dal_remotetest.o
 obj-$(CONFIG_ARCH_MSM7X30) += dal_axi.o
@@ -119,8 +122,6 @@ ifdef CONFIG_ARCH_MSM8X60
 	obj-$(CONFIG_MSM_WATCHDOG) += htc_watchdog_monitor.o
 endif
 
-obj-$(CONFIG_CPU_FREQ) += cpufreq.o
-
 obj-$(CONFIG_SENSORS_AKM8976) += htc_akm_cal.o
 
 obj-$(CONFIG_MACH_MAHIMAHI) += board-mahimahi.o board-mahimahi-panel.o
@@ -141,15 +142,15 @@ obj-$(CONFIG_MACH_SUPERSONIC) += board-supersonic-microp.o
 # MSM7x30 boards
 obj-$(CONFIG_ARCH_MSM7X30) += htc_wifi_nvs.o htc_awb_cal.o
 
-obj-$(CONFIG_MACH_GLACIER)+= board-glacier.o
-obj-$(CONFIG_MACH_GLACIER)+= board-glacier-audio.o
-obj-$(CONFIG_MACH_GLACIER)+= board-glacier-camera.o
-obj-$(CONFIG_MACH_GLACIER)+= board-glacier-keypad.o
-obj-$(CONFIG_MACH_GLACIER)+= board-glacier-microp.o
-obj-$(CONFIG_MACH_GLACIER)+= board-glacier-mmc.o board-glacier-wifi.o
-obj-$(CONFIG_MACH_GLACIER)+= board-glacier-rfkill.o
-obj-$(CONFIG_MACH_GLACIER)+= htc_fmtx_rfkill.o
-obj-$(CONFIG_MACH_GLACIER)+= board-glacier-panel.o htc_bluetooth.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-audio.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-camera.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-keypad.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-microp.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-mmc.o board-glacier-wifi.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-panel.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-rfkill.o
+obj-$(CONFIG_MACH_GLACIER) += htc_bluetooth.o htc_fmtx_rfkill.o
 
 # MSM7200A boards
 obj-$(CONFIG_MACH_HERO) += board-hero.o board-hero-panel.o board-hero-keypad.o
@@ -209,9 +210,10 @@ obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-audio.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-camera.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-keypad.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-microp.o
+obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-mmc.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-panel.o
+obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-wifi.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += htc_bluetooth.o htc_sleep_clk.o board-doubleshot-rfkill.o htc_fmtx_rfkill.o
-obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-mmc.o board-doubleshot-wifi.o
 obj-$(CONFIG_MACH_LEAD) += board-lead.o
 obj-$(CONFIG_MACH_LEAD) += board-lead-audio.o
 obj-$(CONFIG_MACH_LEAD) += board-lead-keypad.o
@@ -285,10 +287,10 @@ obj-$(CONFIG_MSM_RPM_LOG) += rpm_log.o
 obj-$(CONFIG_MSM_XO) += msm_xo.o
 obj-$(CONFIG_MSM_BUS_SCALING) += msm_bus/
 
-obj-$(CONFIG_SMMU)		+= iommu.o iommu_dev.o
-obj-$(CONFIG_SMMU_8X60)		+= devices-msm8x60-iommu.o
+obj-$(CONFIG_SMMU) += iommu.o iommu_dev.o
+obj-$(CONFIG_SMMU_8X60) += devices-msm8x60-iommu.o
 
-obj-$(CONFIG_MSM_EVENT_TIMER)		+= event_timer.o
+obj-$(CONFIG_MSM_EVENT_TIMER) += event_timer.o
 
 ifdef CONFIG_VCM
 obj-$(CONFIG_ARCH_MSM8X60) += board-msm8x60-vcm.o
