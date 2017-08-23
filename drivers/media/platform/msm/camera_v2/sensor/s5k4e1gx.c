@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016, Brian Stepp <steppnasty@gmail.com>
+ * Copyright (c) 2015-2017, Brian Stepp <steppnasty@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -84,10 +84,10 @@ static struct msm_camera_i2c_reg_conf s5k4e1gx_probe_settings[] = {
 
 static struct v4l2_subdev_info s5k4e1gx_subdev_info[] = {
 	{
-	.code   = V4L2_MBUS_FMT_SGRBG10_1X10,
-	.colorspace = V4L2_COLORSPACE_JPEG,
-	.fmt    = 1,
-	.order    = 0,
+		.code = V4L2_MBUS_FMT_SGRBG10_1X10,
+		.colorspace = V4L2_COLORSPACE_JPEG,
+		.fmt = 1,
+		.order = 0,
 	},
 	/* more can be supported, to be added later */
 };
@@ -96,7 +96,8 @@ static int32_t s5k4e1gx_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	void __user *argp)
 {
 	struct sensorb_cfg_data *cdata = (struct sensorb_cfg_data *)argp;
-	long rc = 0;
+	int32_t rc = 0;
+
 	mutex_lock(s_ctrl->msm_sensor_mutex);
 	CDBG("%s:%d %s cfgtype = %d\n", __func__, __LINE__,
 		s_ctrl->sensordata->sensor_name, cdata->cfgtype);
@@ -111,7 +112,7 @@ static int32_t s5k4e1gx_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		if (s_ctrl->func_tbl->sensor_power_up) {
 			rc = s_ctrl->func_tbl->sensor_power_up(s_ctrl);
 			if (rc < 0) {
-				pr_err("%s:%d failed rc %ld\n", __func__,
+				pr_err("%s:%d failed rc %d\n", __func__,
 					__LINE__, rc);
 				break;
 			}
@@ -132,7 +133,7 @@ static int32_t s5k4e1gx_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			rc = s_ctrl->func_tbl->sensor_power_down(
 				s_ctrl);
 			if (rc < 0) {
-				pr_err("%s:%d failed rc %ld\n", __func__,
+				pr_err("%s:%d failed rc %d\n", __func__,
 					__LINE__, rc);
 				break;
 			}
@@ -230,7 +231,7 @@ static int32_t s5k4e1gx_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	struct msm_camera_i2c_client *client = s_ctrl->sensor_i2c_client;
 	struct msm_sensor_power_setting_array *power_setting_array = NULL;
 	struct msm_sensor_power_setting *power_setting = NULL;
-	enum msm_camera_i2c_reg_addr_type dt = MSM_CAMERA_I2C_BYTE_ADDR;
+	enum msm_camera_i2c_data_type dt = MSM_CAMERA_I2C_BYTE_DATA;
 
 	CDBG("%s:%d\n", __func__, __LINE__);
 	sinfo = s_ctrl->pdev->dev.platform_data;
@@ -316,7 +317,6 @@ power_on_i2c_error:
 
 static int32_t s5k4e1gx_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	int32_t rc = 0;
 	struct msm_camera_sensor_info *sinfo = s_ctrl->pdev->dev.platform_data;
 
 	s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
@@ -331,12 +331,12 @@ static int32_t s5k4e1gx_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 		mdelay(120);
 	}
 	s_ctrl->sensor_state = MSM_SENSOR_POWER_DOWN;
-	return rc;
+	return 0;
 }
 
 static int s5k4e1gx_sensor_release(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	int32_t rc = 0;
+	int rc = 0;
 	struct msm_camera_sensor_info *sinfo = s_ctrl->pdev->dev.platform_data;
 	struct msm_camera_device_platform_data *camdev = sinfo->pdata;
 	struct msm_sensor_power_setting_array *power_setting_array = NULL;
@@ -430,7 +430,6 @@ static int __init s5k4e1gx_init_module(void)
 
 static void __exit s5k4e1gx_exit_module(void)
 {
-	
 	if (s5k4e1gx_s_ctrl.pdev) {
 		kfree(s5k4e1gx_s_ctrl.clk_info);
 		platform_driver_unregister(&s5k4e1gx_platform_driver);
