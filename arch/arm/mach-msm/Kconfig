@@ -149,19 +149,19 @@ config TURBO_MODE
 
 config PERFLOCK
 	depends on CPU_FREQ
-	depends on ARCH_QSD8X50 || ARCH_MSM7X30 || ARCH_MSM7X00A || ARCH_MSM7227 || ARCH_MSM7225
+	depends on ARCH_MSM8X60 || ARCH_QSD8X50 || ARCH_MSM7X30 || ARCH_MSM7X00A || ARCH_MSM7227 || ARCH_MSM7225
 	default n
 	bool "HTC Performance Lock"
 
 config PERFLOCK_BOOT_LOCK
 	depends on PERFLOCK
-	depends on ARCH_QSD8X50 || ARCH_MSM7X30 || ARCH_MSM7X00A || ARCH_MSM7227 || ARCH_MSM7225
+	depends on ARCH_MSM8X60 || ARCH_QSD8X50 || ARCH_MSM7X30 || ARCH_MSM7X00A || ARCH_MSM7227 || ARCH_MSM7225
 	default n
 	bool "Boot Time Performance Lock"
 
 config PERFLOCK_SCREEN_POLICY
 	depends on PERFLOCK
-	depends on ARCH_QSD8X50 || ARCH_MSM7X00A || ARCH_MSM7227 || ARCH_MSM7225
+	depends on ARCH_MSM8X60 || ARCH_QSD8X50 || ARCH_MSM7X00A || ARCH_MSM7227 || ARCH_MSM7225
 	default n
 	bool "Change Cpufreq Policy while Screen ON/OFF"
 

@@ -44,14 +44,13 @@ static DEFINE_SPINLOCK(policy_update_lock);
 static int initialized;
 static unsigned int *perf_acpu_table;
 static unsigned int table_size;
-static unsigned int curr_lock_speed;
-static struct cpufreq_policy *cpufreq_policy;
+
 
 #ifdef CONFIG_PERF_LOCK_DEBUG
 static int debug_mask = PERF_LOCK_DEBUG | PERF_EXPIRE_DEBUG |
 	PERF_CPUFREQ_NOTIFY_DEBUG | PERF_CPUFREQ_LOCK_DEBUG;
 #else
-static int debug_mask = PERF_CPUFREQ_LOCK_DEBUG | PERF_SCREEN_ON_POLICY_DEBUG;
+static int debug_mask = 0;
 #endif
 module_param_call(debug_mask, param_set_int, param_get_int,
 		&debug_mask, S_IWUSR | S_IRUGO);
@@ -67,6 +66,7 @@ static unsigned int screen_on_policy_req;
 static void perflock_early_suspend(struct early_suspend *handler)
 {
 	unsigned long irqflags;
+	int cpu;
 
 	spin_lock_irqsave(&policy_update_lock, irqflags);
 	if (screen_on_policy_req) {
@@ -77,13 +77,15 @@ static void perflock_early_suspend(struct early_suspend *handler)
 	screen_off_policy_req++;
 	spin_unlock_irqrestore(&policy_update_lock, irqflags);
 
-	if (cpufreq_policy)
-		cpufreq_update_policy(cpufreq_policy->cpu);
+	for_each_online_cpu(cpu) {
+		cpufreq_update_policy(cpu);
+	}
 }
 
 static void perflock_late_resume(struct early_suspend *handler)
 {
 	unsigned long irqflags;
+	int cpu;
 
 /*
  * This workaround is for hero project
@@ -114,8 +116,9 @@ static void perflock_late_resume(struct early_suspend *handler)
 	screen_on_policy_req++;
 	spin_unlock_irqrestore(&policy_update_lock, irqflags);
 
-	if (cpufreq_policy)
-		cpufreq_update_policy(cpufreq_policy->cpu);
+	for_each_online_cpu(cpu) {
+		cpufreq_update_policy(cpu);
+	}
 }
 
 static struct early_suspend perflock_power_suspend = {
@@ -138,6 +141,7 @@ static struct early_suspend perflock_onchg_suspend = {
 
 static int __init perflock_screen_policy_init(void)
 {
+	int cpu;
 	register_early_suspend(&perflock_power_suspend);
 /* 7k projects need to raise up cpu freq before panel resume for stability */
 #if defined(CONFIG_HTC_ONMODE_CHARGING) && \
@@ -147,8 +151,9 @@ static int __init perflock_screen_policy_init(void)
 	register_onchg_suspend(&perflock_onchg_suspend);
 #endif
 	screen_on_policy_req++;
-	if (cpufreq_policy)
-		cpufreq_update_policy(cpufreq_policy->cpu);
+	for_each_online_cpu(cpu) {
+		cpufreq_update_policy(cpu);
+	}
 
 	return 0;
 }
@@ -166,9 +171,11 @@ static unsigned int policy_max;
 static int param_set_cpu_min_max(const char *val, struct kernel_param *kp)
 {
 	int ret;
+	int cpu;
 	ret = param_set_int(val, kp);
-	if (cpufreq_policy)
-		cpufreq_update_policy(cpufreq_policy->cpu);
+	for_each_online_cpu(cpu) {
+		cpufreq_update_policy(cpu);
+	}
 	return ret;
 }
 
@@ -177,21 +184,23 @@ module_param_call(min_cpu_khz, param_set_cpu_min_max, param_get_int,
 module_param_call(max_cpu_khz, param_set_cpu_min_max, param_get_int,
 	&policy_max, S_IWUSR | S_IRUGO);
 
+static DEFINE_PER_CPU(int, stored_policy_min);
+static DEFINE_PER_CPU(int, stored_policy_max);
 static int perflock_notifier_call(struct notifier_block *self,
 			       unsigned long event, void *data)
 {
 	struct cpufreq_policy *policy = data;
 	unsigned int lock_speed;
 	unsigned long irqflags;
+	unsigned int policy_min = per_cpu(stored_policy_min, policy->cpu);
+	unsigned int policy_max = per_cpu(stored_policy_max, policy->cpu);
 
 	spin_lock_irqsave(&policy_update_lock, irqflags);
 	if (debug_mask & PERF_CPUFREQ_NOTIFY_DEBUG)
 		pr_info("%s: event=%ld, policy->min=%d, policy->max=%d",
 			__func__, event, policy->min, policy->max);
 
-	if (event == CPUFREQ_START)
-		cpufreq_policy = policy;
-	else if (event == CPUFREQ_NOTIFY) {
+	if (event == CPUFREQ_NOTIFY) {
 		/* Each time cpufreq_update_policy,
 		 * min/max will reset, need to set it again. */
 #ifdef CONFIG_PERFLOCK_SCREEN_POLICY
@@ -216,7 +225,17 @@ static int perflock_notifier_call(struct notifier_block *self,
 		}
 #endif
 		lock_speed = get_perflock_speed() / 1000;
+		if (policy->min != lock_speed && policy->min < policy->max
+				&& policy->max == policy_max) {
+			policy_min = policy->min;
+		}
+		if (policy->max != policy_max && policy->max >= policy_min) {
+			policy_max = policy->max ;
+		}
+
 		if (lock_speed) {
+			if (lock_speed > policy_max)
+				lock_speed = policy_max;
 			policy->min = lock_speed;
 			policy->max = lock_speed;
 			if (debug_mask & PERF_CPUFREQ_LOCK_DEBUG) {
@@ -229,9 +248,10 @@ static int perflock_notifier_call(struct notifier_block *self,
 			policy->max = policy_max;
 			if (debug_mask & PERF_CPUFREQ_LOCK_DEBUG)
 				pr_info("%s: cpufreq recover policy %d %d\n",
-					__func__, policy->min, policy->max);
+						__func__, policy->min, policy->max);
 		}
-		curr_lock_speed = lock_speed;
+		per_cpu(stored_policy_min, policy->cpu) = policy_min;
+		per_cpu(stored_policy_max, policy->cpu) = policy_max;
 	}
 	spin_unlock_irqrestore(&policy_update_lock, irqflags);
 
@@ -317,6 +337,7 @@ EXPORT_SYMBOL(perf_lock_init);
 void perf_lock(struct perf_lock *lock)
 {
 	unsigned long irqflags;
+	int cpu;
 
 	WARN_ON(!initialized);
 	WARN_ON((lock->flags & PERF_LOCK_INITIALIZED) == 0);
@@ -336,23 +357,42 @@ void perf_lock(struct perf_lock *lock)
 	spin_unlock_irqrestore(&list_lock, irqflags);
 
 	/* Update cpufreq policy - scaling_min/scaling_max */
-	if (cpufreq_policy &&
-			(curr_lock_speed != (get_perflock_speed() / 1000)))
-		cpufreq_update_policy(cpufreq_policy->cpu);
+	for_each_online_cpu(cpu) {
+		cpufreq_update_policy(cpu);
+	}
 }
 EXPORT_SYMBOL(perf_lock);
+
+static int perflock_cpufreq_update_policy(int cpu)
+{
+	struct cpufreq_policy *data;
+	data = cpufreq_cpu_get(cpu);
+
+	if (!data)
+		return -1;
+	if (unlikely(lock_policy_rwsem_write(cpu)))
+		return -2;
+
+	data->user_policy.min = per_cpu(stored_policy_min, cpu);
+	data->user_policy.max = per_cpu(stored_policy_max, cpu);
+	unlock_policy_rwsem_write(cpu);
+	cpufreq_cpu_put(data);
+
+	return 0;
+}
 
 #define PERF_UNLOCK_DELAY		(HZ)
 static void do_expire_perf_locks(struct work_struct *work)
 {
+	int cpu, ret;
 	if (debug_mask & PERF_EXPIRE_DEBUG)
 		pr_info("%s: timed out to unlock\n", __func__);
 
-	if (cpufreq_policy &&
-			(curr_lock_speed != (get_perflock_speed() / 1000))) {
+	for_each_online_cpu(cpu) {
+		ret = perflock_cpufreq_update_policy(cpu);
 		if (debug_mask & PERF_EXPIRE_DEBUG)
-			pr_info("%s: update cpufreq policy\n", __func__);
-		cpufreq_update_policy(cpufreq_policy->cpu);
+			pr_info("%s: update cpufreq policy for CPU%d ret=%d\n", __func__, cpu, ret);
+		cpufreq_update_policy(cpu);
 	}
 }
 static DECLARE_DELAYED_WORK(work_expire_perf_locks, do_expire_perf_locks);
@@ -384,9 +424,7 @@ void perf_unlock(struct perf_lock *lock)
 	spin_unlock_irqrestore(&list_lock, irqflags);
 
 	/* Prevent lock/unlock quickly, add a timeout to release perf_lock */
-	if (cpufreq_policy &&
-			(curr_lock_speed != (get_perflock_speed() / 1000)))
-		schedule_delayed_work(&work_expire_perf_locks,
+	schedule_delayed_work(&work_expire_perf_locks,
 			PERF_UNLOCK_DELAY);
 }
 EXPORT_SYMBOL(perf_unlock);
