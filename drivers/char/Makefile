@@ -43,9 +43,7 @@ obj-$(CONFIG_BFIN_OTP)		+= bfin-otp.o
 obj-$(CONFIG_PRINTER)		+= lp.o
 
 obj-$(CONFIG_APM_EMULATION)	+= apm-emulation.o
-ifeq ($(CONFIG_USB_ANDROID_QCT_DIAG),y)
 obj-$(CONFIG_DIAG_CHAR)         += diag/
-endif
 
 obj-$(CONFIG_DTLK)		+= dtlk.o
 obj-$(CONFIG_APPLICOM)		+= applicom.o

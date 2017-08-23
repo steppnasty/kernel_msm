@@ -28,7 +28,6 @@
 
 #ifdef CONFIG_DIAG_OVER_USB
 #include <mach/usbdiag.h>
-#include "../../usb/gadget/f_diag.h"
 #endif
 #include <mach/msm_smd.h>
 #include "diagmem.h"
@@ -36,12 +35,6 @@
 #include "diagfwd.h"
 #include "diagchar_hdlc.h"
 #include <linux/pm_runtime.h>
-#if defined(CONFIG_MACH_MECHA)
-#include "../../../arch/arm/mach-msm/7x30-lte/sdio_diag.h"
-#endif
-#if defined(CONFIG_ARCH_MSM8X60_LTE)
-#include "diagfwd_sdio.h"
-#endif
 
 #ifdef CONFIG_BTPORT
 #include "../../btport/btport.h"
@@ -91,9 +84,6 @@ void __diag_smd_send_req(void)
 	void *buf = NULL;
 	int *in_busy_ptr = NULL;
 	struct diag_request *write_ptr_modem = NULL;
-#if  DIAG_XPST
-	int type;
-#endif
 
 #ifdef SDQXDM_DEBUG
 	static struct timeval t0 = {0, 0}, t1;
@@ -116,18 +106,18 @@ void __diag_smd_send_req(void)
 
 		if (r > IN_BUF_SIZE) {
 			if (r < MAX_IN_BUF_SIZE) {
-				DIAGFWD_INFO("\n diag: SMD sending in "
+				pr_info("diag: SMD sending in "
 						   "packets upto %d bytes", r);
 				buf = krealloc(buf, r, GFP_KERNEL);
 			} else {
-				DIAGFWD_ERR("\n diag: SMD sending in "
+				pr_err("diag: SMD sending in "
 				"packets more than %d bytes", MAX_IN_BUF_SIZE);
 				return;
 			}
 		}
 		if (r > 0) {
 			if (!buf)
-				DIAGFWD_INFO("Out of diagmem for a9\n");
+				pr_info("diag: Out of diagmem for a9\n");
 			else {
 				APPEND_DEBUG('i');
 				smd_read(driver->ch, buf, r);
@@ -150,15 +140,6 @@ void __diag_smd_send_req(void)
 
 					}
 				}
-
-#if DIAG_XPST
-				type = checkcmd_modem_epst(buf);
-				if (type) {
-					modem_to_userspace(buf, r, type, 0);
-					return;
-				}
-#endif
-
 #ifdef SDQXDM_DEBUG
 				if (full) {
 					pr_err("[diag-dbg] buffer become available %d %d, read %d\n", driver->in_busy_1, driver->in_busy_2, r);
@@ -216,49 +197,12 @@ int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr)
 #endif
 					break;
 				}
-#if defined(CONFIG_ARCH_MSM8X60_LTE)
-		} else if (proc_num == MODEM_DATA || proc_num == QDSP_DATA || proc_num == SDIO_DATA) {
-#else
 		} else if (proc_num == MODEM_DATA || proc_num == QDSP_DATA) {
-#endif
 			data_type = USERMODE_DIAGFWD;
 #ifdef DIAG_DEBUG
 			pr_info("%s#%d: Modem Data buf=%p, len=%d\n", __func__, __LINE__, buf, write_ptr->length);
 #endif
-#if defined(CONFIG_ARCH_MSM8X60_LTE)
-		if (proc_num == SDIO_DATA) {
-
-			for (i = 0; i < driver->num_mdmclients; i++)
-				if (driver->mdmclient_map[i].pid ==
-						 driver->logging_process_id)
-				break;
-
-			if (i < driver->num_mdmclients) {
-				driver->mdmdata_ready[i] |= data_type;
-				wake_up_interruptible(&driver->mdmwait_q);
-
-				return err;
-			} else
-				return -EINVAL;
 		}
-#endif
-		}
-#if defined(CONFIG_MACH_MECHA)
-		else if (proc_num == SDIO_DATA) {
-
-			for (i = 0; i < driver->num_mdmclients; i++)
-				if (driver->mdmclient_map[i].pid ==
-						 driver->logging_process_id)
-				break;
-
-			if (i <= driver->num_mdmclients) {
-				driver->mdmdata_ready[i] |= MEMORY_DEVICE_LOG_TYPE;
-				wake_up_interruptible(&driver->mdmwait_q);
-				return err;
-			} else
-				return -EINVAL;
-		}
-#endif
 
 		for (i = 0; i < driver->num_clients; i++)
 			if (driver->client_map[i].pid == driver->logging_process_id)
@@ -311,16 +255,6 @@ int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr)
 			driver->diag_qdsp_count += write_ptr->length;
 			err = usb_diag_write(driver->legacy_ch, write_ptr);
 		}
-#if defined(CONFIG_ARCH_MSM8X60_LTE)//|| defined(CONFIG_MACH_MECHA)
-		else if (proc_num == SDIO_DATA) {
-			write_ptr->buf = buf;
-			if (diag_ch_sdio) {
-			err = usb_diag_write(driver->legacy_ch, write_ptr);
-			} else {
-			err = usb_diag_write(driver->mdm_ch, write_ptr);
-			}
-		}
-#endif
 		APPEND_DEBUG('d');
 	}
 #endif /* DIAG OVER USB */
@@ -332,9 +266,7 @@ void __diag_smd_qdsp_send_req(void)
 	void *buf = NULL;
 	int *in_busy_qdsp_ptr = NULL;
 	struct diag_request *write_ptr_qdsp = NULL;
-#if  DIAG_XPST
-	int type;
-#endif
+
 	if (!driver->in_busy_qdsp_1) {
 		buf = driver->buf_in_qdsp_1;
 		write_ptr_qdsp = driver->write_ptr_qdsp_1;
@@ -350,18 +282,18 @@ void __diag_smd_qdsp_send_req(void)
 
 		if (r > IN_BUF_SIZE) {
 			if (r < MAX_IN_BUF_SIZE) {
-				DIAGFWD_INFO("\n diag: SMD sending in "
+				pr_info("diag: SMD sending in "
 						   "packets upto %d bytes", r);
 				buf = krealloc(buf, r, GFP_KERNEL);
 			} else {
-				DIAGFWD_ERR("\n diag: SMD sending in "
+				pr_err("diag: SMD sending in "
 				"packets more than %d bytes", MAX_IN_BUF_SIZE);
 			return;
 		}
 		}
 		if (r > 0) {
 			if (!buf)
-				DIAGFWD_INFO("Out of diagmem for QDSP\n");
+				pr_info("diag: Out of diagmem for QDSP\n");
 			else {
 				APPEND_DEBUG('i');
 					smd_read(driver->chqdsp, buf, r);
@@ -384,15 +316,7 @@ void __diag_smd_qdsp_send_req(void)
 
 					}
 				}
-#if  DIAG_XPST
 
-		type = checkcmd_modem_epst(buf);
-		if (type) {
-			modem_to_userspace(buf, r, type, 0);
-			return;
-		}
-
-#endif
 				APPEND_DEBUG('j');
 				write_ptr_qdsp->length = r;
 				*in_busy_qdsp_ptr = 1;
@@ -453,7 +377,7 @@ static void diag_update_msg_mask(int start, int end , uint8_t *buf)
 						  (((end - start)+1)*4)))
 						memcpy(ptr, buf , ((end - start)+1)*4);
 					else
-					DIAGFWD_ERR("Not enough"
+					pr_err("Not enough"
 							 " buffer space for"
 							 " MSG_MASK\n");
 			else
@@ -476,7 +400,7 @@ static void diag_update_msg_mask(int start, int end , uint8_t *buf)
 			ptr += 4;
 			memcpy(ptr, buf , ((end - start) + 1)*4);
 		} else
-			DIAGFWD_ERR(" Not enough buffer"
+			pr_err(" Not enough buffer"
 					 " space for MSG_MASK\n");
 	}
 
@@ -501,7 +425,7 @@ static void diag_update_event_mask(uint8_t *buf, int toggle, int num_bits)
 				  num_bits/8 + 1))
 			memcpy(ptr, temp , num_bits/8 + 1);
 		else
-			DIAGFWD_ERR("Not enough buffer space "
+			pr_err("Not enough buffer space "
 					 "for EVENT_MASK\n");
 	mutex_unlock(&driver->diagchar_mutex);
 }
@@ -540,7 +464,7 @@ static void diag_update_log_mask(int equip_id, uint8_t *buf, int num_items)
 				  (num_items+7)/8))
 		memcpy(ptr_data, temp , (num_items+7)/8);
 	else
-		DIAGFWD_ERR(" Not enough buffer space for LOG_MASK\n");
+		pr_err(" Not enough buffer space for LOG_MASK\n");
 	mutex_unlock(&driver->diagchar_mutex);
 }
 
@@ -553,7 +477,7 @@ static void diag_update_pkt_buffer(unsigned char *buf)
 	if (CHK_OVERFLOW(ptr, ptr, ptr + PKT_SIZE, driver->pkt_length))
 		memcpy(ptr, temp , driver->pkt_length);
 	else
-		DIAGFWD_ERR(" Not enough buffer space for PKT_RESP\n");
+		pr_err(" Not enough buffer space for PKT_RESP\n");
 	mutex_unlock(&driver->diagchar_mutex);
 }
 
@@ -730,7 +654,7 @@ void diag_process_hdlc(void *data, unsigned len)
 #endif
 #ifdef DIAG_DEBUG
 	int i;
-	DIAGFWD_INFO("\n HDLC decode function, len of data  %d\n", len);
+	pr_info("diag: HDLC decode function, len of data  %d\n", len);
 #endif
 	hdlc.dest_ptr = driver->hdlc_buf;
 	hdlc.dest_size = USB_MAX_OUT_BUF;
@@ -746,7 +670,7 @@ void diag_process_hdlc(void *data, unsigned len)
 		type = diag_process_apps_pkt(driver->hdlc_buf,
 							  hdlc.dest_idx - 3);
 	else if (driver->debug_flag) {
-		DIAGFWD_ERR("Packet dropped due to bad HDLC coding/CRC"
+		pr_err("Packet dropped due to bad HDLC coding/CRC"
 				" errors or partial packet received, packet"
 				" length = %d\n", len);
 		print_hex_dump(KERN_DEBUG, "Dropped Packet Data: ", 16, 1,
@@ -771,9 +695,9 @@ void diag_process_hdlc(void *data, unsigned len)
 	/* ignore 2 bytes for CRC, one for 7E and send */
 	if ((driver->ch) && (ret) && (type) && (hdlc.dest_idx > 3)) {
 		APPEND_DEBUG('g');
-#if defined(CONFIG_ARCH_MSM8X60_LTE) || defined(CONFIG_ARCH_MSM8X60)
+#if defined(CONFIG_ARCH_MSM8X60)
 		smd_write(driver->ch, driver->hdlc_buf, hdlc.dest_idx - 3);
-#else //defined(CONFIG_MACH_MECHA)
+#else
 		smd_write(driver->ch, data, len);
 #endif
 		if (diag7k_debug_mask)
@@ -796,44 +720,22 @@ int diagfwd_connect(void)
 {
 	int err;
 
-	DIAGFWD_INFO("%s\n", __func__);
+	pr_info("%s\n", __func__);
 	if (!driver->usb_connected) {
 		err = usb_diag_alloc_req(driver->legacy_ch, N_LEGACY_WRITE,
 			N_LEGACY_READ);
 		if (err)
-			DIAGFWD_ERR("diag: unable to allocate USB requests");
+			pr_err("diag: unable to allocate USB requests");
 	}
 
 	driver->in_busy_1 = 0;
 	driver->in_busy_2 = 0;
 	driver->in_busy_qdsp_1 = 0;
 	driver->in_busy_qdsp_2 = 0;
-#if defined(CONFIG_MACH_MECHA)
-	driver->in_busy_mdm_1 = 0;
-	driver->in_busy_mdm_2 = 0;
-#endif
 	/* Poll SMD channels to check for data*/
 	queue_work(driver->diag_wq, &(driver->diag_read_smd_work));
 	queue_work(driver->diag_wq, &(driver->diag_read_smd_qdsp_work));
 
-#if defined(CONFIG_ARCH_MSM8X60_LTE)
-	driver->in_busy_sdio = 0;
-	if (diag_ch_sdio) {
-		if (driver->legacy_ch && !IS_ERR(driver->legacy_ch))
-			diagfwd_connect_sdio();
-		else
-			DIAGFWD_INFO("diag:No data from SDIO without  USB LEGACY ch");
-
-	} else {
-		if ((!driver->usb_connected) && driver->mdm_ch && !IS_ERR(driver->mdm_ch))
-			diagfwd_connect_sdio();
-		else
-			DIAGFWD_INFO("diag:No data from SDIO without  USB MDM ch");
-
-		queue_work(driver->diag_sdio_wq, &(driver->diag_read_mdm_work));
-	}
-
-#endif
 	driver->usb_connected = 1;
 	/* Poll USB channel to check for data*/
 	queue_work(driver->diag_wq, &(driver->diag_read_work));
@@ -844,7 +746,7 @@ int diagfwd_connect(void)
 int diagfwd_disconnect(void)
 {
 
-	DIAGFWD_INFO("%s\n", __func__);
+	pr_info("%s\n", __func__);
 	driver->in_busy_1 = 1;
 	driver->in_busy_2 = 1;
 	driver->in_busy_qdsp_1 = 1;
@@ -853,19 +755,6 @@ int diagfwd_disconnect(void)
 	if (driver->usb_connected)
 		usb_diag_free_req(driver->legacy_ch);
 
-#if defined(CONFIG_MACH_MECHA)
-	driver->in_busy_mdm_1 = 1;
-	driver->in_busy_mdm_2 = 1;
-#endif
-#if defined(CONFIG_ARCH_MSM8X60_LTE)
-	if (diag_ch_sdio) {
-		if (driver->legacy_ch && !IS_ERR(driver->legacy_ch))
-			diagfwd_disconnect_sdio();
-	} else {
-		if (driver->usb_connected && driver->mdm_ch && !IS_ERR(driver->mdm_ch))
-			diagfwd_disconnect_sdio();
-	}
-#endif
 	driver->usb_connected = 0;
 	/* TBD - notify and flow control SMD */
 	return 0;
@@ -892,24 +781,7 @@ int diagfwd_write_complete(struct diag_request *diag_write_ptr)
 		driver->in_busy_qdsp_2 = 0;
 		APPEND_DEBUG('P');
 		queue_work(driver->diag_wq, &(driver->diag_read_smd_qdsp_work));
-	} else if (driver->in_busy_dmrounter == 1) {
-		driver->in_busy_dmrounter = 0;
-	}
-#if defined(CONFIG_ARCH_MSM8X60_LTE)
-	else if (buf == (void *)driver->buf_in_sdio) {
-		diagfwd_write_complete_sdio();
-	}
-#endif
-#if defined(CONFIG_MACH_MECHA)
-	else if (buf == (void *)driver->buf_in_mdm_1) {
-		driver->in_busy_mdm_1 = 0;
-		queue_work(driver->mdm_diag_workqueue, &(driver->diag_read_smd_mdm_work));
-	} else if (buf == (void *)driver->buf_in_mdm_2) {
-		driver->in_busy_mdm_2 = 0;
-		queue_work(driver->mdm_diag_workqueue, &(driver->diag_read_smd_mdm_work));
-	}
-#endif
-	else {
+	} else {
 		diagmem_free(driver, (unsigned char *)buf, POOL_TYPE_HDLC);
 		diagmem_free(driver, (unsigned char *)diag_write_ptr,
 						 POOL_TYPE_WRITE_STRUCT);
@@ -934,37 +806,16 @@ int diagfwd_read_complete(struct diag_request *diag_read_ptr)
 		       DUMP_PREFIX_ADDRESS, diag_read_ptr->buf,
 		       diag_read_ptr->actual, 1);
 #endif /* DIAG DEBUG */
-	if (driver->nohdlc) {
-		driver->usb_read_ptr->buf = driver->usb_buf_out;
-		driver->usb_read_ptr->length = USB_MAX_OUT_BUF;
-		usb_diag_read(driver->legacy_ch, driver->usb_read_ptr);
-		return 0;
-	}
-	if (driver->logging_mode == USB_MODE) {
-#ifdef CONFIG_ARCH_MSM8X60_LTE
-		if (diag_ch_sdio) {
-			driver->read_len_mdm = diag_read_ptr->actual;
-			diagfwd_read_complete_sdio();
-		} else
-#endif
-			{
+		if (driver->logging_mode == USB_MODE) {
 			if (status != -ECONNRESET && status != -ESHUTDOWN)
 				queue_work(driver->diag_wq,
 					&(driver->diag_proc_hdlc_work));
 			else
-					queue_work(driver->diag_wq,
+				queue_work(driver->diag_wq,
 						 &(driver->diag_read_work));
-			}
 		}
-	}
-#if defined(CONFIG_ARCH_MSM8X60_LTE)
-	else if (buf == (void *)driver->usb_buf_mdm_out) {
-		driver->read_len_mdm = diag_read_ptr->actual;
-		diagfwd_read_complete_sdio();
-	}
-#endif
-	else
-		DIAGFWD_ERR("diag: Unknown buffer ptr from USB");
+	} else
+		pr_err("diag: Unknown buffer ptr from USB");
 
 	return 0;
 }
@@ -1005,7 +856,7 @@ void diag_usb_legacy_notifier(void *priv, unsigned event,
 		diagfwd_write_complete(d_req);
 		break;
 	default:
-		DIAGFWD_ERR("Unknown event from USB diag\n");
+		pr_err("Unknown event from USB diag\n");
 		break;
 	}
 }
@@ -1020,7 +871,7 @@ static void diag_smd_notify(void *ctxt, unsigned event)
 #ifdef CONFIG_BTPORT
 	case SMD_FUNC_OPEN_BT:
 				/*BT DUN funciton*/
-				DIAGFWD_INFO("%s:bt check me\n", __func__);
+				pr_info("%s:bt check me\n", __func__);
 				bt_smd_diag_notify(ctxt, event);
 				break;
 #endif
@@ -1030,7 +881,7 @@ static void diag_smd_notify(void *ctxt, unsigned event)
 				break;
 	case SMD_FUNC_CLOSE:
 	default:
-				DIAGFWD_INFO("%s:diag smd is closed \n", __func__);
+				pr_info("%s:diag smd is closed \n", __func__);
 				break;
 	}
 
@@ -1047,9 +898,8 @@ void diag_smd_enable(smd_channel_t *ch, char *src, int mode)
 {
 	int r = 0;
 	static smd_channel_t *_ch = NULL;
-	DIAGFWD_INFO("smd_try_open(%s): mode=%d\n", src, mode);
+	pr_info("smd_try_open(%s): mode=%d\n", src, mode);
 
-	mutex_lock(&driver->smd_lock);
 	diag_smd_function_mode = mode;
 	if (mode) {
 		if (!driver->ch) {
@@ -1067,8 +917,7 @@ void diag_smd_enable(smd_channel_t *ch, char *src, int mode)
 		}
 	}
 	ch = _ch;
-	mutex_unlock(&driver->smd_lock);
-	DIAGFWD_INFO("smd_try_open(%s): r=%d _ch=%x\n", src, r, (unsigned int)ch);
+	pr_info("smd_try_open(%s): r=%d _ch=%x\n", src, r, (unsigned int)ch);
 }
 static int diag_smd_probe(struct platform_device *pdev)
 {
@@ -1082,7 +931,7 @@ static int diag_smd_probe(struct platform_device *pdev)
 	}
 #if defined(CONFIG_MSM_N_WAY_SMD)
 	if (pdev->id == 1)
-#if defined(CONFIG_MACH_MECHA) || defined(CONFIG_ARCH_MSM8X60_LTE) || defined(CONFIG_ARCH_MSM8X60)
+#if defined(CONFIG_ARCH_MSM8X60)
 				r = smd_named_open_on_edge("DIAG", SMD_APPS_QDSP
 			, &driver->chqdsp, driver, diag_smd_qdsp_notify);
 #else
@@ -1169,45 +1018,15 @@ int diagfwd_init(void)
 	     ((driver->num_clients) * sizeof(struct diag_client_map),
 		   GFP_KERNEL)) == NULL)
 		goto err;
-#if defined(CONFIG_MACH_MECHA) //|| defined(CONFIG_ARCH_MSM8X60_LTE)
-	if (driver->buf_in_mdm_1 == NULL)
-		driver->buf_in_mdm_1 = kzalloc(IN_BUF_SIZE, GFP_KERNEL);
-		if (driver->buf_in_mdm_1 == NULL)
-			goto err;
-	if (driver->buf_in_mdm_2 == NULL)
-		driver->buf_in_mdm_2 = kzalloc(IN_BUF_SIZE, GFP_KERNEL);
-		if (driver->buf_in_mdm_2 == NULL)
-			goto err;
-#endif
-#if defined(CONFIG_MACH_MECHA) || defined(CONFIG_ARCH_MSM8X60_LTE)
-	if (driver->mdmclient_map == NULL &&
-	    (driver->mdmclient_map = kzalloc
-	     ((driver->num_mdmclients) * sizeof(struct diag_client_map),
-		   GFP_KERNEL)) == NULL)
-		goto err;
-#endif
 	if (driver->buf_tbl == NULL)
 			driver->buf_tbl = kzalloc(buf_tbl_size *
 			  sizeof(struct diag_write_device), GFP_KERNEL);
 	if (driver->buf_tbl == NULL)
 		goto err;
-#if 0//defined(CONFIG_MACH_MECHA) || defined(CONFIG_ARCH_MSM8X60_LTE)
-	if (driver->mdmbuf_tbl == NULL)
-			driver->mdmbuf_tbl = kzalloc(buf_tbl_size *
-			  sizeof(struct diag_write_device), GFP_KERNEL);
-	if (driver->mdmbuf_tbl == NULL)
-		goto err;
-#endif
 	if (driver->data_ready == NULL &&
 	     (driver->data_ready = kzalloc(driver->num_clients * sizeof(int)
 					 , GFP_KERNEL)) == NULL)
 		goto err;
-#if defined(CONFIG_MACH_MECHA) || defined(CONFIG_ARCH_MSM8X60_LTE)
-	if (driver->mdmdata_ready == NULL &&
-	     (driver->mdmdata_ready = kzalloc(driver->num_mdmclients * sizeof(struct
-					 diag_client_map), GFP_KERNEL)) == NULL)
-		goto err;
-#endif
 	if (driver->table == NULL &&
 	     (driver->table = kzalloc(diag_max_registration*
 				      sizeof(struct diag_master_table),
@@ -1233,18 +1052,6 @@ int diagfwd_init(void)
 			sizeof(struct diag_request), GFP_KERNEL);
 		if (driver->write_ptr_qdsp_2 == NULL)
 			goto err;
-#if defined(CONFIG_MACH_MECHA) //|| defined(CONFIG_ARCH_MSM8X60_LTE)
-	if (driver->write_ptr_mdm_1 == NULL)
-			driver->write_ptr_mdm_1 = kzalloc(
-				sizeof(struct diag_request), GFP_KERNEL);
-			if (driver->write_ptr_mdm_1 == NULL)
-					goto err;
-	if (driver->write_ptr_mdm_2 == NULL)
-			driver->write_ptr_mdm_2 = kzalloc(
-				sizeof(struct diag_request), GFP_KERNEL);
-			if (driver->write_ptr_mdm_2 == NULL)
-					goto err;
-#endif
 	if (driver->usb_read_ptr == NULL)
 			driver->usb_read_ptr = kzalloc(
 				sizeof(struct diag_request), GFP_KERNEL);
@@ -1264,35 +1071,18 @@ int diagfwd_init(void)
 #ifdef CONFIG_DIAG_OVER_USB
 	INIT_WORK(&(driver->diag_proc_hdlc_work), diag_process_hdlc_fn);
 	INIT_WORK(&(driver->diag_read_work), diag_read_work_fn);
-	diag_setup();
-#ifndef CONFIG_ARCH_MSM8X60_LTE
 	driver->legacy_ch = usb_diag_open(DIAG_LEGACY, driver,
 			diag_usb_legacy_notifier);
 	if (IS_ERR(driver->legacy_ch)) {
-		DIAGFWD_ERR("Unable to open USB diag legacy channel\n");
+		pr_err("Unable to open USB diag legacy channel\n");
 		goto err;
 	}
 #endif
-#endif
-	mutex_init(&driver->smd_lock);
-#ifdef CONFIG_ARCH_MSM8X60_LTE
-#if defined(CONFIG_USB_ANDROID_LTE_DIAG)
-	diag_ch_sdio = 0;
-	diagfwd_sdio_init(DIAG_MDM);
-#else
-	diag_ch_sdio = 1;
-	diagfwd_sdio_init(DIAG_LEGACY);
-#endif
-#endif
 	platform_driver_register(&msm_smd_ch1_driver);
 
-#if defined(CONFIG_MACH_MECHA)
-	if (sdio_diag_init_enable)
-		sdio_diag_init();
-#endif
 	return diag_ch_sdio;
 err:
-		DIAGFWD_INFO("\n Could not initialize diag buffers\n");
+		pr_info("\n Could not initialize diag buffers\n");
 		kfree(driver->buf_in_1);
 		kfree(driver->buf_in_2);
 		kfree(driver->buf_in_qdsp_1);
@@ -1305,21 +1095,12 @@ err:
 		kfree(driver->client_map);
 		kfree(driver->buf_tbl);
 		kfree(driver->data_ready);
-#if defined(CONFIG_MACH_MECHA) //|| defined(CONFIG_ARCH_MSM8X60_LTE)
-		kfree(driver->mdmclient_map);
-		//kfree(driver->mdmbuf_tbl);
-		kfree(driver->mdmdata_ready);
-#endif
 		kfree(driver->table);
 		kfree(driver->pkt_buf);
 		kfree(driver->write_ptr_1);
 		kfree(driver->write_ptr_2);
 		kfree(driver->write_ptr_qdsp_1);
 		kfree(driver->write_ptr_qdsp_2);
-#if defined(CONFIG_MACH_MECHA) //|| defined(CONFIG_ARCH_MSM8X60_LTE)
-		kfree(driver->write_ptr_mdm_1);
-		kfree(driver->write_ptr_mdm_2);
-#endif
 		kfree(driver->usb_read_ptr);
 #ifdef CONFIG_DIAG_NO_MODEM
 		kfree(driver->apps_rsp_buf);
@@ -1348,10 +1129,6 @@ void diagfwd_exit(void)
 	kfree(driver->buf_in_2);
 	kfree(driver->buf_in_qdsp_1);
 	kfree(driver->buf_in_qdsp_2);
-#if defined(CONFIG_MACH_MECHA) //|| defined(CONFIG_ARCH_MSM8X60_LTE)
-	kfree(driver->buf_in_mdm_1);
-	kfree(driver->buf_in_mdm_2);
-#endif
 	kfree(driver->usb_buf_out);
 	kfree(driver->hdlc_buf);
 	kfree(driver->msg_masks);
@@ -1360,21 +1137,12 @@ void diagfwd_exit(void)
 	kfree(driver->client_map);
 	kfree(driver->buf_tbl);
 	kfree(driver->data_ready);
-#if defined(CONFIG_MACH_MECHA) //|| defined(CONFIG_ARCH_MSM8X60_LTE)
-	kfree(driver->mdmclient_map);
-	//kfree(driver->mdmbuf_tbl);
-	kfree(driver->mdmdata_ready);
-#endif
 	kfree(driver->table);
 	kfree(driver->pkt_buf);
 	kfree(driver->write_ptr_1);
 	kfree(driver->write_ptr_2);
 	kfree(driver->write_ptr_qdsp_1);
 	kfree(driver->write_ptr_qdsp_2);
-#if defined(CONFIG_MACH_MECHA) //|| defined(CONFIG_ARCH_MSM8X60_LTE)
-	kfree(driver->write_ptr_mdm_1);
-	kfree(driver->write_ptr_mdm_2);
-#endif
 	kfree(driver->usb_read_ptr);
 #ifdef CONFIG_DIAG_NO_MODEM
 	kfree(driver->apps_rsp_buf);

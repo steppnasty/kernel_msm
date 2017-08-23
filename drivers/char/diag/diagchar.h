@@ -118,10 +118,6 @@ struct diagchar_dev {
 	int num_clients;
 	struct diag_write_device *buf_tbl;
 	spinlock_t diagchar_lock;
-#if defined(CONFIG_MACH_MECHA) || defined(CONFIG_ARCH_MSM8X60_LTE)
-	struct cdev *cdev_mdm;
-	int num_mdmclients;
-#endif
 	/* Memory pool parameters */
 	unsigned int itemsize;
 	unsigned int poolsize;
@@ -146,11 +142,6 @@ struct diagchar_dev {
 	unsigned char *buf_in_2;
 	unsigned char *buf_in_qdsp_1;
 	unsigned char *buf_in_qdsp_2;
-#if defined(CONFIG_MACH_MECHA)
-	unsigned char *buf_in_mdm_1;
-	unsigned char *buf_in_mdm_2;
-//	struct diag_write_device *mdmbuf_tbl;
-#endif
 	struct mutex diagcharmdm_mutex;
 	wait_queue_head_t mdmwait_q;
 	struct diag_client_map *mdmclient_map;
@@ -165,10 +156,6 @@ struct diagchar_dev {
 	int in_busy_2;
 	int in_busy_qdsp_1;
 	int in_busy_qdsp_2;
-#if defined(CONFIG_MACH_MECHA) //|| defined(CONFIG_ARCH_MSM8X60_LTE)
-	int in_busy_mdm_1;
-	int in_busy_mdm_2;
-#endif
 	int read_len_legacy;
 	unsigned char *hdlc_buf;
 	unsigned hdlc_count;
@@ -183,10 +170,6 @@ struct diagchar_dev {
 	struct workqueue_struct *diag_wq;
 	struct wake_lock wake_lock;
 
-#if defined(CONFIG_MACH_MECHA)
-	struct workqueue_struct *mdm_diag_workqueue;
-	struct work_struct diag_read_smd_mdm_work;
-#endif
 	struct work_struct diag_drain_work;
 	struct work_struct diag_read_smd_work;
 	struct work_struct diag_read_smd_qdsp_work;
@@ -203,32 +186,8 @@ struct diagchar_dev {
 	struct diag_request *write_ptr_svc;
 	struct diag_request *write_ptr_qdsp_1;
 	struct diag_request *write_ptr_qdsp_2;
-#if defined(CONFIG_MACH_MECHA)
-	struct diag_request *write_ptr_mdm_1;
-	struct diag_request *write_ptr_mdm_2;
-#endif
 	int logging_mode;
 	int logging_process_id;
-#if DIAG_XPST
-	unsigned char nohdlc;
-	unsigned char in_busy_dmrounter;
-	struct mutex smd_lock;
-	unsigned char init_done;
-	unsigned char is2ARM11;
-#endif
-#if defined(CONFIG_ARCH_MSM8X60_LTE)
-	unsigned char *buf_in_sdio;
-	unsigned char *usb_buf_mdm_out;
-	struct sdio_channel *sdio_ch;
-	int read_len_mdm;
-	int in_busy_sdio;
-	struct usb_diag_ch *mdm_ch;
-	struct work_struct diag_read_mdm_work;
-	struct workqueue_struct *diag_sdio_wq;
-	struct work_struct diag_read_sdio_work;
-	struct diag_request *usb_read_mdm_ptr;
-	struct diag_request *write_ptr_mdm;
-#endif
 	u64 diag_smd_count; /* from smd */
 	u64 diag_qdsp_count; /* from qdsp */
 	void (*enable_sd_log)(unsigned int enable);
