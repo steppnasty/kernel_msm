@@ -509,6 +509,19 @@ int __init parse_tag_extdiag(const struct tag *tags)
 	return 0;
 }
 
+static unsigned int radio_flag = 0;
+int __init radio_flag_init(char *s)
+{
+	radio_flag = simple_strtoul(s, 0, 16);
+	return 1;
+}
+__setup("radioflag=", radio_flag_init);
+
+unsigned int get_radio_flag(void)
+{
+	return radio_flag;
+}
+
 static unsigned int kernel_flag = 0;
 int __init kernel_flag_init(char *s)
 {
