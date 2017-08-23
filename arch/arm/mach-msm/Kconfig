@@ -6,9 +6,7 @@ config 2WCR
 	help
 	  Enables 2 Way Call Recording patch to be implemented"
 
-choice
-	prompt "Qualcomm MSM SoC Type"
-	default ARCH_MSM7X00A
+menu "MSM SoC Type"
 
 config ARCH_MSM7X00A
 	bool "MSM7x00A / MSM7x01A"
@@ -37,7 +35,7 @@ config ARCH_MSM7X30
 	select ARM_HAS_SG_CHAIN
 
 config ARCH_QSD8X50
-	bool "QSD8X50"
+	bool "QSD8x50"
 	select ARCH_MSM_SCORPION
 	select MSM_VIC
 	select CPU_V7
@@ -65,13 +63,14 @@ config ARCH_MSM8X60
 	select MSM_BUS_SCALING
 	select MSM_SECURE_IO
 	select MSM_SCHED_FAST_CPU_ONLINE
+	select ARM_HAS_SG_CHAIN
 
 config ARCH_MSM8X60_LTE
 	bool "MSM8X60_LTE"
 	depends on ARCH_MSM8X60
 	default n
 
-endchoice
+endmenu
 
 config  ARCH_MSM_ARM11
 	bool
@@ -892,6 +891,21 @@ config MSM_SMD_DEBUG
 	  Support for debugging the SMD for communication
 	  between the ARM9 and ARM11
 
+config MSM_SDIO_AL
+	depends on ARCH_MSM7X30 && HAS_WAKELOCK
+	default n
+	tristate "SDIO-Abstraction-Layer"
+	help
+	  Support MSM<->MDM Communication over SDIO bus.
+	  MDM SDIO-Client should have pipes support.
+
+config MSM_SDIO_DMUX
+	bool "SDIO Data Mux Driver"
+	depends on MSM_SDIO_AL
+	default n
+	help
+	  Support Muxed Data Channels over SDIO interface.
+
 config MSM_N_WAY_SMD
 	depends on (MSM_SMD && (ARCH_MSM_SCORPION || ARCH_MSM8960 || ARCH_MSM7X27 || ARCH_MSM7X25))
 	default y
@@ -908,6 +922,13 @@ config MSM_N_WAY_SMSM
 	  Supports APPS-QDSP SMSM communication along with
 	  normal APPS-MODEM SMSM communication.
 
+config MSM_RESET_MODEM
+	tristate "Reset Modem Driver"
+	depends on MSM_SMD
+	default m
+	help
+	  Allows the user to reset the modem through a device node.
+
 config MSM_SMD_LOGGING
 	depends on MSM_SMD
 	default y
@@ -917,6 +938,68 @@ config MSM_SMD_LOGGING
 	  and a debugfs node named smem_log.
 
 	  If in doubt, say yes.
+
+config MSM_SMD_NMEA
+	bool "NMEA GPS Driver"
+	depends on MSM_SMD
+	default y
+	help
+	  Enable this to support the NMEA GPS device.
+
+	  If in doubt, say yes.
+
+config MSM_SMD_TTY
+	bool "SMD TTY Driver"
+	depends on MSM_SMD
+	default y
+	help
+	  Provides TTY interfaces to interact with the modem.
+
+	  If in doubt, say yes.
+
+config MSM_SMD_QMI
+	bool "SMD QMI Driver"
+	depends on MSM_SMD
+	default y
+	help
+	  Manages network data connections.
+
+	  If in doubt, say yes.
+
+config MSM_SMD_PKT
+	bool "SMD Packet Driver"
+	depends on MSM_SMD
+	default y
+	help
+	  Provides a binary SMD non-muxed packet port interface.
+
+	  If in doubt, say yes.
+
+config MSM_SDIO_CMUX
+	bool "SDIO CMUX Driver"
+	depends on MSM_SDIO_AL
+	default n
+	help
+	  Provides a Muxed port interface over SDIO QMI
+
+config MSM_DSPS
+	bool "Sensors DSPS driver"
+	depends on (MSM_PIL && ARCH_MSM8X60)
+	default n
+	help
+	  Provides user-space interface to the sensors manager
+	  to turn on/off the Sensors Processor system clocks.
+	  It is the DSPS responsibility to turn on/off the sensors
+	  themself.
+	  The number of clocks and their name may vary between targets.
+	  It also triggers the PIL to load the DSPS firmware.
+
+config MSM_SDIO_CTL
+	bool "SDIO CTL Driver"
+	depends on MSM_SDIO_CMUX
+	default y
+	help
+	  Provides a binary SDIO control port interface.
 
 config MSM_ONCRPCROUTER
 	depends on MSM_SMD
@@ -933,99 +1016,6 @@ config MSM_ONCRPCROUTER_DEBUG
 	help
 	  Support for debugging the ONCRPC router for communication
 	  between the ARM9 and ARM11
-
-if QCT_LTE
-choice
-	prompt "MSM Shared memory interface version"
-	depends on MSM_SMD
-	default MSM_SMD_PKG3 if ARCH_MSM_ARM11
-	default MSM_SMD_PKG4 if ARCH_MSM_SCORPION
-
-	config MSM_SMD_PKG3
-	  bool
-	    prompt "Package 3"
-
-	config MSM_SMD_PKG4
-	  bool
-	    prompt "Package 4"
-endchoice
-
-config MSM_RPC_SDIO_XPRT
-	depends on MSM_SDIO_AL
-	default y
-	bool "MSM SDIO XPRT Layer"
-	help
-	  SDIO Transport Layer for RPC Rouer
-
-config MSM_RPC_SDIO_DEBUG
-	depends on MSM_RPC_SDIO_XPRT
-	default y
-	bool "MSM SDIO XPRT debug support"
-	help
-	  Support for debugging SDIO XPRT
-
-config MSM_SMD_DEBUG
-	depends on MSM_SMD
-	default y
-	bool "MSM SMD debug support"
-	help
-	  Support for debugging the SMD for communication
-	  between the ARM9 and ARM11
-
-config MSM_SDIO_AL
-	depends on ((ARCH_MSM7X30 || ARCH_MSM8X60_LTE) && HAS_WAKELOCK)
-	default n
-	tristate "SDIO-Abstraction-Layer"
-	help
-	  Support MSM<->MDM Communication over SDIO bus.
-	  MDM SDIO-Client should have pipes support.
-
-config MSM_SDIO_AL_TEST
-	depends on MSM_SDIO_AL
-	default n
-	tristate "SDIO-Abstraction-Layer Test"
-	help
-	  SDIO-AL functionality and performance test.
-
-config MSM_N_WAY_SMSM
-	depends on (MSM_SMD && (ARCH_MSM_SCORPION || ARCH_MSM_SCORPIONMP || ARCH_MSM7X27))
-	default y
-	bool "MSM N-WAY SMSM support"
-	help
-	  Supports APPS-QDSP SMSM communication along with
-	  normal APPS-MODEM SMSM communication.
-
-config MSM_SMD_NMEA
-	bool "NMEA GPS Driver"
-	depends on MSM_SMD
-	default y
-	help
-	  Enable this to support the NMEA GPS device.
-
-	  If in doubt, say yes.
-
-config MSM_SMD_PKT
-	bool "SMD Packet Driver"
-	depends on MSM_SMD
-	default y
-	help
-	  Provides a binary SMD non-muxed packet port interface.
-
-	  If in doubt, say yes.
-
-config MSM_SDIO_CTL
-	bool "SDIO CTL Driver"
-	depends on MSM_SDIO_AL
-	default y
-	help
-	  Provides a binay SDIO muxed control port interface.
-
-config MSM_SDIO_CTL_DEBUG
-	bool "SDIO CTL DEBUG Enable"
-	depends on MSM_SDIO_CTL
-	default y
-	help
-	  Support for debugging the SDIO Control Driver
 
 config MSM_RPC_LOOPBACK_XPRT
 	depends on MSM_ONCRPCROUTER
@@ -1050,6 +1040,20 @@ config MSM_RPCSERVER_WATCHDOG
 	help
 	  The dog_keepalive server handles watchdog events.
 
+config MSM_RPC_WATCHDOG
+	depends on MSM_ONCRPCROUTER
+	default n
+	bool "Watchdog RPC client"
+	help
+	  The dog_keepalive client module.
+
+config MSM_RPC_PING
+	depends on MSM_ONCRPCROUTER && DEBUG_FS
+	default m
+	bool "MSM rpc ping"
+	help
+	  Implements MSM rpc ping test module.
+
 config MSM_RPC_PROC_COMM_TEST
 	depends on DEBUG_FS && MSM_PROC_COMM
 	default m
@@ -1071,7 +1075,6 @@ config MSM_RPCSERVER_HANDSET
 	help
 	  Support for receiving handset events like headset detect,
 	  headset switch and clamshell state.
-endif
 
 config MSM_SMD0_WQ
 	bool "SMD0 TTY Workqueue"
@@ -1451,13 +1454,12 @@ config SMD_OFFSET_NEGATE_CLIENT_STAT
         help
           TCXO shutdown retry conuter and negate tcxoc client counters.
 
-config AXI_SCREEN_POLICY
-        depends on ARCH_QSD8X50 || ARCH_MSM7X00A || ARCH_MSM7227 || ARCH_MSM7225
-	depends on HAS_EARLYSUSPEND
-	bool "Use higher AXI bus while screen ON"
+config MSM_MEMORY_LOW_POWER_MODE
+	bool "Control the low power modes of memory"
 	default n
 	help
-		Simple AXI scaling based on screen ON/OFF and PWRC.
+	  The application processor controls whether memory should enter
+	  which low power mode.
 
 config MSM_IDLE_WAIT_ON_MODEM
 	int "Wait for Modem to become ready for idle power collapse"
@@ -1497,7 +1499,7 @@ config MSM_SCM
 
 config MSM_SUBSYSTEM_RESTART
 	bool "MSM Subsystem Restart Driver"
-	depends on ARCH_MSM8X60
+	depends on (ARCH_MSM8X60 || ARCH_MSM8960)
 	default n
 	help
 	  This option enables the MSM subsystem restart driver, which provides
@@ -1585,12 +1587,6 @@ config ACPUCLOCK_LIMIT_768MHZ
 	default n
 	help
 		Support to limit the CPU frequency at 768MHz.
-
-config ACPUCLOCK_OVERCLOCKING
-	bool "Enable support for CPU overclocking"
-	default n
-	depends on CPU_FREQ && !PERFLOCK
-	depends on ARCH_MSM7X30
 
 config HTC_SMEM_MSMC1C2_DEBUG
 	bool "MSMC1/MSMC2 shared memory debug"
