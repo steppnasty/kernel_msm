@@ -63,7 +63,7 @@ struct smd_tty_info {
 #define LOOPBACK_IDX 36
 static char *smd_ch_name[] = {
 	[0] = "DS",
-	[1] = "DIAG",
+	[1] = "APPS_FM",
 	[2] = "APPS_RIVA_BT_ACL",
 	[3] = "APPS_RIVA_BT_CMD",
 	[4] = "MBALBRIDGE",
