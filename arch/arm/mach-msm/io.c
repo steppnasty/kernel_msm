@@ -86,6 +86,8 @@ static struct map_desc msm8x60_io_desc[] __initdata = {
 	},
 	MSM_DEVICE(QFPROM),
 	MSM_DEVICE(EBI1_CH0),
+	MSM_DEVICE(HTC_DEBUG_INFO),
+	MSM_DEVICE(SCL_HTC_PRIV),
 };
 
 void __init msm_map_msm8x60_io(void)
