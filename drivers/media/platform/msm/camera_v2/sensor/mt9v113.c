@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016, Brian Stepp <steppnasty@gmail.com>
+ * Copyright (c) 2016-2017, Brian Stepp <steppnasty@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -38,7 +38,6 @@ static struct msm_sensor_power_setting mt9v113_power_setting[] = {
 };
 
 static struct msm_camera_i2c_reg_conf mt9v113_probe_settings_0[] = {
-	{0x001A, 0x0210},
 	{0x001E, 0x0777},
 	{0x0016, 0x42DF},
 	{0x0014, 0xB04B},
@@ -549,7 +548,6 @@ static inline int mt9v113_suspend(struct msm_sensor_ctrl_t *s_ctrl)
 	msleep(2);
 	return rc;
 suspend_fail:
-	pr_err("%s: suspend failed\n", __func__);
 	return -EIO;
 }
 
@@ -787,17 +785,18 @@ static int32_t mt9v113_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	power_setting_array = &s_ctrl->power_setting_array;
 	power_setting = &power_setting_array->power_setting[0];
 
-	if (camdev->camera_gpio_on)
+	if (sinfo->camera_power_on && sinfo->camera_power_on() < 0)
+		goto power_on_i2c_error;
+	if (!sinfo->camera_power_on && camdev->camera_gpio_on)
 		camdev->camera_gpio_on();
-
-	/*switch PCLK and MCLK to Front cam*/
 	if (sinfo->camera_clk_switch) {
-		CDBG("%s: switch clk\n", __func__);
 		sinfo->camera_clk_switch();
 		msleep(1);
 	}
+	if (sinfo->camera_power_on && camdev->camera_gpio_on)
+		camdev->camera_gpio_on();
 
-	if (!mt9v113_probe_done) {
+	if (!mt9v113_probe_done || sinfo->camera_power_on) {
 		/*Config Reset*/
 		if (!gpio_request(sinfo->sensor_reset, "mt9v113")) {
 			gpio_direction_output(sinfo->sensor_reset, 1);
@@ -815,10 +814,19 @@ static int32_t mt9v113_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			s_ctrl->clk_info_size, 1);
 		msleep(1);
 
+		if (!mt9v113_probe_done && sinfo->camera_power_on) {
+			if (!gpio_request(sinfo->sensor_pwd, "mt9v113")) {
+				gpio_direction_output(sinfo->sensor_pwd, 0);
+				mdelay(2);
+			} else
+				pr_err("%s: gpio request failed\n", __func__);
+			gpio_free(sinfo->sensor_pwd);
+		}
+
 		/* follow optical team Power Flow */
 		if (!gpio_request(sinfo->sensor_reset, "mt9v113")) {
 			gpio_direction_output(sinfo->sensor_reset, 1);
-			msleep(1);
+			mdelay(2);
 		} else {
 			pr_err("%s: gpio request failed\n", __func__);
 			goto power_on_i2c_error;
@@ -826,6 +834,7 @@ static int32_t mt9v113_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		gpio_free(sinfo->sensor_reset);
 		msleep(2);
 
+#ifndef CONFIG_ARCH_MSM8X60
 		if (client->i2c_func_tbl->i2c_write(client, 0x001A, 0x0011, dt) < 0)
 			goto power_on_i2c_error;
 		msleep(1);
@@ -838,6 +847,7 @@ static int32_t mt9v113_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		if (client->i2c_func_tbl->i2c_write(client, 0x301A, 0x121C, dt) < 0)
 			goto power_on_i2c_error;
 		msleep(10);
+#endif
 
 		/* RESET and MISC Control */
 		if (client->i2c_func_tbl->i2c_write(client, 0x0018,
@@ -845,6 +855,19 @@ static int32_t mt9v113_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			goto power_on_i2c_error;
 		if (mt9v113_check_bit(client, 0x0018, 14, 0) < 0)
 			goto power_on_i2c_error;
+#ifdef CONFIG_ARCH_MSM8X60
+		if (mt9v113_check_bit(client, 0x301A, 2, 1) < 0)
+			goto power_on_i2c_error;
+		/* Power Up */
+		if (client->i2c_func_tbl->i2c_write(client, 0x001A,
+			0x0011, dt) < 0)
+			goto power_on_i2c_error;
+		msleep(10);
+		if (client->i2c_func_tbl->i2c_write(client, 0x001A,
+			0x0010, dt) < 0)
+			goto power_on_i2c_error;
+		msleep(10);
+#else
 		if (client->i2c_func_tbl->i2c_write(client, 0x001A,
 			0x0003, dt) < 0)
 			goto power_on_i2c_error;
@@ -853,11 +876,60 @@ static int32_t mt9v113_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			0x0000, dt) < 0)
 			goto power_on_i2c_error;
 		mdelay(2);
+#endif
 		if (client->i2c_func_tbl->i2c_write(client, 0x0018,
 			0x4028, dt) < 0)
 			goto power_on_i2c_error;
 		if (mt9v113_check_bit(client, 0x0018, 14, 0) < 0)
 			goto power_on_i2c_error;
+
+#ifdef CONFIG_ARCH_MSM8X60
+		if (mt9v113_check_bit(client, 0x301A, 2, 1) < 0)
+			goto power_on_i2c_error;
+		if (mt9v113_write_bit(client, 0x31E0, 1, 0) < 0)
+			goto power_on_i2c_error;
+		if (mt9v113_write_bit(client, 0x001A, 9, 0) < 0)
+			goto power_on_i2c_error;
+
+		if (mt9v113_write_bit(client, 0x3400, 4, 1) < 0)
+			goto power_on_i2c_error;
+		for (i = 0; i < 100; i++) {
+			client->i2c_func_tbl->i2c_read(client, 0x3400,
+				&check_value, dt);
+			if (check_value & 0x0010)
+				break;
+			else {
+				check_value |= 0x0010;
+				client->i2c_func_tbl->i2c_write(client,
+					0x3400, check_value, dt);
+			}
+			msleep(1);
+		}
+		if (i == 100)
+			goto power_on_i2c_error;
+		mdelay(10);
+
+		if (mt9v113_write_bit(client, 0x3400, 9, 1) < 0)
+			goto power_on_i2c_error;
+		for (i = 0; i < 100; i++) {
+			client->i2c_func_tbl->i2c_read(client, 0x3400,
+				&check_value, dt);
+			if (check_value & 0x0200)
+				break;
+			else {
+				check_value |= 0x0200;
+				client->i2c_func_tbl->i2c_write(client,
+					0x3400, check_value, dt);
+			}
+			msleep(1);
+		}
+		if (i == 100)
+			goto power_on_i2c_error;
+
+		mt9v113_write_bit(client, 0x321C, 7, 0);
+#else
+		client->i2c_func_tbl->i2c_write(client, 0x001A, 0x0210, dt);
+#endif
 
 		if (client->i2c_func_tbl->i2c_write_conf_tbl(client,
 			&mt9v113_probe_settings_0[0],
@@ -922,7 +994,7 @@ static int32_t mt9v113_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			0x000F, dt) < 0)
 			goto power_on_i2c_error;
 
-		if (mt9v113_suspend(s_ctrl) < 0)
+		if (!mt9v113_probe_done && mt9v113_suspend(s_ctrl) < 0)
 			goto power_on_i2c_error;
 		msleep(10);
 
@@ -981,7 +1053,23 @@ static int32_t mt9v113_sensor_release(struct msm_sensor_ctrl_t *s_ctrl)
 
 	mt9v113_sensor_power_down(s_ctrl);
 
-	if (sinfo->camera_clk_switch != NULL && sinfo->cam_select_pin) {
+	if (sinfo->camera_power_on) {
+		if (!gpio_request(sinfo->sensor_reset, "mt9v113"))
+			gpio_direction_output(sinfo->sensor_reset, 0);
+		else
+			pr_err("%s: gpio request failed\n", __func__);
+		mdelay(2);
+		gpio_free(sinfo->sensor_reset);
+
+		msm_cam_clk_enable(s_ctrl->dev, &s_ctrl->clk_info[0],
+			(struct clk **)&power_setting->data[0],
+			s_ctrl->clk_info_size, 0);
+
+		camdev->camera_gpio_off();
+		mdelay(2);
+	}
+
+	if (sinfo->camera_clk_switch && sinfo->cam_select_pin) {
 		/*0709: optical ask : CLK switch to Main Cam after 2nd Cam release*/
 		CDBG("%s: doing clk switch to Main CAM\n", __func__);
 		rc = gpio_request(sinfo->cam_select_pin, "mt9v113");
@@ -989,15 +1077,20 @@ static int32_t mt9v113_sensor_release(struct msm_sensor_ctrl_t *s_ctrl)
 			pr_err("[CAM]GPIO (%d) request fail\n", sinfo->cam_select_pin);
 		else
 			gpio_direction_output(sinfo->cam_select_pin, 0);
+		msleep(1);
 		gpio_free(sinfo->cam_select_pin);
 	}
 
-	msleep(1);
+	CDBG("[CAM]%s msm_camio_probe_off()\n", __func__);
 
-	camdev->camera_gpio_off();
-	msm_cam_clk_enable(s_ctrl->dev, &s_ctrl->clk_info[0],
-		(struct clk **)&power_setting->data[0],
-		s_ctrl->clk_info_size, 0);
+	if (sinfo->camera_power_off)
+		sinfo->camera_power_off();
+	else {
+		camdev->camera_gpio_off();
+		msm_cam_clk_enable(s_ctrl->dev, &s_ctrl->clk_info[0],
+			(struct clk **)&power_setting->data[0],
+			s_ctrl->clk_info_size, 0);
+	}
 
 	return rc;
 power_off_i2c_error:
