@@ -334,6 +334,12 @@ config CPU_FREQ_GOV_BRAZILIANWAX
  
 	 If in doubt, say Y.
 
+config CPU_FREQ_GOV_ONDEMAND_2_PHASE
+	tristate "'2-phase' power-efficiency ondemand algorithm"
+	depends on CPU_FREQ_GOV_ONDEMAND
+	help
+	  '2-phase' - This driver adds a new algo to save power
+
 config CPU_FREQ_MIN_TICKS
   int "Ticks between governor polling interval."
   default 10
