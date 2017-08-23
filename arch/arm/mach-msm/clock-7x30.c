@@ -2822,7 +2822,7 @@ static struct clk_local_ownership {
 	{ CLK_LOOKUP("src_clk",     grp_3d_src_clk.c, "footswitch-pcom.2"),
 		O(APPS2), BIT(0), &p_grp_3d_clk.c },
 	OWN(APPS2,  0, "mem_clk",	imem_clk,	"kgsl-3d0.0"),
-	OWN(APPS2, 4, "lcdc_clk", mdp_lcdc_pad_pclk_clk, "lcdc.0"),
+	OWN(APPS2,  4, "lcdc_clk", mdp_lcdc_pad_pclk_clk, "lcdc.0"),
 	OWN(APPS2,  4, "mdp_clk", mdp_lcdc_pclk_clk, "lcdc.0"),
 	OWN(APPS2,  4, "iface_clk",	mdp_p_clk,	"mdp.0"),
 	OWN(APPS2,  4, "iface_clk",	mdp_p_clk,	"footswitch-pcom.4"),
@@ -2867,7 +2867,7 @@ static struct clk_local_ownership {
 	OWN(ROW2, 11, "core_clk",	usb_hs_core_clk, "msm_otg"),
 	OWN(ROW2, 11, "iface_clk",	usb_hs_p_clk,	"msm_otg"),
 
-	OWN(APPS3,  6, "cam_m_clk",	cam_m_clk,	NULL),
+	OWN(APPS3,  6, "cam_clk",	cam_m_clk,	NULL),
 	OWN(APPS3,  6, "camif_pad_pclk", camif_pad_p_clk, NULL),
 	OWN(APPS3,  6, "iface_clk",	camif_pad_p_clk, "qup_i2c.4"),
 	OWN(APPS3, 11, "csi_clk",	csi0_clk,	NULL),

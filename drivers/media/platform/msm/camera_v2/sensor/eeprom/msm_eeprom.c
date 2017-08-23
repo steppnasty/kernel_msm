@@ -303,12 +303,12 @@ out:
 }
 
 static struct msm_cam_clk_info cam_8960_clk_info[] = {
-	[SENSOR_CAM_MCLK] = {"cam_m_clk", 24000000},
+	[SENSOR_CAM_MCLK] = {"cam_clk", 24000000},
 };
 
 static struct msm_cam_clk_info cam_8974_clk_info[] = {
 	[SENSOR_CAM_MCLK] = {"cam_src_clk", 19200000},
-	[SENSOR_CAM_CLK] = {"cam_m_clk", 0},
+	[SENSOR_CAM_CLK] = {"cam_clk", 0},
 };
 
 static struct v4l2_subdev_core_ops msm_eeprom_subdev_core_ops = {
