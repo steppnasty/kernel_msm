@@ -65,6 +65,13 @@ config MSM_CSIPHY
           supports detection of packet start and stop
           signalling.
 
+config MSM_CSIC
+	bool "Qualcomm MSM Camera Serial Interface controller support"
+	depends on MSMB_CAMERA
+	---help---
+	  Enable support for legacy Camera Serial Interface
+	  controller.
+
 config MSM_CSID
         bool "Qualcomm MSM Camera Serial Interface decoder support"
         depends on MSMB_CAMERA
