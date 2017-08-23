@@ -3797,7 +3797,7 @@ static struct rtnl_link_stats64 *bond_get_stats(struct net_device *bond_dev)
 	struct slave *slave;
 	int i;
 
-	memset(&local_stats, 0, sizeof(local_stats));
+	memset(&local_stats, 0, sizeof(local_stats);
 
 	read_lock_bh(&bond->lock);
 
