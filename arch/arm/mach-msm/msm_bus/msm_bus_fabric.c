@@ -25,7 +25,6 @@
 enum {
 	SLAVE_NODE,
 	MASTER_NODE,
-	CLK_NODE,
 };
 
 enum {
@@ -57,7 +56,7 @@ struct msm_bus_fabric {
 static int msm_bus_fabric_add_node(struct msm_bus_fabric *fabric,
 	struct msm_bus_inode_info *info)
 {
-	int status = -ENOMEM, ctx;
+	int status = -ENOMEM;
 	MSM_BUS_DBG("msm_bus_fabric_add_node: ID %d Gw: %d\n",
 		info->node_info->priv_id, info->node_info->gateway);
 	status = radix_tree_preload(GFP_ATOMIC);
@@ -71,15 +70,17 @@ static int msm_bus_fabric_add_node(struct msm_bus_fabric *fabric,
 		radix_tree_tag_set(&fabric->fab_tree, info->node_info->priv_id,
 			SLAVE_NODE);
 
-	for (ctx = 0; ctx < NUM_CTX; ctx++) {
-		if (info->node_info->slaveclk[ctx]) {
-			radix_tree_tag_set(&fabric->fab_tree,
-				info->node_info->priv_id, CLK_NODE);
-			break;
+	if (info->node_info->slaveclk[DUAL_CTX]) {
+		info->nodeclk[DUAL_CTX].clk = clk_get_sys("msm_bus",
+			info->node_info->slaveclk[DUAL_CTX]);
+		if (IS_ERR(info->nodeclk[DUAL_CTX].clk)) {
+			MSM_BUS_ERR("Could not get clock for %s\n",
+				info->node_info->slaveclk[DUAL_CTX]);
+			status = -EINVAL;
+			goto out;
 		}
-
-		info->nodeclk[ctx].enable = false;
-		info->nodeclk[ctx].dirty = false;
+		info->nodeclk[DUAL_CTX].enable = false;
+		info->nodeclk[DUAL_CTX].dirty = false;
 	}
 
 out:
@@ -483,7 +484,11 @@ static int msm_bus_fabric_clk_commit(int enable, struct msm_bus_fabric *fabric)
 	unsigned int i, nfound = 0, status = 0;
 	struct msm_bus_inode_info *info[fabric->pdata->nslaves];
 
-	if (fabric->clk_dirty == true)
+	if (fabric->clk_dirty == false) {
+		MSM_BUS_DBG("No clocks have been touched for fabric: %d\n",
+			fabric->fabdev.id);
+		goto out;
+	} else
 		status = msm_bus_fabric_clk_set(enable, &fabric->info);
 
 	if (status)
@@ -491,9 +496,9 @@ static int msm_bus_fabric_clk_commit(int enable, struct msm_bus_fabric *fabric)
 			fabric->fabdev.id);
 
 	nfound = radix_tree_gang_lookup_tag(&fabric->fab_tree, (void **)&info,
-		fabric->fabdev.id, fabric->pdata->nslaves, CLK_NODE);
+		fabric->fabdev.id, fabric->pdata->nslaves, SLAVE_NODE);
 	if (nfound == 0) {
-		MSM_BUS_DBG("No clock nodes found for fabric: %d\n",
+		MSM_BUS_DBG("No slaves found for fabric: %d\n",
 			fabric->fabdev.id);
 		goto out;
 	}
@@ -587,7 +592,7 @@ skip_arb:
 	 */
 	status = msm_bus_fabric_clk_commit(DISABLE, fabric);
 	if (status)
-		MSM_BUS_WARN("Error disabling clocks on fabric: %d\n",
+		MSM_BUS_DBG("Error disabling clocks on fabric: %d\n",
 			fabric->fabdev.id);
 	fabric->clk_dirty = false;
 	return status;
@@ -899,4 +904,4 @@ static int __init msm_bus_fabric_init_driver(void)
 	MSM_BUS_ERR("msm_bus_fabric_init_driver\n");
 	return platform_driver_register(&msm_bus_fabric_driver);
 }
-subsys_initcall(msm_bus_fabric_init_driver);
+postcore_initcall(msm_bus_fabric_init_driver);
