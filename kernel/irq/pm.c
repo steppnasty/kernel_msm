@@ -30,8 +30,7 @@ void suspend_device_irqs(void)
 		unsigned long flags;
 
 		raw_spin_lock_irqsave(&desc->lock, flags);
-		if (desc->wake_depth == 0)
-			__disable_irq(desc, irq, true);
+		__disable_irq(desc, irq, true);
 		raw_spin_unlock_irqrestore(&desc->lock, flags);
 	}
 
