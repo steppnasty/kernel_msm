@@ -3344,18 +3344,18 @@ config VMXNET3
          module will be called vmxnet3.
 
 config KINETO_GAN	
-        tristate "Kineto GAN virtual network interface"	
-        depends on ARM	
-        default n	
-        help	
-          Virtual ethernet interface for Kineto GAN transport.
+	tristate "Kineto GAN virtual network interface"
+	depends on ARM
+	default n
+	help
+	  Virtual ethernet interface for Kineto GAN transport.
 
 config GAN_ETH
-        tristate "Kineto GAN compatibility"
-        depends on INET
-        default n
-        help
-          A virutual ethernet device that adds/removes IP/UDP headers,
-          as required by Kineto GAN.
+	tristate "Kineto GAN compatibility"
+	depends on INET
+	default n
+	help
+	  A virtual ethernet device that adds/removes IP/UDP headers,
+	  as required by Kineto GAN.
 
 endif # NETDEVICES
