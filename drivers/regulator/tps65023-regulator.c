@@ -357,9 +357,6 @@ static int tps65023_dcdc_set_voltage(struct regulator_dev *dev,
 	struct tps_pmic *tps = rdev_get_drvdata(dev);
 	int dcdc = rdev_get_id(dev);
 	int vsel;
-	int rv;
-	int uV = 0;
-	int delay;
 
 	if (dcdc != TPS65023_DCDC_1)
 		return -EINVAL;
@@ -373,7 +370,7 @@ static int tps65023_dcdc_set_voltage(struct regulator_dev *dev,
 
 	for (vsel = 0; vsel < tps->info[dcdc]->table_len; vsel++) {
 		int mV = tps->info[dcdc]->table[vsel];
-		uV = mV * 1000;
+		int uV = mV * 1000;
 
 		/* Break at the first in-range value */
 		if (min_uV <= uV && uV <= max_uV)
@@ -385,22 +382,8 @@ static int tps65023_dcdc_set_voltage(struct regulator_dev *dev,
 	/* write to the register in case we found a match */
 	if (vsel == tps->info[dcdc]->table_len)
 		return -EINVAL;
-
-	rv = tps_65023_reg_write(tps, TPS65023_REG_DEF_CORE, vsel);
-	if (!rv)
-		rv = tps_65023_reg_write(tps, TPS65023_REG_CON_CTRL2,
-						TPS65023_CON_CTRL2_GO);
-
-	/* Add delay to reach relected voltage (14.4 mV/us default slew rate) */
-	if (tps->dcdc1_last_uV)
-		delay = abs(tps->dcdc1_last_uV - uV);
 	else
-		delay = max(uV - 800000, 1600000 - uV);
-	delay = DIV_ROUND_UP(delay, 14400);
-	udelay(delay);
-	tps->dcdc1_last_uV = rv ? 0 /* Unknown voltage */ : uV;
-
-	return rv;
+		return tps_65023_reg_write(tps, TPS65023_REG_DEF_CORE, vsel);
 }
 
 static int tps65023_ldo_get_voltage(struct regulator_dev *dev)
@@ -421,7 +404,7 @@ static int tps65023_ldo_get_voltage(struct regulator_dev *dev)
 }
 
 static int tps65023_ldo_set_voltage(struct regulator_dev *dev,
-				    int min_uV, int max_uV, unsigned *selector)
+			       int min_uV, int max_uV, unsigned *selector)
 {
 	struct tps_pmic *tps = rdev_get_drvdata(dev);
 	int data, vsel, ldo = rdev_get_id(dev);
