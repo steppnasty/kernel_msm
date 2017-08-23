@@ -48,14 +48,21 @@
 	(~(ping_pong >> (idx + VFE31_STATS_PING_PONG_OFFSET)) & 0x1))
 
 static struct clk *ebi1_clk;
-static struct msm_cam_clk_info msm_vfe31_clk_info[] = {
+static struct msm_cam_clk_info msm_vfe31_1_clk_info[] = {
+	/* vfe31 clock info for 7x30 */
 	{"vfe_clk", 122880000},
 	{"vfe_pclk", -1},
 	{"camif_pad_pclk", -1},
 	{"vfe_camif_clk", -1},
 };
 
-static void msm_vfe31_camif_pad_reg_reset(struct vfe_device *vfe_dev)
+static struct msm_cam_clk_info msm_vfe31_2_clk_info[] = {
+	/* vfe31 clock info for 8660 */
+	{"vfe_clk", 266667000},
+	{"vfe_pclk", -1},
+};
+
+static void msm_vfe31_camif_init(struct vfe_device *vfe_dev)
 {
 	uint32_t reg;
 	struct clk *clk = NULL;
@@ -163,6 +170,8 @@ static int msm_vfe31_init_hardware(struct vfe_device *vfe_dev)
 
 	vfe_dev->vfe_clk_idx = 0;
 
+	msm_isp_init_bandwidth_mgr(ISP_VFE0 + vfe_dev->pdev->id);
+
 	if (vfe_dev->fs_vfe) {
 		rc = regulator_enable(vfe_dev->fs_vfe);
 		if (rc) {
@@ -171,13 +180,19 @@ static int msm_vfe31_init_hardware(struct vfe_device *vfe_dev)
 		}
 	}
 
-	rc = msm_cam_clk_enable(&vfe_dev->pdev->dev, msm_vfe31_clk_info,
-		vfe_dev->vfe_clk, ARRAY_SIZE(msm_vfe31_clk_info), 1);
-	if (rc < 0)
-		goto clk_enable_failed;
-	else
+	rc = msm_cam_clk_enable(&vfe_dev->pdev->dev, msm_vfe31_1_clk_info,
+		vfe_dev->vfe_clk, ARRAY_SIZE(msm_vfe31_1_clk_info), 1);
+	if (rc < 0) {
+		rc = msm_cam_clk_enable(&vfe_dev->pdev->dev,
+			msm_vfe31_2_clk_info, vfe_dev->vfe_clk,
+			ARRAY_SIZE(msm_vfe31_2_clk_info), 1);
+		if (rc < 0)
+			goto clk_enable_failed;
+		else
+			vfe_dev->vfe_clk_idx = 2;
+	} else
 		vfe_dev->vfe_clk_idx = 1;
-	ebi1_clk = clk_get(NULL, "ebi1_clk");
+	ebi1_clk = clk_get(NULL, "ebi1_vfe_clk");
 	if (IS_ERR(ebi1_clk))
 		ebi1_clk = NULL;
 	else {
@@ -194,12 +209,14 @@ static int msm_vfe31_init_hardware(struct vfe_device *vfe_dev)
 		goto vfe_remap_failed;
 	}
 
-	vfe_dev->camif_base = ioremap(vfe_dev->camif_mem->start,
-		resource_size(vfe_dev->camif_mem));
-	if (!vfe_dev->camif_base) {
-		rc = -ENOMEM;
-		pr_err("%s: camif ioremap failed\n", __func__);
-		goto camif_remap_failed;
+	if (vfe_dev->camif_mem) {
+		vfe_dev->camif_base = ioremap(vfe_dev->camif_mem->start,
+			resource_size(vfe_dev->camif_mem));
+		if (!vfe_dev->camif_base) {
+			rc = -ENOMEM;
+			pr_err("%s: camif ioremap failed\n", __func__);
+			goto camif_remap_failed;
+		}
 	}
 
 	rc = request_irq(vfe_dev->vfe_irq->start, msm_isp_process_irq,
@@ -208,18 +225,24 @@ static int msm_vfe31_init_hardware(struct vfe_device *vfe_dev)
 		pr_err("%s: irq request failed\n", __func__);
 		goto irq_req_failed;
 	}
-	msm_vfe31_camif_pad_reg_reset(vfe_dev);
+	if (vfe_dev->camif_base)
+		msm_vfe31_camif_init(vfe_dev);
 
 	return rc;
 irq_req_failed:
-	iounmap(vfe_dev->camif_base);
+	if (vfe_dev->camif_base)
+		iounmap(vfe_dev->camif_base);
 camif_remap_failed:
 	iounmap(vfe_dev->vfe_base);
 vfe_remap_failed:
 	if (vfe_dev->vfe_clk_idx == 1)
 		msm_cam_clk_enable(&vfe_dev->pdev->dev,
-				msm_vfe31_clk_info, vfe_dev->vfe_clk,
-				ARRAY_SIZE(msm_vfe31_clk_info), 0);
+			msm_vfe31_1_clk_info, vfe_dev->vfe_clk,
+			ARRAY_SIZE(msm_vfe31_1_clk_info), 0);
+	else if (vfe_dev->vfe_clk_idx == 2)
+		msm_cam_clk_enable(&vfe_dev->pdev->dev,
+			msm_vfe31_2_clk_info, vfe_dev->vfe_clk,
+			ARRAY_SIZE(msm_vfe31_2_clk_info), 0);
 	if (ebi1_clk) {
 		clk_disable(ebi1_clk);
 		clk_unprepare(ebi1_clk);
@@ -227,8 +250,10 @@ vfe_remap_failed:
 		ebi1_clk = NULL;
 	}
 clk_enable_failed:
-	regulator_disable(vfe_dev->fs_vfe);
+	if (vfe_dev->fs_vfe)
+		regulator_disable(vfe_dev->fs_vfe);
 fs_failed:
+	msm_isp_deinit_bandwidth_mgr(ISP_VFE0 + vfe_dev->pdev->id);
 	return rc;
 }
 
@@ -237,11 +262,16 @@ static void msm_vfe31_release_hardware(struct vfe_device *vfe_dev)
 	free_irq(vfe_dev->vfe_irq->start, vfe_dev);
 	tasklet_kill(&vfe_dev->vfe_tasklet);
 	iounmap(vfe_dev->vfe_base);
-	iounmap(vfe_dev->camif_base);
+	if (vfe_dev->camif_base)
+		iounmap(vfe_dev->camif_base);
 	if (vfe_dev->vfe_clk_idx == 1)
 		msm_cam_clk_enable(&vfe_dev->pdev->dev,
-				msm_vfe31_clk_info, vfe_dev->vfe_clk,
-				ARRAY_SIZE(msm_vfe31_clk_info), 0);
+			msm_vfe31_1_clk_info, vfe_dev->vfe_clk,
+			ARRAY_SIZE(msm_vfe31_1_clk_info), 0);
+	else if (vfe_dev->vfe_clk_idx == 2)
+		msm_cam_clk_enable(&vfe_dev->pdev->dev,
+			msm_vfe31_2_clk_info, vfe_dev->vfe_clk,
+			ARRAY_SIZE(msm_vfe31_2_clk_info), 0);
 	if (vfe_dev->fs_vfe);
 		regulator_disable(vfe_dev->fs_vfe);
 	msm_isp_deinit_bandwidth_mgr(ISP_VFE0 + vfe_dev->pdev->id);
@@ -896,6 +926,7 @@ static uint32_t msm_vfe31_stats_get_frame_id(struct vfe_device *vfe_dev)
 static int msm_vfe31_get_platform_data(struct vfe_device *vfe_dev)
 {
 	int rc = 0;
+
 	vfe_dev->vfe_mem = platform_get_resource_byname(vfe_dev->pdev,
 					IORESOURCE_MEM, "msm_vfe");
 	if (!vfe_dev->vfe_mem) {
@@ -923,8 +954,6 @@ static int msm_vfe31_get_platform_data(struct vfe_device *vfe_dev)
 
 	vfe_dev->camif_mem = platform_get_resource_byname(vfe_dev->pdev,
 		IORESOURCE_MEM, "msm_camif");
-	if (!vfe_dev->camif_mem)
-		pr_err("%s: camif not supported\n", __func__);
 
 vfe_no_resource:
 	return rc;
@@ -933,8 +962,8 @@ vfe_no_resource:
 int msm_vfe31_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct vfe_device *vfe_dev = v4l2_get_subdevdata(sd);
-	ISP_DBG("%s\n", __func__);
 
+	ISP_DBG("%s\n", __func__);
 	mutex_lock(&vfe_dev->realtime_mutex);
 	mutex_lock(&vfe_dev->core_mutex);
 	if (vfe_dev->vfe_open_cnt == 1) {
