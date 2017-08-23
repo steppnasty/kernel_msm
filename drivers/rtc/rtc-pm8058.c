@@ -64,9 +64,6 @@ struct rpc_time_julian {
 
 static struct msm_rpc_endpoint *ep;
 static struct mutex rpc_setup_lock;
-#ifdef CONFIG_MACH_HOLIDAY
-int rtc_debug_flag = 0;
-#endif
 
 static int
 pm8058_rtc_read_bytes(struct pm8058_rtc *rtc_dd, u8 *rtc_val, int base)
@@ -152,27 +149,12 @@ pm8058_rtc_connect_to_mdm(struct rtc_time *tm)
 	req.time.second = cpu_to_be32(tm->tm_sec);
 	req.time.day_of_week = cpu_to_be32(tm->tm_wday);
 
-	//#ifdef CONFIG_MACH_HOLIDAY
-	#if 0 //disable debug flag
-	rtc_debug_flag = 1;
-	if (rtc_debug_flag) printk("[RTC] RTC debug start..\n");
-	#endif
 	ret = msm_rpc_call_reply(ep, TIMEREMOTE_PROCEEDURE_SET_JULIAN,
 			&req, sizeof(req),
 			&rep, sizeof(rep),
 			5 * HZ);
-	if (ret < 0) {
+	if (ret < 0)
 		pr_err("%s: set time fail, ret = %d\n", __func__, ret);
-		// #ifdef CONFIG_MACH_HOLIDAY
-		#if 0 //disable debug panic
-		panic("RPC link fail, FAKE a kernel panic for ramdump!!\n"); /* HTC test */
-		#endif
-	}
-
-	#ifdef CONFIG_MACH_HOLIDAY
-	if (rtc_debug_flag) printk("[RTC] RTC debug stop..\n");
-	rtc_debug_flag = 0;
-	#endif
 
 	return 0;
 }
