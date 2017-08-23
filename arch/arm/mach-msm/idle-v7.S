@@ -27,6 +27,38 @@
 #define CPU_SAVED_STATE_SIZE (4 * 11 + 4 * 10)
 #endif
 
+#if defined(CONFIG_ARCH_MSM8X60)
+#define POWER_COLLAPSE_STATUS_MAGIC	0xACBDFE00
+#define MSM_POWER_COLLAPSE_STATUS_BASE	(0xFE822000 - 0x8)
+
+#define MSM_POWER_COLLAPSE_STATUS_BASE_PHYS	(0x40400000 - 0x8)
+/* r0 already has the cpu number */
+.macro set_power_collapse_status_phy, x
+	ldr	r6, =MSM_POWER_COLLAPSE_STATUS_BASE_PHYS
+	ldr	r7, =(POWER_COLLAPSE_STATUS_MAGIC | \x)	/* make status number. */
+	str	r7, [r6, r0, LSL #2]
+	dsb						/* ensure data are written. */
+.endm
+
+.macro set_power_collapse_status, x
+	ldr	r5, =cur_cpu
+	ldr	r5, [r5]
+	ldr	r6, =MSM_POWER_COLLAPSE_STATUS_BASE
+	ldr	r7, =(POWER_COLLAPSE_STATUS_MAGIC | \x)	/* make status number. */
+	str	r7, [r6, r5, LSL #2]
+	dsb						/* ensure data are written. */
+.endm
+
+#define MSM_POWER_COLLAPSE_EXIT_0_COUNT_PHYS	(0x40400000 - 40)
+.macro inc_power_collapse_exit_count
+	ldr	r1, =MSM_POWER_COLLAPSE_EXIT_0_COUNT_PHYS
+	ldr     r2, [r1]
+	add 	r2, r2, #1
+	str	r2, [r1]
+	dsb						/* ensure data are written. */
+.endm
+#endif
+
 ENTRY(msm_arch_idle)
 	wfi
 	bx      lr
@@ -41,6 +73,10 @@ ENTRY(msm_pm_collapse)
 	mrc	p15, 0, r1, c0, c0, 5	/* MPIDR */
 	ands	r1, r1, #15		/* What CPU am I */
 	addne	r0, r0, #CPU_SAVED_STATE_SIZE
+#endif
+#if defined(CONFIG_ARCH_MSM8X60)
+	ldr	r2, =cur_cpu
+	str	r1, [r2]			/* store current cpu number for later use. */
 #endif
 
 	stmia   r0!, {r4-r14}
@@ -77,6 +113,10 @@ ENTRY(msm_pm_collapse)
 	bic     r0, r0, #(1 << 12)       /* clear icache bit   */
 	mcr     p15, 0, r0, c1, c0, 0    /* disable d/i cache  */
 
+#if defined(CONFIG_ARCH_MSM8X60)
+	set_power_collapse_status 4
+#endif
+
 	dsb
 	wfi
 
@@ -108,32 +148,15 @@ ENTRY(msm_pm_collapse_exit)
 	mov     r1, #'A'
 	str     r1, [r0, #0x00C]
 #endif
-
-#if 0
-        //; REMOVE FOLLOWING THREE INSTRUCTIONS WHEN POWER COLLAPSE IS ENA
-        //;Make sure the DBGOSLSR[LOCK] bit is cleared to allow access to the debug registers
-        //; Writing anything but the "secret code" to the DBGOSLAR clears the DBGOSLSR[LOCK] bit
-        MCR    p14, 0, r0, c1, c0, 4       //; WCP14_DBGOSLAR r0
-
-
-        //; Read the DBGPRSR to clear the DBGPRSR[STICKYPD]
-        //; Any read to DBGPRSR clear the STICKYPD bit
-        //; ISB guarantees the read completes before attempting to
-        //; execute a CP14 instruction.
-        MRC    p14, 0, r3, c1, c5, 4       //; RCP14_DBGPRSR r3
-        ISB
-#endif
-
-#if 0 /* allow jtag reconnect */
-1:
-	b	1b
-#endif
-
+#if defined(CONFIG_ARCH_MSM7X30)
 	bl	__cpu_early_init
 
-.globl _cpu_early_init_complete
+.globl	_cpu_early_init_complete
 _cpu_early_init_complete:
-
+#endif
+#if defined(CONFIG_ARCH_MSM8X60)
+	inc_power_collapse_exit_count
+#endif
 	ldr     r1, =saved_state_end
 	ldr     r2, =msm_pm_collapse_exit
 	adr     r3, msm_pm_collapse_exit
@@ -206,12 +229,18 @@ ENTRY(msm_pm_boot_entry)
 	mrc     p15, 0, r0, c0, c0, 5    /* MPIDR                          */
 	and     r0, r0, #15              /* what CPU am I                  */
 
+#if defined(CONFIG_ARCH_MSM8X60)
+	set_power_collapse_status_phy 5
+#endif
 	ldr     r1, =msm_pm_boot_vector
 	ldr     r2, =msm_pm_boot_entry
 	adr     r3, msm_pm_boot_entry
 	add     r1, r1, r3               /* translate virt to phys addr    */
 	sub     r1, r1, r2
 
+#if defined(CONFIG_ARCH_MSM8X60)
+	set_power_collapse_status_phy 6
+#endif
 	add     r1, r1, r0, LSL #2       /* locate boot vector for our cpu */
 	ldr     pc, [r1]                 /* jump                           */
 
@@ -235,5 +264,9 @@ saved_state:
 #endif
 saved_state_end:
 
+#if defined(CONFIG_ARCH_MSM8X60)
+cur_cpu:
+	.space  4 /* store current cpu number */
+#endif
 msm_pm_boot_vector:
 	.space  4 * NR_CPUS
