@@ -101,6 +101,13 @@ config MSM_ISPIF_V1
           of any CID of MSM_CSI22_HEADER can be routed to of pixel
           or raw data interface in VFE.
 
+config S5K4E1GX
+	bool "Sensor s5k4e1gx (Samsung 5M)"
+	depends on MSMB_CAMERA
+	default n
+	---help---
+	  Samsung 5M with Autofocus
+
 config S5K3L1YX
 	bool "Sensor S5K3L1YX (BAYER 12M)"
 	depends on MSMB_CAMERA
@@ -109,6 +116,13 @@ config S5K3L1YX
 		4 mipi lanes, preview config = 1984 * 1508 at 30 fps,
 		snapshot config = 4000 * 3000 at 20 fps,
 		hfr video at 60, 90 and 120 fps.
+
+config IMX105
+	bool "Sensor IMX105 8MP MIPI (Bayer 8M)"
+	depends on MSMB_CAMERA
+	default n
+	---help---
+	Sony 8M Bayer MIPI Sensor with Autofocus
 
 config IMX135
 	bool "Sensor IMX135 (BAYER 12M)"
@@ -146,6 +160,13 @@ config HI256
                 snapshot config = 3264 * 2448 at 18 fps.
                 2 lanes max fps is 18, 4 lanes max fps is 24.
 
+config MT9V113
+	bool "Sensor mt9v113"
+	depends on MSMB_CAMERA
+	default n
+	---help---
+	  MICRON VGA YUV Sensor
+
 config MT9M114
 	bool "Sensor MT9M114 (YUV 1.26MP)"
 	depends on MSMB_CAMERA
@@ -181,20 +202,6 @@ config OV8825
 		2 mipi lanes, preview config = 1632*1224 30 fps,
 		snapshot config = 3264 * 2448 at 18 fps.
 		2 lanes max fps is 18, 4 lanes max fps is 24.
-
-config S5K4E1GX
-	bool "Sensor s5k4e1gx (Samsung 5M)"
-	depends on MSMB_CAMERA
-	default n
-	---help---
-	  Samsung 5M with Autofocus
-
-config MT9V113
-	bool "Sensor mt9v113"
-	depends on MSMB_CAMERA
-	default n
-	---help---
-	  MICRON VGA YUV Sensor
 
 config MSM_V4L2_VIDEO_OVERLAY_DEVICE
 	tristate "Qualcomm MSM V4l2 video overlay device"
