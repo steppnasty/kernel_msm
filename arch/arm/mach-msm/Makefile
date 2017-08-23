@@ -206,6 +206,7 @@ obj-$(CONFIG_MACH_SHOOTER) += board-shooter-keypad.o
 obj-$(CONFIG_MACH_SHOOTER) += board-shooter-3Dpanel.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-audio.o
+obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-camera.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-keypad.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-microp.o
 obj-$(CONFIG_MACH_DOUBLESHOT) += board-doubleshot-panel.o
