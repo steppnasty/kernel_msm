@@ -93,7 +93,6 @@ int __init parse_tag_monodie(const struct tag *tags);
 void board_get_keycaps_tag(char **);
 void board_get_cid_tag(char **);
 void board_get_carrier_tag(char **);
-void board_get_mid_tag(char **);
 int board_emmc_boot(void);
 
 char *board_serialno(void);
