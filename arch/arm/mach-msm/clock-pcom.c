@@ -74,7 +74,7 @@ static int pc_reset(struct clk *clk, enum clk_reset_action action)
 	return pc_clk_reset(id, action);
 }
 
-static int pc_clk_set_rate(struct clk *clk, unsigned rate)
+static int _pc_clk_set_rate(struct clk *clk, unsigned rate)
 {
 	/* The rate _might_ be rounded off to the nearest KHz value by the
 	 * remote function. So a return value of 0 doesn't necessarily mean
@@ -102,6 +102,14 @@ static int pc_clk_set_min_rate(struct clk *clk, unsigned rate)
 		return 0;
 	else
 		return (int)id < 0 ? -EINVAL : 0;
+}
+
+static int pc_clk_set_rate(struct clk *clk, unsigned rate)
+{
+	if (clk->flags & CLKFLAG_MIN)
+		return pc_clk_set_min_rate(clk, rate);
+	else
+		return _pc_clk_set_rate(clk, rate);
 }
 
 static int pc_clk_set_max_rate(struct clk *clk, unsigned rate)
