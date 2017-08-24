@@ -68,7 +68,6 @@ extern struct platform_device msm_device_kgsl;
 #endif
 extern struct platform_device msm_device_gpio;
 extern struct platform_device msm_device_vidc;
-extern struct platform_device msm_camera_sensor_webcam;
 
 #ifdef CONFIG_SENSORS_M_ADC
 extern struct xoadc_platform_data xoadc_pdata;

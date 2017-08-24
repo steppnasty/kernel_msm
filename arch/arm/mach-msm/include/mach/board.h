@@ -336,7 +336,6 @@ struct msm_camera_sensor_info {
 	uint32_t kpi_sensor_end;
 	struct msm_camera_sensor_flash_data *flash_data;
 	int csi_if;
-	struct msm_camera_csi_params csi_params;
 	struct msm_camera_sensor_strobe_flash_data *strobe_flash_data;
 	int sensor_lc_disable; /* for sensor lens correction support */
 	uint8_t (*preview_skip_frame)(void);

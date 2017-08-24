@@ -100,9 +100,6 @@
 #define MSM_UART9DM_PHYS    (MSM_GSBI9_PHYS + 0x40000)
 #define INT_UART9DM_IRQ     GSBI9_UARTDM_IRQ
 
-struct platform_device msm_camera_sensor_webcam;
-#define WEBCAM_DEV "msm_camera_webcam.0"
-
 #ifdef CONFIG_MSM_GSBI9_UART
 #define GSBI9_UART_DEV (&msm_device_uart_gsbi9.dev)
 #else
