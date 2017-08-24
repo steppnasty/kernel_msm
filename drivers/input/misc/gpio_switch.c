@@ -201,6 +201,7 @@ void switch_reprort_keycode(struct gpio_key_state *ks)
 		if (ds->info->set_qty_irq)
 			ds->info->set_qty_irq(pressed);
 	}
+	input_sync(ds->input_devs->dev[key_entry->dev]);
 
 	enable_irq(gpio_to_irq(key_entry->gpio));
 }
