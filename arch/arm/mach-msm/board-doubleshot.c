@@ -3152,6 +3152,7 @@ static struct i2c_board_info msm_i2c_gsbi5_info[] = {
 	},
 };
 
+#ifdef CONFIG_MSM8X60_AUDIO
 static struct spi_board_info msm_spi_board_info[] __initdata = {
 	{
 		.modalias	= "spi_aic3254",
@@ -3161,6 +3162,7 @@ static struct spi_board_info msm_spi_board_info[] __initdata = {
 		.max_speed_hz   = 10800000,
 	}
 };
+#endif
 
 #ifdef CONFIG_PMIC8901
 
