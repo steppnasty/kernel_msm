@@ -166,21 +166,6 @@ static int is_mmc_platform(struct mmc_platform_data *plat)
 	return 0;
 }
 
-static int is_svlte_platform(struct mmc_platform_data *plat)
-{
-	if (plat->slot_type && *plat->slot_type == MMC_TYPE_SDIO_SVLTE)
-		return 1;
-
-	return 0;
-}
-
-int is_svlte_type_mmc_card(struct mmc_card *card)
-{
-	struct msmsdcc_host *host = mmc_priv(card->host);
-
-	return is_svlte_platform(host->plat);
-}
-
 #if BUSCLK_PWRSAVE
 static int is_wimax_platform(struct mmc_platform_data *plat)
 {
@@ -194,9 +179,6 @@ static inline void
 msmsdcc_disable_clocks(struct msmsdcc_host *host, int deferr)
 {
 	u32 delay = BUSCLK_TIMEOUT;
-
-	if (is_svlte_platform(host->plat))
-			return;
 
 	if (is_wimax_platform(host->plat) && mmc_wimax_get_status()) {
 		if (!host->clks_on) {
@@ -703,12 +685,6 @@ msmsdcc_start_command_deferred(struct msmsdcc_host *host,
 	      (cmd->opcode == 53))
 		*c |= MCI_CSPM_DATCMD;
 
-	if (is_svlte_platform(host->plat) && host->prog_scan
-		&& (cmd->opcode == 12)) {
-		*c |= MCI_CPSM_PROGENA;
-		host->prog_enable = 1;
-	}
-
 	if (cmd == cmd->mrq->stop)
 		*c |= MCI_CSPM_MCIABORT;
 
@@ -1213,8 +1189,6 @@ msmsdcc_irq(int irq, void *dev_id)
 			spin_lock(&host->lock);
 			/* only ansyc interrupt can come when clocks are off */
 			writel(MCI_SDIOINTMASK, host->base + MMCICLEAR);
-			if (host->sdcc_suspending && is_svlte_platform(host->plat))
-				host->async_irq_during_suspending = 1;
 		}
 
 		status = msmsdcc_readl(host, MMCISTATUS);
@@ -1224,14 +1198,9 @@ msmsdcc_irq(int irq, void *dev_id)
 #endif
 
 		status &= msmsdcc_readl(host, MMCIMASK0);
-		/* debug: dump register when data crc error*/
-		if ((status & MCI_DATACRCFAIL) && is_svlte_platform(host->plat)) {
-			pr_info("%s: data CRC error\n", mmc_hostname(host->mmc));
-			msmsdcc_dumpreg(host->mmc);
-		}
 		msmsdcc_writel(host, status, MMCICLEAR);
 
-		if ((status & MCI_SDIOINTR) && !is_svlte_platform(host->plat))
+		if (status & MCI_SDIOINTR)
 			status &= ~MCI_SDIOINTR;
 #if IRQ_DEBUG
 		msmsdcc_print_status(host, "irq0-p", status);
@@ -1316,8 +1285,7 @@ msmsdcc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		return;
 	}
 
-	if (!is_svlte_platform(host->plat))
-		msmsdcc_enable_clocks(host);
+	msmsdcc_enable_clocks(host);
 
 	host->curr.mrq = mrq;
 
@@ -1380,22 +1348,9 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	spin_lock_irqsave(&host->lock, flags);
 
-	if (!is_svlte_platform(host->plat))
-		msmsdcc_enable_clocks(host);
+	msmsdcc_enable_clocks(host);
 
 	if (ios->clock) {
-		if (!host->clks_on && is_svlte_platform(host->plat)) {
-			if (!IS_ERR(host->pclk))
-				clk_enable(host->pclk);
-			clk_enable(host->clk);
-			host->clks_on = 1;
-			printk(KERN_DEBUG "%s: %s clks_on %d\n",
-				mmc_hostname(host->mmc), __func__, ios->clock);
-			if (mmc->card && mmc->card->type == MMC_TYPE_SDIO) {
-				msmsdcc_writel(host, host->saved_irq0mask, MMCIMASK0);
-				disable_irq_wake(host->cmd_irqres->start);
-			}
-		}
 		if (ios->clock != host->clk_rate) {
 			rc = clk_set_rate(host->clk, ios->clock);
 			if (rc < 0)
@@ -1440,19 +1395,9 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	switch (ios->power_mode) {
 	case MMC_POWER_OFF:
 		htc_pwrsink_set(PWRSINK_SDCARD, 0);
-		if (is_svlte_platform(host->plat) && !host->sdcc_irq_disabled) {
-			pr_info("%s: disable_irq\n", mmc_hostname(mmc));
-			disable_irq(host->cmd_irqres->start);
-			host->sdcc_irq_disabled = 1;
-		}
 		break;
 	case MMC_POWER_UP:
 		pwr |= MCI_PWR_UP;
-		if (is_svlte_platform(host->plat) && host->sdcc_irq_disabled) {
-			pr_info("%s: enable_irq\n", mmc_hostname(mmc));
-			enable_irq(host->cmd_irqres->start);
-			host->sdcc_irq_disabled = 0;
-		}
 		break;
 	case MMC_POWER_ON:
 		htc_pwrsink_set(PWRSINK_SDCARD, 100);
@@ -1474,18 +1419,6 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 #if BUSCLK_PWRSAVE
 	msmsdcc_disable_clocks(host, 1);
 #endif
-	if (!(clk & MCI_CLK_ENABLE) && host->clks_on &&
-		is_svlte_platform(host->plat)) {
-		if (mmc->card && mmc->card->type == MMC_TYPE_SDIO)
-			writel(MCI_SDIOINTMASK, host->base + MMCIMASK0);
-		enable_irq_wake(host->cmd_irqres->start);
-		clk_disable(host->clk);
-		if (!IS_ERR(host->pclk))
-			clk_disable(host->pclk);
-		host->clks_on = 0;
-		printk(KERN_DEBUG "%s: %s clks_off\n", mmc_hostname(host->mmc),
-			__func__);
-	}
 	spin_unlock_irqrestore(&host->lock, flags);
 }
 
@@ -1830,7 +1763,7 @@ msmsdcc_probe(struct platform_device *pdev)
 	mmc->pm_caps |= MMC_PM_KEEP_POWER;
 
 
-	if (is_mmc_platform(host->plat) || is_svlte_platform(host->plat))
+	if (is_mmc_platform(host->plat))
 		mmc->caps |= plat->mmc_bus_width;
 	else {
 		if (msmsdcc_4bit)
@@ -1853,13 +1786,8 @@ msmsdcc_probe(struct platform_device *pdev)
 	msmsdcc_writel(host, 0, MMCIMASK0);
 	msmsdcc_writel(host, 0x5e007ff, MMCICLEAR);
 
-	if (is_svlte_platform(host->plat)) {
-		msmsdcc_writel(host, MCI_IRQENABLE | MCI_PROGDONEMASK, MMCIMASK0);
-		host->saved_irq0mask = MCI_IRQENABLE | MCI_PROGDONEMASK;
-	} else {
-		msmsdcc_writel(host, MCI_IRQENABLE, MMCIMASK0);
-		host->saved_irq0mask = MCI_IRQENABLE;
-	}
+	msmsdcc_writel(host, MCI_IRQENABLE, MMCIMASK0);
+	host->saved_irq0mask = MCI_IRQENABLE;
 
 	wake_lock_init(&host->sdio_suspend_wlock, WAKE_LOCK_SUSPEND,
 			mmc_hostname(mmc));
@@ -1917,19 +1845,6 @@ msmsdcc_probe(struct platform_device *pdev)
 			  DRIVER_NAME " (pio)", host);
 	if (ret)
 		goto cmd_irq_free;
-
-	/*
-	 * Enable SDCC IRQ only when host is powered on. Otherwise, this
-	 * IRQ is un-necessarily being monitored by MPM (Modem power
-	 * management block) during idle-power collapse.  The MPM will be
-	 * configured to monitor the DATA1 GPIO line with level-low trigger
-	 * and thus depending on the GPIO status, it prevents TCXO shutdown
-	 * during idle-power collapse.
-	 */
-	if (is_svlte_platform(host->plat)) {
-		disable_irq(cmd_irqres->start);
-		host->sdcc_irq_disabled = 1;
-	}
 
 	mmc_set_drvdata(pdev, mmc);
 	mmc_add_host(mmc);
@@ -2002,7 +1917,6 @@ msmsdcc_suspend(struct platform_device *dev, pm_message_t state)
 	struct mmc_host *mmc = mmc_get_drvdata(dev);
 	struct msmsdcc_host *host = mmc_priv(mmc);
 	int rc = 0;
-	unsigned long flags;
 
 #if SDC_CLK_VERBOSE
 	pr_info("%s: %s enter\n", mmc_hostname(host->mmc), __func__);
@@ -2011,32 +1925,16 @@ msmsdcc_suspend(struct platform_device *dev, pm_message_t state)
 	if (mmc) {
 		host->sdcc_suspending = 1;
 
-		if (mmc->card && (mmc->card->type != MMC_TYPE_SDIO ||
-			is_svlte_platform(host->plat)))
+		if (mmc->card && (mmc->card->type != MMC_TYPE_SDIO))
 			rc = mmc_suspend_host(mmc);
 
 		if (!rc) {
-			if (is_svlte_platform(host->plat)) {
-				/*
-				 * If MMC core level suspend is not supported, turn
-				 * off clocks to allow deep sleep (TCXO shutdown).
-				 */
-				/* If async irq occurred during suspending,
-				 * don't turn off clock since sdio_al might be active now.
-				 */
-				spin_lock_irqsave(&host->lock, flags);
-				if (!host->async_irq_during_suspending)
-					mmc->ios.clock = 0;
-				spin_unlock_irqrestore(&host->lock, flags);
-				if (mmc->ios.clock == 0)
-					mmc->ops->set_ios(host->mmc, &host->mmc->ios);
-			} else
-				msmsdcc_writel(host, 0, MMCIMASK0);
+			msmsdcc_writel(host, 0, MMCIMASK0);
 		}
 #if BUSCLK_PWRSAVE
 		del_timer_sync(&host->busclk_timer);
 #endif
-		if (host->clks_on && !is_svlte_platform(host->plat)) {
+		if (host->clks_on) {
 #if SDC_CLK_VERBOSE
 			if (is_wimax_platform(host->plat)) {
 				pr_info("%s: Disable clocks in %s\n", mmc_hostname(host->mmc), __func__);
@@ -2070,18 +1968,13 @@ msmsdcc_resume(struct platform_device *dev)
 #endif
 
 	if (mmc) {
-		if (is_svlte_platform(host->plat)) {
-			mmc->ios.clock = host->clk_rate;
-			mmc->ops->set_ios(host->mmc, &host->mmc->ios);
-		} else
-			msmsdcc_enable_clocks(host);
+		msmsdcc_enable_clocks(host);
 
 		spin_lock_irqsave(&host->lock, flags);
 		msmsdcc_writel(host, host->saved_irq0mask, MMCIMASK0);
 		spin_unlock_irqrestore(&host->lock, flags);
 
-		if (mmc->card && (mmc->card->type != MMC_TYPE_SDIO ||
-			is_svlte_platform(host->plat))) {
+		if (mmc->card && (mmc->card->type != MMC_TYPE_SDIO)) {
 #ifdef CONFIG_MMC_MSM7X00A_RESUME_IN_WQ
 			schedule_work(&host->resume_task);
 #else

@@ -149,13 +149,6 @@ static int is_mmc_platform(struct mmc_platform_data *plat)
 
 	return 0;
 }
-static int is_svlte_platform(struct mmc_platform_data *plat)
-{
-	if (plat->slot_type && *plat->slot_type == MMC_TYPE_SDIO_SVLTE)
-		return 1;
-
-	return 0;
-}
 static int is_sd_platform(struct mmc_platform_data *plat)
 {
 	if (plat->slot_type && *plat->slot_type == MMC_TYPE_SD)
@@ -163,13 +156,6 @@ static int is_sd_platform(struct mmc_platform_data *plat)
 
 	return 0;
 }
-int is_svlte_type_mmc_card(struct mmc_card *card)
-{
-	struct msmsdcc_host *host = mmc_priv(card->host);
-
-	return is_svlte_platform(host->plat);
-}
-
 int is_wimax_platform(struct mmc_platform_data *plat)
 {
 	if (plat->slot_type && *plat->slot_type == MMC_TYPE_SDIO_WIMAX)
@@ -351,7 +337,7 @@ msmsdcc_switch_clock(struct mmc_host *mmc, int on)
 		if (mmc->card && mmc->card->type == MMC_TYPE_SDIO) {
 			if (mmc->pm_flags & MMC_PM_WAKE_SDIO_IRQ)
 				writel(0, host->base + MMCIMASK0);
-			else if (is_wimax_platform(host->plat) || is_svlte_platform(host->plat))
+			else if (is_wimax_platform(host->plat))
 				writel(MCI_SDIOINTMASK, host->base + MMCIMASK0);
 			else
 				writel(0, host->base + MMCIMASK0);
@@ -1121,7 +1107,7 @@ msmsdcc_irq(int irq, void *dev_id)
 #if IRQ_DEBUG
 		msmsdcc_print_status(host, "irq0-p", status);
 #endif
-		if ((is_svlte_platform(host->plat) || is_wimax_platform(host->plat)) && host->irq_counter < 5)
+		if ((is_wimax_platform(host->plat)) && host->irq_counter < 5)
 			host->irq_status[host->irq_counter++] = status;
 
 		if ((host->plat->dummy52_required) &&
@@ -1139,25 +1125,9 @@ msmsdcc_irq(int irq, void *dev_id)
 				msmsdcc_request_start(host, host->curr.mrq);
 				spin_unlock(&host->lock);
 				return IRQ_HANDLED;
-			} else {
+			} else
 				pr_info("%s: dummy CMD52 status 0x%x\n",
 					mmc_hostname(host->mmc), status);
-				if (is_svlte_platform(host->plat)) {
-					if (host->plat->dat0_gpio)
-						pr_info("%s: data0 %d\n", mmc_hostname(host->mmc),
-							gpio_get_value(host->plat->dat0_gpio));
-					pr_info("%s: datatimer 0x%x\n", mmc_hostname(host->mmc),
-						readl(host->base + MMCIDATATIMER));
-					pr_info("%s: datalength 0x%x\n", mmc_hostname(host->mmc),
-						readl(host->base + MMCIDATALENGTH));
-					pr_info("%s: datactrl 0x%x\n", mmc_hostname(host->mmc),
-						readl(host->base + MMCIDATACTRL));
-					pr_info("%s: cmd 0x%x\n", mmc_hostname(host->mmc),
-						readl(host->base + MMCICOMMAND));
-					pr_info("%s: arg 0x%x\n", mmc_hostname(host->mmc),
-						readl(host->base + MMCIARGUMENT));
-				}
-			}
 			break;
 		}
 
@@ -1372,13 +1342,6 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	DBG(host, "ios->clock = %u\n", ios->clock);
 
-	if (is_svlte_platform(host->plat) && host->curr.mrq
-		&& (ios->clock == 0)) {
-		pr_info("%s: do not turn off clk while request is processing\n",
-			mmc_hostname(host->mmc));
-		return;
-	}
-
 	if (host->curr.mrq && (ios->clock == 0)) {
 		pr_info("%s: should not turn off clk while request is processing\n",
 			mmc_hostname(host->mmc));
@@ -1510,7 +1473,7 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	if (!(clk & MCI_CLK_ENABLE) && host->clks_on) {
 		if (mmc->card && mmc->card->type == MMC_TYPE_SDIO) {
 			if (!host->plat->sdiowakeup_irq) {
-				if (is_wimax_platform(host->plat) || is_svlte_platform(host->plat))
+				if (is_wimax_platform(host->plat))
 					writel(MCI_SDIOINTMASK, host->base + MMCIMASK0);
 				else
 					writel(0, host->base + MMCIMASK0);
@@ -2395,8 +2358,7 @@ static int msmsdcc_suspend(struct device *dev)
 		host->sdcc_suspending = 1;
 	//Disable suspend function for wifi slot
 	//Otherwise, it will cause kernel panic
-		if (mmc->card && (mmc->card->type != MMC_TYPE_SDIO ||
-			is_svlte_platform(host->plat))) {
+		if (mmc->card && (mmc->card->type != MMC_TYPE_SDIO)) {
 		/*
 		 * MMC core thinks that host is disabled by now since
 		 * runtime suspend is scheduled after msmsdcc_disable()
@@ -2475,8 +2437,8 @@ static int msmsdcc_resume(struct device *dev)
 
 		//Disable resume function for wifi slot
 		//Otherwise, it will cause kernel panic
-		if ((mmc->card) && (mmc->card->type != MMC_TYPE_SDIO ||
-			is_svlte_platform(host->plat)) && (!host->eject)) {
+		if ((mmc->card) && (mmc->card->type != MMC_TYPE_SDIO) &&
+				(!host->eject)) {
 			mmc_resume_host(mmc);
 		}
 

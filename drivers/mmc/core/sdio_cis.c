@@ -23,10 +23,6 @@
 #include "sdio_cis.h"
 #include "sdio_ops.h"
 
-#if defined(CONFIG_MMC_MSM7X00A) || defined(CONFIG_MMC_MSM)
-#include <mach/msm_sdcc.h>
-#endif
-
 static int cistpl_vers_1(struct mmc_card *card, struct sdio_func *func,
 			 const unsigned char *buf, unsigned size)
 {
@@ -246,14 +242,8 @@ static int sdio_read_cis(struct mmc_card *card, struct sdio_func *func)
 			break;
 
 		/* null entries have no link field or data */
-		if (tpl_code == 0x00) {
-#if defined(CONFIG_MMC_MSM7X00A) || defined(CONFIG_MMC_MSM)
-			if (is_svlte_type_mmc_card(card))
-				break;
-			else
-#endif
+		if (tpl_code == 0x00)
 			continue;
-		}
 
 		ret = mmc_io_rw_direct(card, 0, 0, ptr++, 0, &tpl_link);
 		if (ret)

@@ -22,8 +22,6 @@
 #include <linux/mmc/host.h>
 #include "queue.h"
 
-#include <mach/msm_sdcc.h>
-
 #define MMC_QUEUE_BOUNCESZ	65536
 
 #define MMC_QUEUE_SUSPENDED	(1 << 0)
@@ -241,9 +239,7 @@ int mmc_init_queue(struct mmc_queue *mq, struct mmc_card *card, spinlock_t *lock
 
 	init_MUTEX(&mq->thread_sem);
 
-	if (is_svlte_type_mmc_card(card))
-		mq->thread = kthread_run(mmc_queue_thread, mq, "svlte-qd");
-	else if (mmc_card_sd(card))
+	if (mmc_card_sd(card))
 		mq->thread = kthread_run(mmc_queue_thread, mq, "sd-qd");
 	else if (mmc_card_mmc(card))
 		mq->thread = kthread_run(mmc_queue_thread, mq, "emmc-qd");
