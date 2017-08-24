@@ -314,9 +314,10 @@ int mdp4_dsi_cmd_pipe_commit(int cndx, int wait)
 	}
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	if (need_dmap_wait) {
+	{
+		long long tick;
 		pr_debug("%s: wait4dmap\n", __func__);
-		mdp4_dsi_cmd_wait4dmap(0);
+		mdp4_dsi_cmd_wait4vsync(cndx, &tick);
 	}
 
 	if (need_ov_wait) {
