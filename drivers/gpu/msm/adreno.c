@@ -1754,7 +1754,14 @@ static int adreno_getproperty(struct kgsl_device *device,
 
 			memset(&devinfo, 0, sizeof(devinfo));
 			devinfo.device_id = device->id+1;
-			devinfo.chip_id = adreno_dev->chip_id;
+			/*
+			 * JB_MR1 version of libadreno does not like the chipid
+			 * read from the msm8x60 gpu so we lie to it here.
+			 */
+			if (cpu_is_msm8x60())
+				devinfo.chip_id = 0x2020005;
+			else
+				devinfo.chip_id = adreno_dev->chip_id;
 			devinfo.mmu_enabled = kgsl_mmu_enabled();
 			devinfo.gpu_id = adreno_dev->gpurev;
 			devinfo.gmem_gpubaseaddr = adreno_dev->gmem_base;
