@@ -120,9 +120,7 @@ extern int ps_type;
 #ifdef CONFIG_MSM_SSBI
 extern struct platform_device msm_device_ssbi_pmic;
 #endif
-extern struct platform_device msm_device_vpe;
 extern struct platform_device msm_device_csic0;
-
-extern int glacier_mddi_init(void);
+extern struct platform_device msm_device_vpe;
 
 #endif
