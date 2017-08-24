@@ -2462,7 +2462,7 @@ static struct clk_freq_tbl clk_tbl_mdp[] = {
 	F_MDP( 29540000, pll8, 1, 13, LOW),
 	F_MDP( 34910000, pll8, 1, 11, LOW),
 	F_MDP( 38400000, pll8, 1, 10, LOW),
-	F_MDP( 59080000, pll8, 2, 13, LOW),
+	/*F_MDP( 59080000, pll8, 2, 13, LOW),*/
 	F_MDP( 76800000, pll8, 1,  5, LOW),
 	F_MDP( 85330000, pll8, 2,  9, LOW),
 	F_MDP( 96000000, pll8, 1,  4, NOMINAL),
