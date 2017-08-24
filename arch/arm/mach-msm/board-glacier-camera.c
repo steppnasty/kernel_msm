@@ -330,19 +330,17 @@ static struct msm_camera_device_platform_data glacier_mt9v113_platform_data = {
 };
 
 static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_info = {
-	.sensor_name	= "mt9v113",
-	.sensor_reset	= GLACIER_CAM2_RST,
+	.sensor_name		= "mt9v113",
+	.sensor_reset		= GLACIER_CAM2_RST,
 	.vcm_pwd		= GLACIER_CAM2_PWD,
 	.camera_clk_switch	= glacier_mt9v113_clk_switch,
-	.camera_power_on = glacier_sensor_vreg_on,
-	.camera_power_off = glacier_sensor_vreg_off,
-	.pdata		= &glacier_mt9v113_platform_data,
-	.flash_type     = MSM_CAMERA_FLASH_NONE,
-	.resource = msm_camera_resources,
-	.num_resources = ARRAY_SIZE(msm_camera_resources),
-	.cam_select_pin = GLACIER_CLK_SWITCH,
-	.sensor_platform_info = &mt9v113_sensor_platform_info,
-	.csi_if = 0,
+	.pdata			= &glacier_mt9v113_platform_data,
+	.flash_type		= MSM_CAMERA_FLASH_NONE,
+	.resource		= msm_camera_resources,
+	.num_resources		= ARRAY_SIZE(msm_camera_resources),
+	.cam_select_pin		= GLACIER_CLK_SWITCH,
+	.sensor_platform_info	= &mt9v113_sensor_platform_info,
+	.csi_if			= 0,
 };
 
 static struct msm_sensor_info_t msm_camera_sensor_mt9v113_sensor_info = {
