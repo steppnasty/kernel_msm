@@ -33,7 +33,11 @@
 #define RESTART_NORMAL 0x0
 #define RESTART_DLOAD  0x1
 
+#if defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960)
 void msm_set_restart_mode(int mode);
+#else
+#define msm_set_restart_mode(mode)
+#endif
 
 /* This constant is used in bootloader to decide actions. */
 #define RESTART_REASON_BOOT_BASE	0x77665500
@@ -78,7 +82,6 @@ enum RESTART_MODE {
 	RESTART_MODE_MAX
 };
 
-void set_ramdump_reason(const char *msg);
-inline void notify_modem_cache_flush_done(void);
+void notify_modem_cache_flush_done(void);
 int check_in_panic(void);
 #endif
