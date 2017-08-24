@@ -53,7 +53,6 @@
 #include <mach/gpio.h>
 #include <mach/board.h>
 #include <mach/board_htc.h>
-#include <mach/camera2.h>
 #include <mach/bcm_bt_lpm.h>
 
 #include <mach/hardware.h>
@@ -83,7 +82,6 @@
 
 #include "board-glacier.h"
 #include "devices.h"
-#include "timer.h"
 #ifdef CONFIG_USB_G_ANDROID
 #include <linux/usb/android.h>
 #include <mach/usbdiag.h>
@@ -271,6 +269,7 @@ static struct platform_device android_usb_device = {
 void glacier_add_usb_devices(void)
 {
 	config_glacier_usb_id_gpios(0);
+
 	platform_device_register(&android_usb_device);
 }
 #endif
@@ -1532,40 +1531,47 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE] = {
 		.idle_supported = 1,
 		.suspend_supported = 1,
-		.suspend_enabled = 1,
 		.idle_enabled = 1,
+		.suspend_enabled = 1,
 		.latency = 8594,
 		.residency = 23740,
 	},
-	[MSM_PM_SLEEP_MODE_APPS_SLEEP] = {
+	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_NO_XO_SHUTDOWN] = {
 		.idle_supported = 1,
 		.suspend_supported = 1,
-		.suspend_enabled = 1,
 		.idle_enabled = 1,
-		.latency = 8594,
+		.suspend_enabled = 1,
+		.latency = 4594,
 		.residency = 23740,
 	},
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE] = {
+#ifdef CONFIG_MSM_STANDALONE_POWER_COLLAPSE
 		.idle_supported = 1,
 		.suspend_supported = 1,
+		.idle_enabled = 1,
 		.suspend_enabled = 0,
+#else /* CONFIG_MSM_STANDALONE_POWER_COLLAPSE */
+		.idle_supported = 0,
+		.suspend_supported = 0,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
+#endif /* CONFIG_MSM_STANDALONE_POWER_COLLAPSE */
 		.latency = 500,
 		.residency = 6000,
 	},
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT] = {
 		.idle_supported = 1,
 		.suspend_supported = 1,
-		.suspend_enabled = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 1,
 		.latency = 443,
 		.residency = 1098,
 	},
 	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT] = {
 		.idle_supported = 1,
 		.suspend_supported = 1,
-		.suspend_enabled = 1,
 		.idle_enabled = 1,
+		.suspend_enabled = 1,
 		.latency = 2,
 		.residency = 0,
 	},
@@ -2313,6 +2319,7 @@ static void __init glacier_init(void)
 #ifdef CONFIG_SERIAL_MSM_HS
 	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
 #endif
+
 #ifdef CONFIG_USB_MSM_OTG_72K
 	if (SOCINFO_VERSION_MAJOR(soc_version) >= 2 &&
 			SOCINFO_VERSION_MINOR(soc_version) >= 1) {
@@ -2433,6 +2440,8 @@ static void __init glacier_map_io(void)
 	if (socinfo_init() < 0)
 		pr_err("socinfo_init() failed!\n");
 }
+
+extern struct sys_timer msm_timer;
 
 MACHINE_START(GLACIER, "glacier")
 #ifdef CONFIG_MSM_DEBUG_UART
