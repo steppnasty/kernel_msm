@@ -196,6 +196,7 @@ struct clk_ops clk_ops_rpm = {
 	.disable = rpm_clk_disable,
 	.auto_off = rpm_clk_auto_off,
 	.set_min_rate = rpm_clk_set_min_rate,
+	.set_rate = rpm_clk_set_min_rate,
 	.get_rate = rpm_clk_get_rate,
 	.is_enabled = rpm_clk_is_enabled,
 	.round_rate = rpm_clk_round_rate,
