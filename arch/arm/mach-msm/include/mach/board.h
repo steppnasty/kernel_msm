@@ -616,7 +616,7 @@ static inline void msm_clk_dump_debug_info(void) {}
 #endif
 
 struct msm_usb_host_platform_data;
-int __init msm_add_host(unsigned int host,
+int msm_add_host(unsigned int host,
 		struct msm_usb_host_platform_data *plat);
 
 #if defined(CONFIG_MSM_RMT_STORAGE_SERVER)
