@@ -62,7 +62,6 @@ config ARCH_MSM8X60
 	select MSM_GPIOMUX
 	select MSM_BUS_SCALING
 	select MSM_SECURE_IO
-	select MSM_SCHED_FAST_CPU_ONLINE
 	select ARM_HAS_SG_CHAIN
 
 config ARCH_MSM8X60_LTE
@@ -1750,10 +1749,8 @@ config RADIO_FEEDBACK8660
 	depends on ARCH_MSM8X60
 	default y
 
-config MSM_SCHED_FAST_CPU_ONLINE
-	bool "Fast scheduler update for CPU online"
-	depends on ARCH_MSM8X60
+config SUPPORT_DQ_BATTERY
+	bool "Support DQ battery."
 	default n
 	help
-	  Bypass scheduler domain reconstruction when onlining the second
-	  CPU on 8X60 to speed up operation.
+		support DQ battery.
