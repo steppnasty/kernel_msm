@@ -95,6 +95,7 @@
 #include <mach/htc_headset_pmic.h>
 #include <mach/htc_headset_8x60.h>
 #include <mach/board_htc.h>
+#include <mach/socinfo.h>
 #include <linux/i2c/isl9519.h>
 #include <linux/tpa2051d3.h>
 #ifdef CONFIG_USB_G_ANDROID
@@ -106,11 +107,10 @@
 #include <linux/delay.h>
 #include <mach/rpm.h>
 #include <mach/rpm-regulator.h>
-#include <mach/socinfo.h>
 #include <mach/gpiomux.h>
-
-#include "gpiomux-8x60.h"
 #include "board-doubleshot.h"
+#include <mach/iommu_domains.h>
+
 #include "devices.h"
 #include "devices-msm8x60.h"
 #include "cpuidle.h"
@@ -121,8 +121,8 @@
 #include "saw-regulator.h"
 #include "sysinfo-8x60.h"
 #include "mpm.h"
-
 #include <mach/cable_detect.h>
+#include "gpiomux-8x60.h"
 #include "rpm_stats.h"
 
 #include <linux/msm_ion.h>
@@ -1000,18 +1000,31 @@ static void __init msm8x60_init_dsps(void)
 /* Kernel SMI PMEM Region Should always precede the user space */
 /* SMI PMEM Region, as the video core will use offset address */
 /* from the Firmware base */
+#ifdef CONFIG_KERNEL_PMEM_SMI_REGION
 #define PMEM_KERNEL_SMI_BASE  (MSM_SMI_BASE)
 #define PMEM_KERNEL_SMI_SIZE  0x300000
 /* User space SMI PMEM Region for video core*/
 /* used for encoder, decoder input & output buffers  */
 #define MSM_PMEM_SMIPOOL_BASE (PMEM_KERNEL_SMI_BASE + PMEM_KERNEL_SMI_SIZE)
 #define MSM_PMEM_SMIPOOL_SIZE 0x3D00000
+#endif
 
-#define MSM_ION_MFC_BASE       (PMEM_KERNEL_SMI_BASE + PMEM_KERNEL_SMI_SIZE)
-#define MSM_ION_MFC_SIZE       0x03D00000
+#define MSM_SMI_BASE		0x38000000
+#define MSM_SMI_SIZE		0x00300000
+#define MSM_MM_FW_BASE		MSM_SMI_BASE
+#define MSM_MM_FW_SIZE		0x00200000
+#define MSM_ION_MM_BASE		(MSM_MM_FW_BASE + MSM_MM_FW_SIZE)
+#define MSM_ION_MM_SIZE		0x03800000 
+#define MSM_ION_MFC_BASE	(MSM_ION_MM_BASE + MSM_ION_MM_SIZE)
+#define MSM_ION_MFC_SIZE	0x00002000
+#define MSM_ION_SF_BASE		0x40400000
+#define MSM_ION_SF_SIZE		0x02000000
+
+#define SECURE_BASE	(MSM_MM_FW_BASE)
+#define SECURE_SIZE	(MSM_ION_MM_SIZE + MSM_MM_FW_SIZE)
 
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-#define MSM_ION_HEAP_NUM	5
+#define MSM_ION_HEAP_NUM	7
 #else
 #define MSM_ION_HEAP_NUM	1
 #endif
@@ -1087,6 +1100,49 @@ static struct platform_device android_pmem_kernel_smi_device = {
 	.dev = { .platform_data = &android_pmem_kernel_smi_pdata },
 };
 #endif
+
+#define PMEM_BUS_WIDTH(_bw) \
+	{ \
+		.vectors = &(struct msm_bus_vectors){ \
+			.src = MSM_BUS_MASTER_AMPSS_M0, \
+			.dst = MSM_BUS_SLAVE_SMI, \
+			.ib = (_bw), \
+			.ab = 0, \
+		}, \
+	.num_paths = 1, \
+	}
+
+static struct msm_bus_paths mem_smi_table[] = {
+	[0] = PMEM_BUS_WIDTH(0), /* Off */
+	[1] = PMEM_BUS_WIDTH(1), /* On */
+};
+
+static struct msm_bus_scale_pdata smi_client_pdata = {
+	.usecase = mem_smi_table,
+	.num_usecases = ARRAY_SIZE(mem_smi_table),
+	.name = "mem_smi",
+};
+
+int request_smi_region(void *data)
+{
+	int bus_id = (int) data;
+
+	msm_bus_scale_client_update_request(bus_id, 1);
+	return 0;
+}
+
+int release_smi_region(void *data)
+{
+	int bus_id = (int) data;
+
+	msm_bus_scale_client_update_request(bus_id, 0);
+	return 0;
+}
+
+void *setup_smi_region(void)
+{
+	return (void *)msm_bus_scale_register_client(&smi_client_pdata);
+}
 
 #ifdef CONFIG_ANDROID_PMEM
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
@@ -2181,6 +2237,18 @@ static struct platform_device *surf_devices[] __initdata = {
 
 #ifdef CONFIG_ION_MSM
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+static struct ion_cp_heap_pdata cp_mm_ion_pdata = {
+	.permission_type = IPT_TYPE_MM_CARVEOUT,
+	.align = SZ_64K,
+	.request_region = request_smi_region,
+	.release_region = release_smi_region,
+	.setup_region = setup_smi_region,
+	.secure_base = SECURE_BASE,
+	.secure_size = SECURE_SIZE,
+	.iommu_map_all = 1,
+	.iommu_2x_map_domain = VIDEO_DOMAIN,
+};
+
 static struct ion_cp_heap_pdata cp_mfc_ion_pdata = {
 	.permission_type = IPT_TYPE_MFC_SHAREDMEM,
 	.align = PAGE_SIZE,
@@ -2189,6 +2257,10 @@ static struct ion_cp_heap_pdata cp_mfc_ion_pdata = {
 static struct ion_cp_heap_pdata cp_wb_ion_pdata = {
 	.permission_type = IPT_TYPE_MDP_WRITEBACK,
 	.align = PAGE_SIZE,
+};
+
+static struct ion_co_heap_pdata mm_fw_co_ion_pdata = {
+	.adjacent_mem_id = ION_CP_MM_HEAP_ID,
 };
 
 static struct ion_co_heap_pdata co_ion_pdata = {
@@ -2210,6 +2282,24 @@ struct ion_platform_data ion_pdata = {
 			.name	= ION_VMALLOC_HEAP_NAME,
 		},
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+		{
+			.id	= ION_CP_MM_HEAP_ID,
+			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.name	= ION_MM_HEAP_NAME,
+			.base	= MSM_ION_MM_BASE,
+			.size	= MSM_ION_MM_SIZE,
+			.memory_type = ION_SMI_TYPE,
+			.extra_data = (void *) &cp_mm_ion_pdata,
+		},
+		{
+			.id	= ION_MM_FIRMWARE_HEAP_ID,
+			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.name	= ION_MM_FIRMWARE_HEAP_NAME,
+			.base	= MSM_MM_FW_BASE,
+			.size	= MSM_MM_FW_SIZE,
+			.memory_type = ION_SMI_TYPE,
+			.extra_data = (void *) &mm_fw_co_ion_pdata,
+		},
 		{
 			.id	= ION_CP_MFC_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
