@@ -18,11 +18,6 @@
 #include <linux/wakelock.h>
 #include "power.h"
 
-#ifdef CONFIG_MSM_WATCHDOG
-extern int msm_watchdog_suspend(void);
-extern int msm_watchdog_resume(void);
-#endif
-
 /* 
  * Timeout for stopping processes
  */
@@ -119,10 +114,6 @@ static int try_to_freeze_tasks(bool sig_only)
 					wakeup ? "aborted" : "failed",
 					elapsed_csecs / 100, elapsed_csecs % 100, todo);
 		}
-#ifdef CONFIG_MSM_WATCHDOG
-		/* Suspend wdog until tasks are printed */
-		msm_watchdog_suspend();
-#endif
 		read_lock(&tasklist_lock);
 		do_each_thread(g, p) {
 			task_lock(p);
@@ -132,9 +123,6 @@ static int try_to_freeze_tasks(bool sig_only)
 			task_unlock(p);
 		} while_each_thread(g, p);
 		read_unlock(&tasklist_lock);
-#ifdef CONFIG_MSM_WATCHDOG
-		msm_watchdog_resume();
-#endif
 	} else {
 		printk("(elapsed %d.%02d seconds) ", elapsed_csecs / 100,
 			elapsed_csecs % 100);
