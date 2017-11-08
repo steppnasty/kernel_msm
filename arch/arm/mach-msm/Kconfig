@@ -1431,12 +1431,6 @@ config BUILD_CIQ
         help
           For CIQ we need to do some additional fixes.
 
-config HTC_EXTDIAG
-	tristate "HTC Extend Diag Logger"
-	default n
-	help
-	  HTC Extend Diag Logger
-
 endif # ARCH_MSM
 
 config SMD_OFFSET_TCXO_STAT

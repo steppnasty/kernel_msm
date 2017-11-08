@@ -279,8 +279,6 @@ obj-$(CONFIG_PERFLOCK) += htc_set_perflock.o
 obj-$(CONFIG_MICROP_COMMON) += atmega_microp_common.o
 obj-$(CONFIG_TOUCHSCREEN_TSSC_MANAGER) += htc_tp_cal.o
 
-obj-$(CONFIG_HTC_EXTDIAG) += htc_extdiag.o
-
 obj-$(CONFIG_MSM_RPM) += rpm.o rpm_resources.o
 obj-$(CONFIG_MSM_RPM_STATS_LOG) += rpm_stats.o
 obj-$(CONFIG_MSM_RPM_LOG) += rpm_log.o
