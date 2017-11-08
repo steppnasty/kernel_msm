@@ -622,8 +622,8 @@ static int htc_battery_prepare(struct device *dev)
 	htc_batt_timer.total_time_ms += (jiffies -
 			htc_batt_timer.batt_system_jiffies) * MSEC_PER_SEC / HZ;
 	htc_batt_timer.batt_system_jiffies = jiffies;
-	htc_batt_timer.batt_suspend_ms = xtime.tv_sec * MSEC_PER_SEC +
-					xtime.tv_nsec / NSEC_PER_MSEC;
+	htc_batt_timer.batt_suspend_ms = __current_kernel_time().tv_sec * MSEC_PER_SEC +
+					__current_kernel_time().tv_nsec / NSEC_PER_MSEC;
 
 	if (htc_batt_phone_call || htc_batt_timer.alarm_timer_flag) {
 		time_diff = htc_batt_timer.time_out * MSEC_PER_SEC -
@@ -667,7 +667,8 @@ static void htc_battery_complete(struct device *dev)
 	unsigned long resume_ms;
 	unsigned long check_time;
 
-	resume_ms = xtime.tv_sec * MSEC_PER_SEC + xtime.tv_nsec / NSEC_PER_MSEC;
+	resume_ms = __current_kernel_time().tv_sec * MSEC_PER_SEC +
+		__current_kernel_time().tv_nsec / NSEC_PER_MSEC;
 	htc_batt_timer.total_time_ms += resume_ms -
 					htc_batt_timer.batt_suspend_ms;
 	htc_batt_timer.batt_system_jiffies = jiffies;
