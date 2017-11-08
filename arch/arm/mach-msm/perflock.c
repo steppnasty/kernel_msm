@@ -52,8 +52,13 @@ static int debug_mask = PERF_LOCK_DEBUG | PERF_EXPIRE_DEBUG |
 #else
 static int debug_mask = 0;
 #endif
-module_param_call(debug_mask, param_set_int, param_get_int,
-		&debug_mask, S_IWUSR | S_IRUGO);
+
+static struct kernel_param_ops param_ops_str = {
+	.set = param_set_int,
+	.get = param_get_int,
+};
+
+module_param_cb(debug_mask, &param_ops_str, &debug_mask, S_IWUSR | S_IRUGO);
 
 static unsigned int get_perflock_speed(void);
 static void print_active_locks(void);
