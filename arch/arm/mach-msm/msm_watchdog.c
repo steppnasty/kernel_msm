@@ -228,7 +228,6 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 		/* HTC changes: show blocked processes to debug hang problems */
 		printk(KERN_INFO "\n### Show Blocked State ###\n");
 		show_state_filter(TASK_UNINTERRUPTIBLE);
-		print_workqueue();
 
 		msm_watchdog_resume();
 	}
