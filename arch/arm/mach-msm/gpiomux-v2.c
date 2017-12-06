@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -8,11 +8,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA.
  */
 #include <linux/bitops.h>
 #include <linux/io.h>
@@ -29,9 +24,9 @@ void __msm_gpiomux_write(unsigned gpio, struct gpiomux_setting val)
 	bits = (val.drv << 6) | (val.func << 2) | val.pull;
 	if (val.func == GPIOMUX_FUNC_GPIO) {
 		bits |= val.dir > GPIOMUX_IN ? BIT(9) : 0;
-		writel(val.dir == GPIOMUX_OUT_HIGH ? BIT(1) : 0,
+		__raw_writel(val.dir == GPIOMUX_OUT_HIGH ? BIT(1) : 0,
 			GPIO_IN_OUT(gpio));
 	}
-	writel(bits, GPIO_CFG(gpio));
-	dsb();
+	__raw_writel(bits, GPIO_CFG(gpio));
+	mb();
 }
