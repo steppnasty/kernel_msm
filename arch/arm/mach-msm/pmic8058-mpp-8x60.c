@@ -178,7 +178,7 @@ static struct gpio_chip pm8058_mpp_chip = {
 	.get		= pm8058_mpp_read,
 	.dbg_show	= pm8058_mpp_dbg_show,
 	.ngpio		= PM8058_MPPS,
-	.can_sleep	= 1,
+	.can_sleep	= 0,
 };
 
 int pm8058_mpp_config(unsigned mpp, unsigned type, unsigned level,
