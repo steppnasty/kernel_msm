@@ -78,21 +78,10 @@ struct clkctl_acpu_speed {
 	unsigned int	axi_clk_hz;
 	unsigned int	vdd_mv;
 	unsigned int	vdd_raw;
-	struct pll	*pll_rate;
 	unsigned long	lpj; /* loops_per_jiffy */
 };
 
 static struct clock_state drv_state = { 0 };
-
-/* Switch to this when reprogramming PLL2 */
-static struct clkctl_acpu_speed *backup_s;
-
-static struct pll pll2_tbl[] = {
-	{  42, 0, 1, 0 }, /*  806 MHz */
-	{  53, 1, 3, 0 }, /* 1024 MHz */
-	{ 125, 0, 1, 1 }, /* 1200 MHz */
-	{  73, 0, 1, 0 }, /* 1401 MHz */
-};
 
 /* Use negative numbers for sources that can't be enabled/disabled */
 
@@ -115,22 +104,36 @@ static struct clk *acpuclk_sources[MAX_SOURCE];
  * know all the h/w requirements.
  */
 static struct clkctl_acpu_speed acpu_freq_tbl[] = {
-	{ 0, 24576,  LPXO, 0, 0,  30720000,  900, VDD_RAW(900) },
-	{ 0, 61440,  PLL_3,    5, 11, 61440000,  900, VDD_RAW(900) },
-	{ 1, 122880, PLL_3,    5, 5,  61440000,  900, VDD_RAW(900) },
-	{ 0, 184320, PLL_3,    5, 4,  61440000,  900, VDD_RAW(900) },
-	{ 0, MAX_AXI_KHZ, AXI, 1, 0, 61440000, 900, VDD_RAW(900) },
-	{ 1, 245760, PLL_3,    5, 2,  61440000,  900, VDD_RAW(900) },
-	{ 1, 368640, PLL_3,    5, 1,  122800000, 900, VDD_RAW(900) },
-	/* AXI has MSMC1 implications. See above. */
-	{ 1, 768000, PLL_1,    2, 0,  153600000, 1050, VDD_RAW(1050) },
-	/*
-	 * AXI has MSMC1 implications. See above.
-	 */
-	{ 1, 806400,  PLL_2, 3, 0, UINT_MAX, 1100, VDD_RAW(1100), &pll2_tbl[0]},
-	{ 1, 1024000, PLL_2, 3, 0, UINT_MAX, 1200, VDD_RAW(1200), &pll2_tbl[1]},
-	{ 1, 1200000, PLL_2, 3, 0, UINT_MAX, 1200, VDD_RAW(1200), &pll2_tbl[2]},
-	{ 1, 1401600, PLL_2, 3, 0, UINT_MAX, 1250, VDD_RAW(1250), &pll2_tbl[3]},
+	{ 0, 24576,   LPXO,    0, 0,  30720000,  850,  VDD_RAW(850) },
+	{ 0, 61440,   PLL_3,   5, 11, 61440000,  900,  VDD_RAW(900) },
+	{ 0, 122880,  PLL_3,   5, 5,  61440000,  900,  VDD_RAW(900) },
+	{ 0, 184320,  PLL_3,   5, 4,  61440000,  900,  VDD_RAW(900) },
+	{ 0, MAX_AXI_KHZ, AXI, 1, 0,  61440000,  900,  VDD_RAW(900) },
+	{ 1, 192000,  PLL_3,   5, 2,  122500000, 900,  VDD_RAW(900) },
+	{ 1, 268800,  PLL_3,   5, 1,  192000000, 925,  VDD_RAW(900) },
+	{ 1, 345600,  PLL_3,   5, 1,  192000000, 950,  VDD_RAW(925) },
+	{ 1, 422400,  PLL_1,   2, 0,  192000000, 950,  VDD_RAW(925) },
+	{ 1, 499200,  PLL_3,   5, 1,  192000000, 975,  VDD_RAW(950) },
+	{ 1, 576000,  PLL_3,   5, 1,  192000000, 975,  VDD_RAW(975) },
+	{ 1, 652800,  PLL_2,   3, 0,  192000000, 1000, VDD_RAW(975) },
+	{ 1, 729600,  PLL_2,   3, 0,  192000000, 1000, VDD_RAW(1000) },
+	{ 1, 806400,  PLL_2,   3, 0,  192000000, 1025, VDD_RAW(1025) },
+	{ 1, 883200,  PLL_2,   3, 0,  192000000, 1025, VDD_RAW(1025) },
+	{ 1, 960000,  PLL_2,   3, 0,  192000000, 1050, VDD_RAW(1050) },
+	{ 1, 1036800, PLL_2,   3, 0,  192000000, 1075, VDD_RAW(1050) },
+	{ 1, 1113600, PLL_2,   3, 0,  192000000, 1075, VDD_RAW(1050) },
+	{ 1, 1190400, PLL_2,   3, 0,  192000000, 1100, VDD_RAW(1075) },
+	{ 1, 1267200, PLL_2,   3, 0,  192000000, 1125, VDD_RAW(1125) },
+	{ 1, 1344000, PLL_2,   3, 0,  192000000, 1175, VDD_RAW(1175) },
+	{ 1, 1420800, PLL_2,   3, 0,  192000000, 1225, VDD_RAW(1225) },
+	{ 1, 1497600, PLL_2,   3, 0,  192000000, 1250, VDD_RAW(1250) },
+	{ 1, 1574400, PLL_2,   3, 0,  192000000, 1275, VDD_RAW(1275) },
+	{ 1, 1612800, PLL_2,   3, 0,  192000000, 1325, VDD_RAW(1325) },
+	{ 1, 1728000, PLL_2,   3, 0,  192000000, 1375, VDD_RAW(1400) },
+	{ 1, 1804800, PLL_2,   3, 0,  192000000, 1425, VDD_RAW(1425) },
+	{ 1, 1881600, PLL_2,   3, 0,  192000000, 1450, VDD_RAW(1450) },
+	{ 1, 1958400, PLL_2,   3, 0,  192000000, 1475, VDD_RAW(1475) },
+	{ 1, 2035200, PLL_2,   3, 0,  192000000, 1475, VDD_RAW(1475) },
 	{ 0 }
 };
 
@@ -143,26 +146,6 @@ static int acpuclk_set_acpu_vdd(struct clkctl_acpu_speed *s)
 	/* Wait for voltage to stabilize. */
 	udelay(62);
 	return 0;
-}
-
-/* Assumes PLL2 is off and the acpuclock isn't sourced from PLL2 */
-static void acpuclk_config_pll2(struct pll *pll)
-{
-	uint32_t config = readl_relaxed(PLL2_CONFIG_ADDR);
-
-	/* Make sure write to disable PLL_2 has completed
-	 * before reconfiguring that PLL. */
-	mb();
-	writel_relaxed(pll->l, PLL2_L_VAL_ADDR);
-	writel_relaxed(pll->m, PLL2_M_VAL_ADDR);
-	writel_relaxed(pll->n, PLL2_N_VAL_ADDR);
-	if (pll->pre_div)
-		config |= BIT(15);
-	else
-		config &= ~BIT(15);
-	writel_relaxed(config, PLL2_CONFIG_ADDR);
-	/* Make sure PLL is programmed before returning. */
-	mb();
 }
 
 /* Set clock source and divider given a clock speed */
@@ -242,17 +225,6 @@ static int acpuclk_7x30_set_rate(int cpu, unsigned long rate,
 		}
 	}
 
-	/* Move off of PLL2 if we're reprogramming it */
-	if (tgt_s->src == PLL_2 && strt_s->src == PLL_2) {
-		clk_enable(acpuclk_sources[backup_s->src]);
-		acpuclk_set_src(backup_s);
-		clk_disable(acpuclk_sources[strt_s->src]);
-	}
-
-	/* Reconfigure PLL2 if we're moving to it */
-	if (tgt_s->src == PLL_2)
-		acpuclk_config_pll2(tgt_s->pll_rate);
-
 	/* Make sure target PLL is on. */
 	if ((strt_s->src != tgt_s->src && tgt_s->src >= 0) ||
 	    (tgt_s->src == PLL_2 && strt_s->src == PLL_2)) {
@@ -264,9 +236,6 @@ static int acpuclk_7x30_set_rate(int cpu, unsigned long rate,
 	acpuclk_set_src(tgt_s);
 	drv_state.current_speed = tgt_s;
 	loops_per_jiffy = tgt_s->lpj;
-
-	if (tgt_s->src == PLL_2 && strt_s->src == PLL_2)
-		clk_disable(acpuclk_sources[backup_s->src]);
 
 	/* Nothing else to do for SWFI. */
 	if (reason == SETRATE_SWFI)
@@ -376,7 +345,7 @@ static void __init acpuclk_hw_init(void)
 	/* Look at PLL2's L val to determine what speed PLL2 is running at */
 	if (s->src == PLL_2)
 		for ( ; s->acpu_clk_khz; s++)
-			if (s->pll_rate && s->pll_rate->l == pll2_l)
+			if (s->acpu_clk_khz/19200 == pll2_l)
 				break;
 
 	/* Set initial ACPU VDD. */
@@ -432,29 +401,6 @@ static void setup_cpufreq_table(void)
 static inline void setup_cpufreq_table(void) { }
 #endif
 
-/*
- * Truncate the frequency table at the current PLL2 rate and determine the
- * backup PLL to use when scaling PLL2.
- */
-void __init pll2_fixup(void)
-{
-	struct clkctl_acpu_speed *speed = acpu_freq_tbl;
-	u8 pll2_l = readl_relaxed(PLL2_L_VAL_ADDR) & 0xFF;
-
-	for ( ; speed->acpu_clk_khz; speed++) {
-		if (speed->src != PLL_2)
-			backup_s = speed;
-		if (speed->pll_rate && speed->pll_rate->l == pll2_l) {
-			speed++;
-			speed->acpu_clk_khz = 0;
-			return;
-		}
-	}
-
-	pr_err("Unknown PLL2 lval %d\n", pll2_l);
-	BUG();
-}
-
 #define RPM_BYPASS_MASK	(1 << 3)
 #define PMIC_MODE_MASK	(1 << 4)
 
@@ -481,7 +427,6 @@ static int __init acpuclk_7x30_init(struct acpuclk_soc_data *soc_data)
 	pr_info("%s()\n", __func__);
 
 	mutex_init(&drv_state.lock);
-	pll2_fixup();
 	populate_plls();
 	acpuclk_hw_init();
 	lpj_init();
