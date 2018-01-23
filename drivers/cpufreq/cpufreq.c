@@ -28,14 +28,11 @@
 #include <linux/cpu.h>
 #include <linux/completion.h>
 #include <linux/mutex.h>
-#include <linux/earlysuspend.h>
 
 #include <trace/events/power.h>
 
 #define dprintk(msg...) cpufreq_debug_printk(CPUFREQ_DEBUG_CORE, \
 						"cpufreq-core", msg)
-
-int cpufreq_cur_max;
 
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
@@ -2088,59 +2085,6 @@ int cpufreq_unregister_driver(struct cpufreq_driver *driver)
 }
 EXPORT_SYMBOL_GPL(cpufreq_unregister_driver);
 
-static void powersave_early_suspend(struct early_suspend *handler)
-{
-	int cpu;
-
-	for_each_online_cpu(cpu) {
-		struct cpufreq_policy *cpu_policy, new_policy;
-
-		cpu_policy = cpufreq_cpu_get(cpu);
-		if (!cpu_policy)
-			return;
-		if (cpufreq_get_policy(&new_policy, cpu))
-			goto out;
-		//save max freq from old policy before setting up new policy
-		cpufreq_cur_max = cpu_policy->user_policy.max;
-		new_policy.max = 652800;
-		//new_policy.min = 192000;
-		__cpufreq_set_policy(cpu_policy, &new_policy);
-		cpu_policy->user_policy.policy = cpu_policy->policy;
-		cpu_policy->user_policy.governor = cpu_policy->governor;
-	out:
-		cpufreq_cpu_put(cpu_policy);
-	}
-}
-
-static void powersave_late_resume(struct early_suspend *handler)
-{
-	int cpu;
-
-	for_each_online_cpu(cpu) {
-		struct cpufreq_policy *cpu_policy, new_policy;
-
-		cpu_policy = cpufreq_cpu_get(cpu);
-		if (!cpu_policy)
-			return;
-		if (cpufreq_get_policy(&new_policy, cpu))
-			goto out;
-		//use cpufreq_cur_max to reset the correct max frequency when awakening
-		new_policy.max = cpufreq_cur_max;
-		//new_policy.min = 268800;
-		__cpufreq_set_policy(cpu_policy, &new_policy);
-		cpu_policy->user_policy.policy = cpu_policy->policy;
-		cpu_policy->user_policy.governor = cpu_policy->governor;
-	out:
-		cpufreq_cpu_put(cpu_policy);
-	}
-}
-
-static struct early_suspend _powersave_early_suspend = {
-	.suspend = powersave_early_suspend,
-	.resume = powersave_late_resume,
-	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
-};
-
 static int __init cpufreq_core_init(void)
 {
 	int cpu;
@@ -2156,8 +2100,6 @@ static int __init cpufreq_core_init(void)
 	cpufreq_global_kobject = kobject_create_and_add("cpufreq",
 						&cpu_sysdev_class.kset.kobj);
 	BUG_ON(!cpufreq_global_kobject);
-
-	register_early_suspend(&_powersave_early_suspend);
 
 #ifdef CONFIG_CPU_VOLTAGE_TABLE
 	rc = sysfs_create_group(cpufreq_global_kobject, &vddtbl_attr_group);
