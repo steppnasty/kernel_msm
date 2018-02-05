@@ -21,6 +21,8 @@
 #include "mipi_novatek.h"
 #include "mdp4.h"
 
+#define DEFAULT_BRIGHTNESS 83
+static int bl_level_prevset = 1;
 static struct dsi_cmd_desc *mipi_power_on_cmd;
 static int mipi_power_on_cmd_size;
 
@@ -145,8 +147,8 @@ static void novatek_fpga_read(uint8 addr)
 
 #endif
 
-
-/* novatek blue panel */
+static unsigned char bkl_enable_cmds[] = {0x53, 0x24};/* DTYPE_DCS_WRITE1 *///bkl on and no dim
+static unsigned char bkl_disable_cmds[] = {0x53, 0x00};/* DTYPE_DCS_WRITE1 *///bkl off
 
 #ifdef NOVETAK_COMMANDS_UNUSED
 static char display_config_cmd_mode1[] = {
@@ -235,7 +237,7 @@ static char set_num_of_lanes[2] = {0xae, 0x03}; /* DTYPE_DCS_WRITE1 */
 #else  /* 1 lane */
 static char set_num_of_lanes[2] = {0xae, 0x01}; /* DTYPE_DCS_WRITE1 */
 #endif
-/* commands by Novatke */
+/* commands by Novatek */
 static char novatek_f4[2] = {0xf4, 0x55}; /* DTYPE_DCS_WRITE1 */
 static char novatek_8c[16] = { /* DTYPE_DCS_LWRITE */
 	0x8C, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -271,6 +273,7 @@ static char novatek_f8[39] = { /* DTYPE_DCS_LWRITE */
 	0x00, 0x18, 0x00, 0x30};
 #endif
 
+static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 static char led_pwm2[2] = {0x53, 0x24}; /* DTYPE_DCS_WRITE1 */
 static char led_pwm3[2] = {0x55, 0x00}; /* DTYPE_DCS_WRITE1 */
 
@@ -1331,6 +1334,26 @@ static void mipi_dsi_enable_3d_barrier(int mode)
 					__func__);
 }
 
+static struct dsi_cmd_desc novatek_cmd_backlight_cmds[] = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+		sizeof(led_pwm1), led_pwm1},
+};
+
+static struct dsi_cmd_desc novatek_display_on_cmds[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 0,
+		sizeof(display_on), display_on},
+};
+
+static struct dsi_cmd_desc novatek_bkl_enable_cmds[] = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+		sizeof(bkl_enable_cmds), bkl_enable_cmds},
+};
+
+static struct dsi_cmd_desc novatek_bkl_disable_cmds[] = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+		sizeof(bkl_disable_cmds), bkl_disable_cmds},
+};
+
 static void mipi_novatek_panel_type_detect(void) {
 	if (panel_type == PANEL_ID_PYD_SHARP) {
 		pr_info("%s: panel_type=PANEL_ID_PYD_SHARP\n", __func__);
@@ -1446,11 +1469,6 @@ static int mipi_novatek_lcd_late_init(struct platform_device *pdev)
 
 DEFINE_LED_TRIGGER(bkl_led_trigger);
 
-static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
-static struct dsi_cmd_desc backlight_cmd = {
-	DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm1), led_pwm1};
-
-
 static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 {
 	struct dcs_cmd_req cmdreq;
@@ -1467,14 +1485,65 @@ static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 		return;
 	}
 
-	led_pwm1[1] = (unsigned char)mfd->bl_level;
+	if (mipi_novatek_pdata && mipi_novatek_pdata->shrink_pwm)
+		led_pwm1[1] = mipi_novatek_pdata->shrink_pwm(mfd->bl_level);
+	else
+		led_pwm1[1] = (unsigned char)mfd->bl_level;
 
-	cmdreq.cmds = &backlight_cmd;
-	cmdreq.cmds_cnt = 1;
+	cmdreq.cmds = novatek_cmd_backlight_cmds;
+	cmdreq.cmds_cnt = ARRAY_SIZE(novatek_cmd_backlight_cmds);
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
+	mipi_dsi_cmdlist_put(&cmdreq);
+	bl_level_prevset = mfd->bl_level;
+}
+
+static void mipi_novatek_display_on(struct msm_fb_data_type *mfd)
+{
+	struct dcs_cmd_req cmdreq;
+
+	cmdreq.cmds = novatek_display_on_cmds,
+	cmdreq.cmds_cnt = ARRAY_SIZE(novatek_display_on_cmds);
+	cmdreq.flags = CMD_REQ_COMMIT;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mipi_dsi_cmdlist_put(&cmdreq);
+}
+
+static void mipi_novatek_bkl_switch(struct msm_fb_data_type *mfd, bool on)
+{
+	if (on) {
+		if (mfd->bl_level == 0) {
+			if (bl_level_prevset != 1)
+				mfd->bl_level = bl_level_prevset;
+			else
+				mfd->bl_level = DEFAULT_BRIGHTNESS;
+		}
+		mipi_novatek_set_backlight(mfd);
+	} else
+		mfd->bl_level = 0;
+}
+
+static void mipi_novatek_bkl_ctrl(bool on)
+{
+	struct dcs_cmd_req cmdreq;
+
+	if (on) {
+		cmdreq.cmds = novatek_bkl_enable_cmds;
+		cmdreq.cmds_cnt = ARRAY_SIZE(novatek_bkl_enable_cmds);
+		cmdreq.flags = CMD_REQ_COMMIT;
+		cmdreq.rlen = 0;
+		cmdreq.cb = NULL;
+	} else {
+		cmdreq.cmds = novatek_bkl_disable_cmds,
+		cmdreq.cmds_cnt = ARRAY_SIZE(novatek_bkl_disable_cmds);
+		cmdreq.flags = CMD_REQ_COMMIT;
+		cmdreq.rlen = 0;
+		cmdreq.cb = NULL;
+	}
 	mipi_dsi_cmdlist_put(&cmdreq);
 }
 
@@ -1549,7 +1618,10 @@ static struct msm_fb_panel_data novatek_panel_data = {
 	.on		= mipi_novatek_lcd_on,
 	.off		= mipi_novatek_lcd_off,
 	.late_init	= mipi_novatek_lcd_late_init,
-	.set_backlight = mipi_novatek_set_backlight,
+	.set_backlight	= mipi_novatek_set_backlight,
+	.display_on	= mipi_novatek_display_on,
+	.bklswitch	= mipi_novatek_bkl_switch,
+	.bklctrl	= mipi_novatek_bkl_ctrl,
 };
 
 static ssize_t mipi_dsi_3d_barrier_read(struct device *dev,

@@ -825,6 +825,22 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 	}
 }
 
+static void msm_fb_display_on(struct msm_fb_data_type *mfd)
+{
+	struct msm_fb_panel_data *pdata;
+	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
+
+	if ((pdata) && (pdata->display_on)) {
+		down(&mfd->sem);
+		pdata->display_on(mfd);
+		up(&mfd->sem);
+		if (pdata->bklctrl)
+			pdata->bklctrl(1);
+		if (pdata->bklswitch)
+			pdata->bklswitch(mfd, 1);
+	}
+}
+
 static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			    boolean op_enable)
 {
@@ -848,6 +864,7 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			ret = pdata->on(mfd->pdev);
 			if (ret == 0) {
 				mfd->panel_power_on = TRUE;
+				mfd->request_display_on = TRUE;
 
 /* ToDo: possible conflict with android which doesn't expect sw refresher */
 /*
@@ -1918,6 +1935,11 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 
 	if (info->node == 0 && (mfd->cont_splash_done)) /* primary */
 		mdp_free_splash_buffer(mfd);
+
+	if (mfd->request_display_on) {
+		msm_fb_display_on(mfd);
+		mfd->request_display_on = 0;
+	}
 
 	++mfd->panel_info.frame_count;
 	return 0;

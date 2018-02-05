@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Brian Stepp <steppnasty@gmail.com>
+ * Copyright (C) 2014-2018 Brian Stepp <steppnasty@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -45,55 +45,77 @@
 #define PWM_SONY_MIN	13
 #define PWM_SONY_MAX	255
 
+static int bl_level_prevset = 1;
 static int glacier_set_dim = 1;
 mddi_host_type host_idx = MDDI_HOST_PRIM;
 
 static int glacier_shrink_pwm(int brightness, int user_def,
-                int user_min, int user_max, int panel_def,
-                int panel_min, int panel_max)
+		int user_min, int user_max, int panel_def,
+		int panel_min, int panel_max)
 {
-        if (brightness < PWM_USER_DIM) {
-                return 0;
-        }
+	if (brightness < PWM_USER_DIM) {
+		return 0;
+	}
 
-        if (brightness < user_min) {
-                return panel_min;
-        }
+	if (brightness < user_min) {
+		return panel_min;
+	}
 
-        if (brightness > user_def) {
-                brightness = (panel_max - panel_def) *
-                        (brightness - user_def) /
-                        (user_max - user_def) +
-                        panel_def;
-        } else {
-                        brightness = (panel_def - panel_min) *
-                        (brightness - user_min) /
-                        (user_def - user_min) +
+	if (brightness > user_def) {
+		brightness = (panel_max - panel_def) *
+			(brightness - user_def) /
+			(user_max - user_def) +
+			panel_def;
+	} else {
+		brightness = (panel_def - panel_min) *
+			(brightness - user_min) /
+			(user_def - user_min) +
 			panel_min;
 	}
 
-        return brightness;
+	return brightness;
 }
 
 static void mddi_glacier_set_backlight(struct msm_fb_data_type *mfd)
 {
-        unsigned int shrink_br = mfd->bl_level;
+	unsigned int shrink_br;
 
-        if(panel_type == PANEL_SHARP)
-                shrink_br = glacier_shrink_pwm(mfd->bl_level, PWM_USER_DEF,
-                                PWM_USER_MIN, PWM_USER_MAX, PWM_SHARP_DEF,
-                                PWM_SHARP_MIN, PWM_SHARP_MAX);
-        else
-                shrink_br = glacier_shrink_pwm(mfd->bl_level, PWM_USER_DEF,
-                                PWM_USER_MIN, PWM_USER_MAX, PWM_SONY_DEF,
+	if (panel_type == PANEL_SHARP)
+		shrink_br = glacier_shrink_pwm(mfd->bl_level, PWM_USER_DEF,
+				PWM_USER_MIN, PWM_USER_MAX, PWM_SHARP_DEF,
+				PWM_SHARP_MIN, PWM_SHARP_MAX);
+	else
+		shrink_br = glacier_shrink_pwm(mfd->bl_level, PWM_USER_DEF,
+				PWM_USER_MIN, PWM_USER_MAX, PWM_SONY_DEF,
 				PWM_SONY_MIN, PWM_SONY_MAX);
 	if (glacier_set_dim == 1) {
-	        mddi_queue_register_write(0x5300, 0x2C, FALSE, 0);
+		mddi_queue_register_write(0x5300, 0x2C, FALSE, 0);
 		/* we dont need to set dim again */
 		glacier_set_dim = 0;
 	}
-        mddi_queue_register_write(0x5500, 0x00, TRUE, 0);
-        mddi_queue_register_write(0x5100, shrink_br, TRUE, 0);
+	mddi_queue_register_write(0x5500, 0x00, TRUE, 0);
+	mddi_queue_register_write(0x5100, shrink_br, TRUE, 0);
+}
+
+static void mddi_glacier_display_on(struct msm_fb_data_type *mfd)
+{
+}
+
+static void mddi_glacier_bkl_switch(struct msm_fb_data_type *mfd, bool on)
+{
+	if (on) {
+		if (mfd->bl_level == 0) {
+			if (bl_level_prevset != 1)
+				mfd->bl_level = bl_level_prevset;
+			else {
+				mfd->bl_level = DEFAULT_BRIGHTNESS;
+				glacier_set_dim = 1;
+			}
+			
+		}
+		mddi_glacier_set_backlight(mfd);
+	} else
+		mfd->bl_level = 0;
 }
 
 static void mddi_sharp_lcd_init(void)
@@ -411,9 +433,7 @@ static void mddi_sony_lcd_init(void)
 
 static int mddi_glacier_lcd_on(struct platform_device *pdev)
 {
-	struct msm_fb_data_type *mfd;
-
-	mfd = platform_get_drvdata(pdev);
+	struct msm_fb_data_type *mfd = platform_get_drvdata(pdev);
 
 	if (!mfd)
 		return -ENODEV;
@@ -462,9 +482,11 @@ static struct platform_driver mddi_client_driver = {
 };
 
 static struct msm_fb_panel_data glacier_panel_data = {
-	.on		    = mddi_glacier_lcd_on,
-	.off		    = mddi_glacier_lcd_off,
-	.set_backlight	    = mddi_glacier_set_backlight,
+	.on		= mddi_glacier_lcd_on,
+	.off		= mddi_glacier_lcd_off,
+	.set_backlight	= mddi_glacier_set_backlight,
+	.display_on	= mddi_glacier_display_on,
+	.bklswitch	= mddi_glacier_bkl_switch,
 };
 
 static struct platform_device glacier_mddi_device = {
