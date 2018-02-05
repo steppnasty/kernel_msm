@@ -18,6 +18,7 @@
 #include <mach/camera2.h>
 #include <mach/msm_iomap.h>
 #include <mach/vreg.h>
+#include <mach/msm_flashlight.h>
 
 #include "devices.h"
 #include "board-glacier.h"
@@ -373,6 +374,23 @@ static struct platform_device msm_camera_sensor_mt9v113 = {
 	},
 };
 
+static int flashlight_control(int mode)
+{
+	return aat1271_flashlight_control(mode);
+}
+
+static struct msm_camera_sensor_flash_src msm_camera_flash_pdata = {
+	.camera_flash = flashlight_control,
+};
+
+static struct platform_device msm_camera_flash_device = {
+	.name = "camera-led-flash",
+	.id = 0,
+	.dev = {
+		.platform_data = &msm_camera_flash_pdata,
+	},
+};
+
 static struct resource glacier_vfe_resources[] = {
 	{
 		.name	= "msm_vfe",
@@ -433,6 +451,7 @@ void __init glacier_init_cam(void)
 	platform_device_register(&msm_gemini_device);
 	platform_device_register(&msm_camera_sensor_s5k4e1gx);
 	platform_device_register(&msm_camera_sensor_mt9v113);
+	platform_device_register(&msm_camera_flash_device);
 	//platform_device_register(&msm_device_vpe);
 }
 
