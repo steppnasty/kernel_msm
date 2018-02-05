@@ -16,6 +16,7 @@
 #include <linux/regulator/consumer.h>
 
 #include <mach/camera2.h>
+#include <mach/msm_flashlight.h>
 
 #include "board-doubleshot.h"
 
@@ -369,6 +370,28 @@ static struct platform_device msm_camera_sensor_mt9v113 = {
 	},
 };
 
+static int flashlight_control(int mode)
+{
+#if CONFIG_ARCH_MSM_FLASHLIGHT
+	return aat1271_flashlight_control(mode);
+#else
+	return 0;
+#endif
+}
+
+static struct msm_camera_sensor_flash_src msm_camera_flash_pdata = {
+	.camera_flash = flashlight_control,
+};
+
+
+static struct platform_device msm_camera_flash_device = {
+	.name = "camera-led-flash",
+	.id = 0,
+	.dev = {
+		.platform_data = &msm_camera_flash_pdata,
+	},
+};
+
 void __init doubleshot_init_cam(void)
 {
 	platform_device_register(&msm_device_cam);
@@ -377,6 +400,7 @@ void __init doubleshot_init_cam(void)
 	platform_device_register(&msm_device_vfe);
 	platform_device_register(&msm_camera_sensor_imx105);
 	platform_device_register(&msm_camera_sensor_mt9v113);
+	platform_device_register(&msm_camera_flash_device);
 }
 
 #ifdef CONFIG_I2C
