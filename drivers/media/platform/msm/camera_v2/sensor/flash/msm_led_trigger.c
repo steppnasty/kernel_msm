@@ -47,6 +47,7 @@ static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 	int rc = 0;
 	uint32_t i = 0;
 	struct msm_camera_led_cfg_t *cfg = (struct msm_camera_led_cfg_t *)data;
+	struct msm_camera_sensor_flash_src *src = NULL;
 	CDBG("called led_state %d\n", cfg->cfgtype);
 
 	if (!fctrl) {
@@ -54,8 +55,16 @@ static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 		return -EINVAL;
 	}
 
+	if (fctrl->pdev->dev.platform_data)
+		src = (struct msm_camera_sensor_flash_src *)
+			fctrl->pdev->dev.platform_data;
+
 	switch (cfg->cfgtype) {
 	case MSM_CAMERA_LED_OFF:
+		if (src) {
+			src->camera_flash(0);
+			break;
+		}
 		for (i = 0; i < fctrl->num_sources; i++)
 			if (fctrl->flash_trigger[i])
 				led_trigger_event(fctrl->flash_trigger[i], 0);
@@ -64,12 +73,20 @@ static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 		break;
 
 	case MSM_CAMERA_LED_LOW:
+		if (src) {
+			src->camera_flash(FL_MODE_PRE_FLASH);
+			break;
+		}
 		if (fctrl->torch_trigger)
 			led_trigger_event(fctrl->torch_trigger,
 				fctrl->torch_op_current);
 		break;
 
 	case MSM_CAMERA_LED_HIGH:
+		if (src) {
+			src->camera_flash(FL_MODE_FLASH);
+			break;
+		}
 		if (fctrl->torch_trigger)
 			led_trigger_event(fctrl->torch_trigger, 0);
 		for (i = 0; i < fctrl->num_sources; i++)
@@ -78,8 +95,17 @@ static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 					fctrl->flash_op_current[i]);
 		break;
 
+	case MSM_CAMERA_LED_TORCH:
+		if (src)
+			src->camera_flash(FL_MODE_TORCH);
+		break;
+
 	case MSM_CAMERA_LED_INIT:
 	case MSM_CAMERA_LED_RELEASE:
+		if (src) {
+			src->camera_flash(0);
+			break;
+		}
 		for (i = 0; i < fctrl->num_sources; i++)
 			if (fctrl->flash_trigger[i])
 				led_trigger_event(fctrl->flash_trigger[i], 0);
@@ -119,6 +145,8 @@ static int32_t msm_led_trigger_probe(struct platform_device *pdev)
 	CDBG("called\n");
 
 	if (!of_node) {
+		if (pdev->dev.platform_data)
+			goto register_led;
 		pr_err("of_node NULL\n");
 		return -EINVAL;
 	}
@@ -206,6 +234,7 @@ static int32_t msm_led_trigger_probe(struct platform_device *pdev)
 			of_node_put(flash_src_node);
 		}
 	}
+register_led:
 	rc = msm_led_flash_create_v4lsubdev(pdev, &fctrl);
 	return rc;
 }

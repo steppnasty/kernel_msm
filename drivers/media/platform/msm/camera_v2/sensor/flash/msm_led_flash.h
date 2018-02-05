@@ -17,6 +17,8 @@
 #include <linux/platform_device.h>
 #include <media/v4l2-subdev.h>
 #include <media/msm_cam_sensor.h>
+#include <mach/board.h>
+#include <mach/msm_flashlight.h>
 #include "msm_sd.h"
 
 #define MAX_LED_TRIGGERS 2
