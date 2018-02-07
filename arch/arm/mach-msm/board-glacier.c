@@ -1583,6 +1583,14 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 		.latency = 2,
 		.residency = 0,
 	},
+	[MSM_PM_SLEEP_MODE_APPS_SLEEP] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.idle_enabled = 1,
+		.suspend_enabled = 1,
+		.latency = 8594,
+		.residency = 23740,
+        },
 };
 
 static struct resource qsd_spi_resources[] = {

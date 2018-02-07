@@ -135,6 +135,12 @@ module_param_named(
 	int, S_IRUGO | S_IWUSR | S_IWGRP
 );
 
+static int msm_pm_idle_spin_time = CONFIG_MSM7X00A_IDLE_SPIN_TIME;
+module_param_named(
+	idle_spin_time, msm_pm_idle_spin_time,
+	int, S_IRUGO | S_IWUSR | S_IWGRP
+);
+
 enum {
 	MSM_PM_MODE_ATTR_SUSPEND,
 	MSM_PM_MODE_ATTR_IDLE,
@@ -1014,7 +1020,7 @@ static int msm_pm_power_collapse
 	msm_gpio_enter_sleep(from_idle);
 
 	msm_pm_smem_data->sleep_time = sleep_delay;
-	msm_pm_smem_data->resources_used = sleep_limit;
+	//msm_pm_smem_data->resources_used = sleep_limit;
 
 	/* Enter PWRC/PWRC_SUSPEND */
 
@@ -1347,7 +1353,7 @@ static int msm_pm_power_collapse_standalone(void)
  */
 static int msm_pm_apps_sleep(uint32_t sleep_delay, uint32_t sleep_limit)
 {
-	return -ENOSYS;
+	return msm_pm_power_collapse(true, sleep_delay, sleep_limit);
 }
 
 /*
@@ -1470,7 +1476,7 @@ void arch_idle(void)
 	for (i = 0; i < ARRAY_SIZE(allow); i++) {
 		struct msm_pm_platform_data *mode = &msm_pm_modes[i];
 		if (!mode->idle_supported || !mode->idle_enabled ||
-			mode->latency >= latency_qos ||
+			/*mode->latency >= latency_qos ||*/
 			mode->residency * 1000ULL >= timer_expiration)
 			allow[i] = false;
 	}
@@ -1534,7 +1540,18 @@ void arch_idle(void)
 		}
 #endif /* CONFIG_MSM_IDLE_STATS */
 	} else if (allow[MSM_PM_SLEEP_MODE_APPS_SLEEP]) {
+		int spin = msm_pm_idle_spin_time >> 10;
 		uint32_t sleep_delay;
+
+		while (spin-- > 0) {
+			if (msm_irq_pending()) {
+#ifdef CONFIG_MSM_IDLE_STATS
+				exit_stat = MSM_PM_STAT_IDLE_SPIN;
+#endif
+				goto arch_idle_exit;
+			}
+			udelay(1);
+		}
 
 		sleep_delay = (uint32_t) msm_pm_convert_and_cap_time(
 			timer_expiration, MSM_PM_SLEEP_TICK_LIMIT);
@@ -1542,7 +1559,7 @@ void arch_idle(void)
 			sleep_delay = 1;
 
 		ret = msm_pm_apps_sleep(sleep_delay, sleep_limit);
-		low_power = 0;
+		low_power = 1;
 
 #ifdef CONFIG_MSM_IDLE_STATS
 		if (ret)
