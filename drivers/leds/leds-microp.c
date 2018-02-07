@@ -324,7 +324,8 @@ static ssize_t microp_led_blink_store(struct device *dev,
 		mode = val + 1;
 		break;
 	case 4:
-		if (!strcmp(ldata->ldev.name, "amber")) {
+		if (!strcmp(ldata->ldev.name, "amber") ||
+				!strcmp(ldata->ldev.name, "blue")) {
 			mode = val + 1;
 			break;
 		}
