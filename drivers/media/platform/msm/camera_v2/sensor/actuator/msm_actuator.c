@@ -27,6 +27,8 @@ DEFINE_MSM_MUTEX(msm_actuator_mutex);
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 #endif
 
+static int32_t msm_actuator_power(struct v4l2_subdev *sd, int on);
+
 static struct msm_actuator msm_vcm_actuator_table;
 static struct msm_actuator msm_piezo_actuator_table;
 
@@ -655,7 +657,8 @@ static int msm_actuator_open(struct v4l2_subdev *sd,
 			&a_ctrl->i2c_client, MSM_CCI_INIT);
 		if (rc < 0)
 			pr_err("cci_init failed\n");
-	}
+	} else
+		rc = msm_actuator_power(sd, 1);
 	CDBG("Exit\n");
 	return rc;
 }
@@ -674,9 +677,11 @@ static int msm_actuator_close(struct v4l2_subdev *sd,
 			&a_ctrl->i2c_client, MSM_CCI_RELEASE);
 		if (rc < 0)
 			pr_err("cci_init failed\n");
-	}
+	} else
+		rc = msm_actuator_power(sd, 0);
 	kfree(a_ctrl->i2c_reg_tbl);
 	a_ctrl->i2c_reg_tbl = NULL;
+
 
 	CDBG("Exit\n");
 	return rc;
@@ -742,7 +747,6 @@ static int32_t msm_actuator_power(struct v4l2_subdev *sd, int on)
 
 static struct v4l2_subdev_core_ops msm_actuator_subdev_core_ops = {
 	.ioctl = msm_actuator_subdev_ioctl,
-	.s_power = msm_actuator_power,
 };
 
 static struct v4l2_subdev_ops msm_actuator_subdev_ops = {
@@ -759,6 +763,7 @@ static int32_t msm_actuator_i2c_probe(struct i2c_client *client,
 {
 	int rc = 0;
 	struct msm_actuator_ctrl_t *act_ctrl_t = NULL;
+	struct msm_actuator_info *pdata = NULL;
 	CDBG("Enter\n");
 
 	if (client == NULL) {
@@ -781,12 +786,22 @@ static int32_t msm_actuator_i2c_probe(struct i2c_client *client,
 
 	CDBG("client = %x\n", (unsigned int) client);
 
-	rc = of_property_read_u32(client->dev.of_node, "cell-index",
-		&act_ctrl_t->subdev_id);
-	CDBG("cell-index %d, rc %d\n", act_ctrl_t->subdev_id, rc);
-	if (rc < 0) {
-		pr_err("failed rc %d\n", rc);
-		return rc;
+	if (client->dev.of_node) {
+		rc = of_property_read_u32(client->dev.of_node, "cell-index",
+			&act_ctrl_t->subdev_id);
+		CDBG("cell-index %d, rc %d\n", act_ctrl_t->subdev_id, rc);
+		if (rc < 0) {
+			pr_err("failed rc %d\n", rc);
+			return rc;
+		}
+	} else {
+		if (client->dev.platform_data) {
+			pdata = client->dev.platform_data;
+			act_ctrl_t->subdev_id = pdata->cam_name;
+			act_ctrl_t->vcm_pwd = pdata->vcm_pwd;
+			act_ctrl_t->vcm_enable = pdata->vcm_enable;
+		} else
+			return -EINVAL;
 	}
 
 	act_ctrl_t->i2c_driver = &msm_actuator_i2c_driver;

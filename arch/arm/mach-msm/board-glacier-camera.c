@@ -374,6 +374,12 @@ static struct platform_device msm_camera_sensor_mt9v113 = {
 	},
 };
 
+static struct msm_actuator_info s5k4e1gx_actuator_info = {
+	.cam_name = MSM_ACTUATOR_MAIN_CAM_0,
+	.vcm_pwd = GLACIER_CAM_PWD,
+	.vcm_enable = 1,
+};
+
 static int flashlight_control(int mode)
 {
 	return aat1271_flashlight_control(mode);
@@ -463,6 +469,10 @@ static struct i2c_board_info glacier_camera_i2c_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("mt9v113", 0x3C), /* 0x78: w, 0x79 :r */
 		.platform_data = &msm_camera_sensor_mt9v113_data,
+	},
+	{
+		I2C_BOARD_INFO("qcom,actuator", 0x18),
+		.platform_data = &s5k4e1gx_actuator_info,
 	},
 };
 

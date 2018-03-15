@@ -370,6 +370,12 @@ static struct platform_device msm_camera_sensor_mt9v113 = {
 	},
 };
 
+static struct msm_actuator_info imx105_actuator_info = {
+	.cam_name = MSM_ACTUATOR_MAIN_CAM_0,
+	.vcm_pwd = 58,
+	.vcm_enable = 0,
+};
+
 static int flashlight_control(int mode)
 {
 #if CONFIG_ARCH_MSM_FLASHLIGHT
@@ -412,6 +418,10 @@ static struct i2c_board_info doubleshot_camera_i2c_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("mt9v113", 0x3C),
 		.platform_data = &msm_camera_sensor_mt9v113_data,
+	},
+	{
+		I2C_BOARD_INFO("qcom,actuator", 0x1A << 1),
+		.platform_data = &imx105_actuator_info,
 	},
 };
 

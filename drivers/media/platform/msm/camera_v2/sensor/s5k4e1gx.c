@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, Brian Stepp <steppnasty@gmail.com>
+ * Copyright (c) 2015-2018, Brian Stepp <steppnasty@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -301,9 +301,6 @@ static int32_t s5k4e1gx_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		msm_cam_clk_enable(s_ctrl->dev, &s_ctrl->clk_info[0],
 			(struct clk **)&power_setting->data[0],
 			s_ctrl->clk_info_size, 1);
-		gpio_request(sinfo->vcm_pwd, "s5k4e1gx");
-		gpio_direction_output(sinfo->vcm_pwd, 1);
-		gpio_free(sinfo->vcm_pwd);
 	}
 
 
@@ -348,12 +345,6 @@ static int s5k4e1gx_sensor_release(struct msm_sensor_ctrl_t *s_ctrl)
 
 	/*SW stand by*/
 	s5k4e1gx_sensor_power_down(s_ctrl);
-	/*HW stand by*/
-	if (sinfo) {
-		gpio_request(sinfo->vcm_pwd, "s5k4e1gx");
-		gpio_direction_output(sinfo->vcm_pwd, 0);
-		gpio_free(sinfo->vcm_pwd);
-	}
 
 	if (sinfo->camera_clk_switch != NULL && sinfo->cam_select_pin) {
 		/*0730: optical ask : CLK switch to Main Cam after 2nd Cam release*/
