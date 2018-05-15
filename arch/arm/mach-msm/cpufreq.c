@@ -29,11 +29,9 @@
 
 #include "acpuclock.h"
 
-#ifdef CONFIG_ARCH_MSM8X60
 unsigned int max_capped;
 /* initialize to a default cap freq */
 static unsigned int screen_off_max_freq = 594000;
-#endif
 
 #ifdef CONFIG_SMP
 struct cpufreq_work_struct {
@@ -85,7 +83,6 @@ static void set_cpu_work(struct work_struct *work)
 }
 #endif
 
-#ifdef CONFIG_ARCH_MSM8X60
 static void msm_cpu_early_suspend(struct early_suspend *h)
 {
 	unsigned int cur;
@@ -143,7 +140,6 @@ static struct early_suspend msm_cpu_early_suspend_handler = {
 	.suspend = msm_cpu_early_suspend,
 	.resume = msm_cpu_late_resume,
 };
-#endif
 
 static int msm_cpufreq_target(struct cpufreq_policy *policy,
 				unsigned int target_freq,
@@ -325,7 +321,6 @@ static int msm_cpufreq_pm_event(struct notifier_block *this,
 	}
 }
 
-#ifdef CONFIG_ARCH_MSM8X60
 static ssize_t show_screen_off_freq(struct cpufreq_policy *policy, char *buf)
 {
 	return sprintf(buf, "%u\n", screen_off_max_freq);
@@ -369,13 +364,10 @@ struct freq_attr msm_cpufreq_attr_screen_off_freq = {
 	.show = show_screen_off_freq,
 	.store = store_screen_off_freq,
 };
-#endif
 
 static struct freq_attr *msm_cpufreq_attr[] = {
 	&cpufreq_freq_attr_scaling_available_freqs,
-#ifdef CONFIG_ARCH_MSM8X60
 	&msm_cpufreq_attr_screen_off_freq,
-#endif
 	NULL,
 };
 
@@ -408,9 +400,7 @@ static int __init msm_cpufreq_register(void)
 
 	register_pm_notifier(&msm_cpufreq_pm_notifier);
 
-#ifdef CONFIG_ARCH_MSM8X60
 	register_early_suspend(&msm_cpu_early_suspend_handler);
-#endif
 
 	return cpufreq_register_driver(&msm_cpufreq_driver);
 }
