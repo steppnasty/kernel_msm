@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 
+#include <mach/panel_id.h>
 #include "msm_fb.h"
 #include "mipi_dsi.h"
 #include "mipi_renesas.h"
@@ -17,6 +18,15 @@
 
 #define RENESAS_CMD_DELAY 0 /* 50 */
 #define RENESAS_SLEEP_OFF_DELAY 50
+#define DEFAULT_BRIGHTNESS 83
+static int bl_level_prevset;
+static struct dsi_cmd_desc *mipi_power_on_cmd;
+static struct dsi_cmd_desc *mipi_display_on_cmd;
+static struct dsi_cmd_desc *mipi_display_off_cmd;
+static int mipi_power_on_cmd_size;
+static int mipi_display_on_cmd_size;
+static int mipi_display_off_cmd_size;
+
 static struct msm_panel_common_pdata *mipi_renesas_pdata;
 
 static struct dsi_buf renesas_tx_buf;
@@ -181,9 +191,78 @@ static char config_Panel_IF_Ctrl_10b_cmd_off[3] = {0x4C, 0x00, 0x02};
 
 static char config_Power_Ctrl_1a_cmd[3] = {0x4C, 0x30, 0x00};
 
-static struct dsi_cmd_desc renesas_sleep_off_cmds[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, RENESAS_SLEEP_OFF_DELAY,
-		sizeof(config_sleep_out), config_sleep_out }
+/* renesas blue panel */
+static char column_address[5] = {0x2A, 0x00, 0x00, 0x01, 0xDF}; /* DTYPE_DCS_LWRITE */
+static char set_page_addr[5] = {0x2B, 0x00, 0x00, 0x03, 0x1F}; /* DTYPE_DCS_LWRITE */
+static char address_mode[2] = {0x36, 0x00}; /* DTYPE_DCS_WRITE1 */
+static char pixel_format[2] = {0x3A, 0x77}; /* DTYPE_DCS_WRITE1 */
+static char unlock_command[2] = {0xB0, 0x04}; /* DTYPE_GEN_WRITE2 */
+static char panel_driving[4] = {0xC1, 0x42, 0x31, 0x04}; /* DTYPE_GEN_LWRITE */
+static char memory_start[2] = {0x2C, 0x00}; /* DTYPE_DCS_WRITE */
+
+static char enter_sleep[2] = {0x10, 0x00}; /* DTYPE_DCS_WRITE */
+static char display_off[2] = {0x28, 0x00}; /* DTYPE_DCS_WRITE */
+static char enable_te[2] = {0x35, 0x00};/* DTYPE_DCS_WRITE1 */
+static char test_reg[3] = {0x44, 0x02, 0xBC};/* DTYPE_DCS_WRITE1 */
+static char display_on[2] = {0x29, 0x00}; /* DTYPE_DCS_WRITE */
+static char led_pwm[5] = {0xB9, 0x00, 0x7F, 0x04, 0x08}; /* DTYPE_DCS_WRITE */
+static char gama_a[] = {	/* DTYPE_GEN_LWRITE */
+	0xC8, 0x2D, 0x2F, 0x31, 0x36, 0x3E, 0x51, 0x36,
+	0x23, 0x16, 0x0B, 0x02, 0x01, 0x2D, 0x2F, 0x31,
+	0x36, 0x3E, 0x51, 0x36, 0x23, 0x16, 0x0B, 0x02,
+	0x01};
+
+static char gama_b[] = {	/* DTYPE_GEN_LWRITE */
+	0xC9, 0x00, 0x0F, 0x18, 0x25, 0x33, 0x4D, 0x38,
+	0x25, 0x18, 0x11, 0x02, 0x01, 0x00, 0x0F, 0x18,
+	0x25, 0x33, 0x4D, 0x38, 0x25, 0x18, 0x11, 0x02,
+	0x01};
+
+static char gama_c[] = {	/* DTYPE_GEN_LWRITE */
+	0xCA, 0x27, 0x2A, 0x2E, 0x34, 0x3C, 0x51, 0x36,
+	0x24, 0x16, 0x0C, 0x02, 0x01, 0x27, 0x2A, 0x2E,
+	0x34, 0x3C, 0x51, 0x36, 0x24, 0x16, 0x0C, 0x02,
+	0x01};
+
+static struct dsi_cmd_desc renesas_hitachi_cmd_on_cmds[] = {
+	
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 1,
+		sizeof(column_address), column_address},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 1,
+		sizeof(set_page_addr), set_page_addr},
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 1,
+		sizeof(address_mode), address_mode},
+		
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 1,
+		sizeof(pixel_format), pixel_format},
+		
+	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
+		sizeof(config_sleep_out), config_sleep_out},
+	{DTYPE_GEN_WRITE2, 1, 0, 0, 1,
+		sizeof(unlock_command), unlock_command},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 1,
+		sizeof(panel_driving), panel_driving},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 1,
+		sizeof(memory_start), memory_start},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 1,
+		sizeof(test_reg), test_reg},
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 1,
+		sizeof(enable_te), enable_te},
+	{DTYPE_DCS_WRITE, 1, 0, 0, 1,
+			sizeof(display_off), display_off},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 1,
+		sizeof(gama_a), gama_a},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 1,
+		sizeof(gama_b), gama_b},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 1,
+		sizeof(gama_c), gama_c},
+};
+
+static struct dsi_cmd_desc renesas_hitachi_display_off_cmds[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 1,
+		sizeof(display_off), display_off},
+	{DTYPE_DCS_WRITE, 1, 0, 0, 90,
+		sizeof(enter_sleep), enter_sleep}
 };
 
 static struct dsi_cmd_desc renesas_display_off_cmds[] = {
@@ -256,8 +335,20 @@ static struct dsi_cmd_desc renesas_display_off_cmds[] = {
 		sizeof(config_TEOFF), config_TEOFF},
 };
 
+static struct dsi_cmd_desc renesas_cmd_backlight_cmds[] = {
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(led_pwm), led_pwm},
+};
+
+static struct dsi_cmd_desc renesas_hitachi_display_on_cmds[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 1,
+		sizeof(display_on), display_on},
+};
+
 static struct dsi_cmd_desc renesas_display_on_cmds[] = {
 	/* Choosing Command Mode */
+	{DTYPE_DCS_WRITE, 1, 0, 0, RENESAS_SLEEP_OFF_DELAY,
+		sizeof(config_sleep_out), config_sleep_out },
 	{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
 		sizeof(config_CMD_MODE), config_CMD_MODE },
 	{DTYPE_DCS_LWRITE, 1, 0, 0, RENESAS_CMD_DELAY,
@@ -1109,45 +1200,56 @@ static struct dsi_cmd_desc renesas_hvga_on_cmds[] = {
 };
 
 static struct dsi_cmd_desc renesas_video_on_cmds[] = {
-{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
+	{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
 		sizeof(config_VIDEO), config_VIDEO}
 };
 
 static struct dsi_cmd_desc renesas_cmd_on_cmds[] = {
-{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
+	{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
 		sizeof(config_CMD_MODE), config_CMD_MODE},
 };
+
+static void mipi_renesas_panel_type_detect(void) {
+	if (panel_type == PANEL_ID_DOT_HITACHI) {
+		pr_info("%s: panel_type=PANEL_ID_DOT_HITACHI\n", __func__);
+		mipi_power_on_cmd = renesas_hitachi_cmd_on_cmds;
+		mipi_power_on_cmd_size = ARRAY_SIZE(renesas_hitachi_cmd_on_cmds);
+		mipi_display_on_cmd = renesas_hitachi_display_on_cmds;
+		mipi_display_on_cmd_size = ARRAY_SIZE(renesas_hitachi_display_on_cmds);
+		mipi_display_off_cmd = renesas_hitachi_display_off_cmds;
+		mipi_display_off_cmd_size = ARRAY_SIZE(renesas_hitachi_display_off_cmds);
+	} else {
+		pr_info("%s: panel_type=0x%x\n", __func__, panel_type);
+		mipi_power_on_cmd = renesas_cmd_on_cmds;
+		mipi_power_on_cmd_size = ARRAY_SIZE(renesas_cmd_on_cmds);
+		mipi_display_on_cmd = renesas_display_on_cmds;
+		mipi_display_on_cmd_size = ARRAY_SIZE(renesas_display_on_cmds);
+		mipi_display_off_cmd = renesas_display_off_cmds;
+		mipi_display_off_cmd_size = ARRAY_SIZE(renesas_display_off_cmds);
+	}
+}
 
 static int mipi_renesas_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
 	struct mipi_panel_info *mipi;
 	struct dcs_cmd_req cmdreq;
+	static int init;
 
 	mfd = platform_get_drvdata(pdev);
-	mipi  = &mfd->panel_info.mipi;
 
 	if (!mfd)
 		return -ENODEV;
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
+	mipi  = &mfd->panel_info.mipi;
 	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = renesas_sleep_off_cmds;
-	cmdreq.cmds_cnt = ARRAY_SIZE(renesas_sleep_off_cmds);
-	cmdreq.flags = CMD_REQ_COMMIT;
-	cmdreq.rlen = 0;
-	cmdreq.cb = NULL;
-	mipi_dsi_cmdlist_put(&cmdreq);
-
-	mipi_set_tx_power_mode(1);
-
-	cmdreq.cmds = renesas_display_on_cmds;
-	cmdreq.cmds_cnt = ARRAY_SIZE(renesas_display_on_cmds);
-	cmdreq.flags = CMD_REQ_COMMIT;
-	cmdreq.rlen = 0;
-	cmdreq.cb = NULL;
-	mipi_dsi_cmdlist_put(&cmdreq);
+	if (init == 0) {
+		mipi_renesas_panel_type_detect();
+		init = 1;
+		return 0;
+	}
 
 	if (cpu_is_msm7x25a() || cpu_is_msm7x25aa() || cpu_is_msm7x25ab()) {
 		cmdreq.cmds = renesas_hvga_on_cmds;
@@ -1166,14 +1268,13 @@ static int mipi_renesas_lcd_on(struct platform_device *pdev)
 		cmdreq.cb = NULL;
 		mipi_dsi_cmdlist_put(&cmdreq);
 	} else {
-		cmdreq.cmds = renesas_cmd_on_cmds;
-		cmdreq.cmds_cnt = ARRAY_SIZE(renesas_cmd_on_cmds);
+		cmdreq.cmds = mipi_power_on_cmd;
+		cmdreq.cmds_cnt = mipi_power_on_cmd_size;
 		cmdreq.flags = CMD_REQ_COMMIT;
 		cmdreq.rlen = 0;
 		cmdreq.cb = NULL;
 		mipi_dsi_cmdlist_put(&cmdreq);
 	}
-	mipi_set_tx_power_mode(0);
 
 	return 0;
 }
@@ -1191,14 +1292,34 @@ static int mipi_renesas_lcd_off(struct platform_device *pdev)
 		return -EINVAL;
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = renesas_display_off_cmds;
-	cmdreq.cmds_cnt = ARRAY_SIZE(renesas_display_off_cmds);
+	cmdreq.cmds = mipi_display_off_cmd;
+	cmdreq.cmds_cnt = mipi_display_off_cmd_size;
 	cmdreq.flags = CMD_REQ_COMMIT;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 	mipi_dsi_cmdlist_put(&cmdreq);
-
 	return 0;
+}
+
+static void mipi_renesas_display_on(struct msm_fb_data_type *mfd)
+{
+	struct dcs_cmd_req cmdreq;
+
+	pr_info("%s+\n", __func__);
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = mipi_display_on_cmd;
+	cmdreq.cmds_cnt = mipi_display_on_cmd_size;
+	cmdreq.flags = CMD_REQ_COMMIT;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mipi_dsi_cmdlist_put(&cmdreq);
+}
+
+static void mipi_renesas_bkl_ctrl(bool on)
+{
+	pr_debug("%s+:on/off=%d\n", __func__, on);
+	return;
 }
 
 static int __devinit mipi_renesas_lcd_probe(struct platform_device *pdev)
@@ -1217,13 +1338,46 @@ static void mipi_renesas_set_backlight(struct msm_fb_data_type *mfd)
 {
 	int ret = -EPERM;
 	int bl_level;
+	struct dcs_cmd_req cmdreq;
 
 	bl_level = mfd->bl_level;
 
-	if (mipi_renesas_pdata && mipi_renesas_pdata->pmic_backlight)
+	if (mipi_renesas_pdata && mipi_renesas_pdata->pmic_backlight) {
 		ret = mipi_renesas_pdata->pmic_backlight(bl_level);
+		return;
+	}
+
+	if (mipi_renesas_pdata && mipi_renesas_pdata->shrink_pwm && bl_level!=0)
+		led_pwm[2] = mipi_renesas_pdata->shrink_pwm(bl_level);
 	else
-		pr_err("%s(): Backlight level set failed", __func__);
+		led_pwm[2] = (unsigned char)(bl_level);
+
+	if (bl_level == 0 || board_mfg_mode() == 4 || board_mfg_mode() == 5)
+		led_pwm[2] = 0;
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = renesas_cmd_backlight_cmds;
+	cmdreq.cmds_cnt = ARRAY_SIZE(renesas_cmd_backlight_cmds);
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mipi_dsi_cmdlist_put(&cmdreq);
+	bl_level_prevset = bl_level;
+}
+
+static void mipi_renesas_bkl_switch(struct msm_fb_data_type *mfd, bool on)
+{
+	if (on) {
+		if (mfd->bl_level == 0) {
+			if (bl_level_prevset != 1)
+				mfd->bl_level = bl_level_prevset;
+			else
+				mfd->bl_level = DEFAULT_BRIGHTNESS;
+		}
+		mipi_renesas_set_backlight(mfd);
+	} else
+		mfd->bl_level = 0;
 }
 
 static struct platform_driver this_driver = {
@@ -1235,8 +1389,11 @@ static struct platform_driver this_driver = {
 
 static struct msm_fb_panel_data renesas_panel_data = {
 	.on		= mipi_renesas_lcd_on,
-	.off	= mipi_renesas_lcd_off,
-	.set_backlight = mipi_renesas_set_backlight,
+	.off		= mipi_renesas_lcd_off,
+	.set_backlight  = mipi_renesas_set_backlight,
+	.display_on  	= mipi_renesas_display_on,
+	.bklswitch      = mipi_renesas_bkl_switch,
+	.bklctrl        = mipi_renesas_bkl_ctrl,
 };
 
 static int ch_used[3];

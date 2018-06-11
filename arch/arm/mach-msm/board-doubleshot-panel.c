@@ -44,41 +44,35 @@ static struct regulator *l4_1v8;
 
 static void doubleshot_id1_im1_switch(int on)
 {
-	int rc = 0;
 	pr_info("panel id1 im1 switch %d\n", on);
 
 	if (on) {
-	if (system_rev >= 1) {
-		rc = gpio_request(GPIO_LCM_ID1_IM1_XB, "LCM_ID1_IM1");
-		if (rc < 0)
-			pr_err("GPIO (%d) request fail\n", GPIO_LCM_ID1_IM1_XB);
-		else if (panel_type == PANEL_ID_DOT_HITACHI)
+		if (system_rev >= 1) {
+			if (gpio_request(GPIO_LCM_ID1_IM1_XB, "LCM_ID1_IM1") < 0)
+				pr_err("GPIO (%d) request fail\n", GPIO_LCM_ID1_IM1_XB);
+			else if (panel_type == PANEL_ID_DOT_HITACHI)
 				gpio_direction_output(GPIO_LCM_ID1_IM1_XB, 1);
 			else
 				gpio_direction_output(GPIO_LCM_ID1_IM1_XB, 0);
-		gpio_free(GPIO_LCM_ID1_IM1_XB);
-	} else {
-		rc = gpio_request(GPIO_LCM_ID1_IM1, "LCM_ID1_IM1");
-		if (rc < 0)
-			pr_err("GPIO (%d) request fail\n", GPIO_LCM_ID1_IM1);
-		else if (panel_type == PANEL_ID_DOT_HITACHI)
+			gpio_free(GPIO_LCM_ID1_IM1_XB);
+		} else {
+			if (gpio_request(GPIO_LCM_ID1_IM1, "LCM_ID1_IM1") < 0)
+				pr_err("GPIO (%d) request fail\n", GPIO_LCM_ID1_IM1);
+			else if (panel_type == PANEL_ID_DOT_HITACHI)
 				gpio_direction_output(GPIO_LCM_ID1_IM1, 1);
 			else
 				gpio_direction_output(GPIO_LCM_ID1_IM1, 0);
-		gpio_free(GPIO_LCM_ID1_IM1);
-	}
+			gpio_free(GPIO_LCM_ID1_IM1);
+		}
 	} else {
 		if (system_rev >= 1) {
-			rc = gpio_request(GPIO_LCM_ID1_IM1_XB, "LCM_ID1_IM1");
-			if (rc < 0)
+			if (gpio_request(GPIO_LCM_ID1_IM1_XB, "LCM_ID1_IM1") < 0)
 				pr_err("GPIO (%d) request fail\n", GPIO_LCM_ID1_IM1_XB);
 			else
 				gpio_direction_input(GPIO_LCM_ID1_IM1_XB);
-
 			gpio_free(GPIO_LCM_ID1_IM1_XB);
 		} else {
-			rc = gpio_request(GPIO_LCM_ID1_IM1, "LCM_ID1_IM1");
-			if (rc < 0)
+			if (gpio_request(GPIO_LCM_ID1_IM1, "LCM_ID1_IM1") < 0)
 				pr_err("GPIO (%d) request fail\n", GPIO_LCM_ID1_IM1);
 			else
 				gpio_direction_input(GPIO_LCM_ID1_IM1);
