@@ -995,34 +995,6 @@ static void __init msm8x60_init_dsps(void)
 }
 #endif /* CONFIG_MSM_DSPS */
 
-/* Kernel SMI PMEM Region for video core, used for Firmware */
-/* and encoder,decoder scratch buffers */
-/* Kernel SMI PMEM Region Should always precede the user space */
-/* SMI PMEM Region, as the video core will use offset address */
-/* from the Firmware base */
-#ifdef CONFIG_KERNEL_PMEM_SMI_REGION
-#define PMEM_KERNEL_SMI_BASE  (MSM_SMI_BASE)
-#define PMEM_KERNEL_SMI_SIZE  0x300000
-/* User space SMI PMEM Region for video core*/
-/* used for encoder, decoder input & output buffers  */
-#define MSM_PMEM_SMIPOOL_BASE (PMEM_KERNEL_SMI_BASE + PMEM_KERNEL_SMI_SIZE)
-#define MSM_PMEM_SMIPOOL_SIZE 0x3D00000
-#endif
-
-#define MSM_SMI_BASE		0x38000000
-#define MSM_SMI_SIZE		0x00300000
-#define MSM_MM_FW_BASE		MSM_SMI_BASE
-#define MSM_MM_FW_SIZE		0x00200000
-#define MSM_ION_MM_BASE		(MSM_MM_FW_BASE + MSM_MM_FW_SIZE)
-#define MSM_ION_MM_SIZE		0x03800000 
-#define MSM_ION_MFC_BASE	(MSM_ION_MM_BASE + MSM_ION_MM_SIZE)
-#define MSM_ION_MFC_SIZE	0x00002000
-#define MSM_ION_SF_BASE		0x40400000
-#define MSM_ION_SF_SIZE		0x02000000
-
-#define SECURE_BASE	(MSM_MM_FW_BASE)
-#define SECURE_SIZE	(MSM_ION_MM_SIZE + MSM_MM_FW_SIZE)
-
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 #define MSM_ION_HEAP_NUM	7
 #else
@@ -1262,13 +1234,13 @@ static void __init msm8x60_allocate_memory_regions(void)
 	msm8x60_allocate_fb_region();
 
 #ifdef CONFIG_KERNEL_PMEM_SMI_REGION
-	size = PMEM_KERNEL_SMI_SIZE;
+	size = MSM_MM_FW_SIZE;
 	if (size) {
-		android_pmem_kernel_smi_pdata.start = PMEM_KERNEL_SMI_BASE;
+		android_pmem_kernel_smi_pdata.start = MSM_MM_FW_BASE;
 		android_pmem_kernel_smi_pdata.size = size;
 		pr_info("allocating %lu bytes at %lx physical for kernel"
 			" smi pmem arena\n", size,
-			(unsigned long) PMEM_KERNEL_SMI_BASE);
+			(unsigned long) MSM_MM_FW_BASE);
 	}
 #endif
 
@@ -1282,13 +1254,13 @@ static void __init msm8x60_allocate_memory_regions(void)
 			(unsigned long)MSM_PMEM_AUDIO_BASE);
 	}
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
-	size = MSM_PMEM_SMIPOOL_SIZE;
+	size = MSM_ION_MM_SIZE;
 	if (size) {
-		android_pmem_smipool_pdata.start = MSM_PMEM_SMIPOOL_BASE;
+		android_pmem_smipool_pdata.start = MSM_ION_MM_BASE;
 		android_pmem_smipool_pdata.size = size;
 		pr_info("allocating %lu bytes at %lx physical for user"
 			" smi  pmem arena\n", size,
-			(unsigned long) MSM_PMEM_SMIPOOL_BASE);
+			(unsigned long) MSM_ION_MM_BASE);
 	}
 #endif
 #endif
@@ -2247,16 +2219,9 @@ static struct platform_device *surf_devices[] __initdata = {
 
 #ifdef CONFIG_ION_MSM
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-static struct ion_cp_heap_pdata cp_mm_ion_pdata = {
-	.permission_type = IPT_TYPE_MM_CARVEOUT,
+static struct ion_co_heap_pdata co_mm_ion_pdata = {
+	.adjacent_mem_id = INVALID_HEAP_ID,
 	.align = SZ_64K,
-	.request_region = request_smi_region,
-	.release_region = release_smi_region,
-	.setup_region = setup_smi_region,
-	.secure_base = SECURE_BASE,
-	.secure_size = SECURE_SIZE,
-	.iommu_map_all = 1,
-	.iommu_2x_map_domain = VIDEO_DOMAIN,
 };
 
 static struct ion_cp_heap_pdata cp_mfc_ion_pdata = {
@@ -2299,7 +2264,7 @@ struct ion_platform_data ion_pdata = {
 			.base	= MSM_ION_MM_BASE,
 			.size	= MSM_ION_MM_SIZE,
 			.memory_type = ION_SMI_TYPE,
-			.extra_data = (void *) &cp_mm_ion_pdata,
+			.extra_data = (void *) &co_mm_ion_pdata,
 		},
 		{
 			.id	= ION_MM_FIRMWARE_HEAP_ID,
@@ -2312,7 +2277,7 @@ struct ion_platform_data ion_pdata = {
 		},
 		{
 			.id	= ION_CP_MFC_HEAP_ID,
-			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.type	= ION_HEAP_TYPE_CP,
 			.name	= ION_MFC_HEAP_NAME,
 			.base	= MSM_ION_MFC_BASE,
 			.size	= MSM_ION_MFC_SIZE,
@@ -2339,7 +2304,7 @@ struct ion_platform_data ion_pdata = {
 		},
 		{
 			.id	= ION_CP_WB_HEAP_ID,
-			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.type	= ION_HEAP_TYPE_CP,
 			.name	= ION_WB_HEAP_NAME,
 			.base	= MSM_ION_WB_BASE,
 			.size	= MSM_ION_WB_SIZE,

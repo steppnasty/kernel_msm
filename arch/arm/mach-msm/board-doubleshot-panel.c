@@ -702,10 +702,10 @@ static struct msm_panel_common_pdata mdp_pdata = {
 #endif
 	.mdp_rev = MDP_REV_41,
 #ifdef CONFIG_FB_MSM_OVERLAY0_WRITEBACK
-	.ov0_wb_size = MSM_FB_OV0_BASE,
+	.ov0_wb_size = MSM_FB_OV0_SIZE,
 #endif
 #ifdef CONFIG_FB_MSM_OVERLAY1_WRITEBACK
-	.ov1_wb_size = MSM_FB_OV1_BASE,
+	.ov1_wb_size = MSM_FB_OV1_SIZE,
 #endif
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	.mem_hid = BIT(ION_CP_WB_HEAP_ID),
