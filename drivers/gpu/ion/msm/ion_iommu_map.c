@@ -206,7 +206,15 @@ static int ion_iommu_map_iommu(struct ion_iommu_meta *meta,
 
 	if (!msm_use_iommu()) {
 		struct ion_buffer *buffer = ion_handle_buffer(meta->handle);
-		data->iova_addr = buffer->priv_phys;
+		size_t len;
+		ion_phys_addr_t phys_addr;
+		if (!buffer->heap->ops->phys) {
+			pr_err("%s: ion_phys is not implemented by this heap.\n",
+				__func__);
+			return -ENODEV;
+		}
+		ret = buffer->heap->ops->phys(buffer->heap, buffer, &phys_addr, &len);
+		data->iova_addr = phys_addr;
 		return 0;
 	}
 	
