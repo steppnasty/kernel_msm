@@ -2232,6 +2232,7 @@ static struct ion_cp_heap_pdata cp_mfc_ion_pdata = {
 static struct ion_cp_heap_pdata cp_wb_ion_pdata = {
 	.permission_type = IPT_TYPE_MDP_WRITEBACK,
 	.align = PAGE_SIZE,
+	.allow_nonsecure_alloc = 1,
 };
 
 static struct ion_co_heap_pdata mm_fw_co_ion_pdata = {
