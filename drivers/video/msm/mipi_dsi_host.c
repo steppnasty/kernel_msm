@@ -939,6 +939,7 @@ void mipi_dsi_host_init(struct mipi_panel_info *pinfo)
 	else
 		MIPI_OUTP(MIPI_DSI_BASE + 0x118, 0x33f); /* DSI_CLK_CTRL */
 
+	MIPI_OUTP(MIPI_DSI_BASE + 0x280, 34);
 	dsi_ctrl |= BIT(0);	/* enable dsi */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl);
 
